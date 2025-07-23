@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
   images: {
     domains: ['localhost'],
   },
@@ -14,6 +11,9 @@ const nextConfig = {
       },
     ];
   },
+  // Configuración para Vercel
+  trailingSlash: false,
+  generateEtags: false,
 }
 
 module.exports = nextConfig 

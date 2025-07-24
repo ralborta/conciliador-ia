@@ -26,6 +26,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Create uploads directory
 RUN mkdir -p data/uploads
 
+# Test that the application can be imported
+RUN python -c "import main; print('Application imported successfully')"
+
 # Expose port
 EXPOSE 8000
 
@@ -35,4 +38,4 @@ ENV PORT=8000
 ENV DEBUG=false
 
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"] 

@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the backend application
-COPY conciliador_ia/ .
+COPY conciliador_ia/ /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

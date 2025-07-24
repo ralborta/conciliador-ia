@@ -5,9 +5,9 @@ from datetime import datetime
 import time
 from pathlib import Path
 
-from ..services.extractor import PDFExtractor
-from ..agents.conciliador import ConciliadorIA
-from ..models.schemas import ConciliacionItem, ConciliacionResponse
+from services.extractor import PDFExtractor
+from agents.conciliador import ConciliadorIA
+from models.schemas import ConciliacionItem, ConciliacionResponse
 
 logger = logging.getLogger(__name__)
 

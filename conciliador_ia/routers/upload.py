@@ -4,8 +4,8 @@ import logging
 from typing import Optional
 import os
 
-from ..utils.file_helpers import FileHelper
-from ..models.schemas import UploadResponse, ErrorResponse
+from utils.file_helpers import FileHelper
+from models.schemas import UploadResponse, ErrorResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/upload", tags=["upload"])

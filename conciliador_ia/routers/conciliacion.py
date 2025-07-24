@@ -5,8 +5,8 @@ from typing import Optional
 import os
 from pathlib import Path
 
-from ..services.matchmaker import MatchmakerService
-from ..models.schemas import ConciliacionRequest, ConciliacionResponse, ErrorResponse
+from services.matchmaker import MatchmakerService
+from models.schemas import ConciliacionRequest, ConciliacionResponse, ErrorResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/conciliacion", tags=["conciliacion"])

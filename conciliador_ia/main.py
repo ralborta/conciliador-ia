@@ -78,8 +78,14 @@ async def root():
         "message": "Conciliador IA - Backend para conciliación automática",
         "version": "1.0.0",
         "docs": "/docs",
-        "status": "running"
+        "status": "running",
+        "timestamp": "2025-07-24"
     }
+
+@app.get("/test")
+async def test():
+    """Endpoint de prueba"""
+    return {"status": "ok", "message": "Backend funcionando correctamente"}
 
 @app.get("/health")
 async def health_check():

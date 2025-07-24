@@ -20,6 +20,12 @@ RUN apt-get update && apt-get install -y \
 # Copy the backend application
 COPY conciliador_ia/ /app/
 
+# Copy start script
+COPY start.sh /app/start.sh
+
+# Make start script executable
+RUN chmod +x /app/start.sh
+
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -38,4 +44,4 @@ ENV PORT=8000
 ENV DEBUG=false
 
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "${PORT:-8000}", "--reload"] 
+CMD ["/app/start.sh"] 

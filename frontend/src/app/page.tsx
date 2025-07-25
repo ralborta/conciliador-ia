@@ -71,10 +71,14 @@ export default function Home() {
   const handleExtractoUpload = async (file: File) => {
     try {
       const response = await apiService.uploadExtracto(file);
-      if (response.success) {
-        setExtractoFile(response.file_name);
+      console.log('Frontend received response:', response);
+      
+      // Backend returns {"status":"ok","filename":"..."}
+      if (response.status === 'ok') {
+        setExtractoFile(response.filename);
+        alert('Extracto subido correctamente!'); // DEBUG
       } else {
-        throw new Error(response.message);
+        throw new Error(response.message || 'Error desconocido');
       }
     } catch (error) {
       console.error('Error uploading extracto:', error);
@@ -85,10 +89,14 @@ export default function Home() {
   const handleComprobantesUpload = async (file: File) => {
     try {
       const response = await apiService.uploadComprobantes(file);
-      if (response.success) {
-        setComprobantesFile(response.file_name);
+      console.log('Frontend received response:', response);
+      
+      // Backend returns {"status":"ok","filename":"..."}
+      if (response.status === 'ok') {
+        setComprobantesFile(response.filename);
+        alert('Comprobantes subidos correctamente!'); // DEBUG
       } else {
-        throw new Error(response.message);
+        throw new Error(response.message || 'Error desconocido');
       }
     } catch (error) {
       console.error('Error uploading comprobantes:', error);

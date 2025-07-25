@@ -7,6 +7,7 @@ import SummaryCards from '../components/SummaryCards';
 import MovementsTable from '../components/MovementsTable';
 import ProcessTimeline from '../components/ProcessTimeline';
 import DataInconsistencies from '../components/DataInconsistencies';
+import StatusMessage from '../components/StatusMessage';
 import { apiService, ConciliacionItem } from '../services/api';
 import toast from 'react-hot-toast';
 import { ChevronDown, HelpCircle, Menu, X } from 'lucide-react';
@@ -26,6 +27,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processSteps, setProcessSteps] = useState<any[]>([]);
   const [inconsistencies, setInconsistencies] = useState<any[]>([]);
+  const [statusMessage, setStatusMessage] = useState<any>(null);
   const [conciliacionResult, setConciliacionResult] = useState<{
     totalMovimientos: number;
     movimientosConciliados: number;
@@ -171,13 +173,71 @@ export default function Home() {
           movimientosParciales: response.movimientos_parciales,
           items: response.items,
         });
+        
+        // Mostrar mensaje de éxito
+        setStatusMessage({
+          type: 'success',
+          title: 'Conciliación Completada',
+          message: `Se procesaron ${response.total_movimientos} movimientos con éxito. ${response.movimientos_conciliados} conciliados, ${response.movimientos_pendientes} pendientes.`,
+          details: `Tiempo de procesamiento: ${response.tiempo_procesamiento?.toFixed(2)} segundos`,
+          actions: [
+            {
+              label: 'Ver Detalles',
+              onClick: () => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }),
+              variant: 'primary'
+            },
+            {
+              label: 'Nueva Conciliación',
+              onClick: () => {
+                setExtractoFile(undefined);
+                setComprobantesFile(undefined);
+                setStatusMessage(null);
+                setProcessSteps([]);
+                setInconsistencies([]);
+                setConciliacionResult({
+                  totalMovimientos: 0,
+                  movimientosConciliados: 0,
+                  movimientosPendientes: 0,
+                  movimientosParciales: 0,
+                  items: [],
+                });
+              }
+            }
+          ]
+        });
+        
         toast.success('Conciliación procesada exitosamente');
       } else {
-        throw new Error(response.message);
+        throw new Error(response.message || 'Error desconocido en la conciliación');
       }
     } catch (error) {
       console.error('Error processing conciliacion:', error);
-      toast.error('Error al procesar la conciliación');
+      
+      // Mostrar mensaje de error detallado
+      setStatusMessage({
+        type: 'error',
+        title: 'Error en la Conciliación',
+        message: 'No se pudo completar el proceso de conciliación. Revisa los detalles para más información.',
+        details: error instanceof Error ? error.message : 'Error desconocido',
+        actions: [
+          {
+            label: 'Reintentar',
+            onClick: () => {
+              setStatusMessage(null);
+              setProcessSteps([]);
+              handleProcessConciliacion();
+            },
+            variant: 'primary'
+          },
+          {
+            label: 'Verificar Archivos',
+            onClick: () => {
+              setStatusMessage(null);
+              setProcessSteps([]);
+            }
+          }
+        ]
+      });
       
       // Marcar pasos como error
       const errorSteps = initialSteps.map(step => ({
@@ -186,6 +246,8 @@ export default function Home() {
         details: 'Error en el procesamiento'
       }));
       setProcessSteps(errorSteps);
+      
+      toast.error('Error al procesar la conciliación');
     } finally {
       setIsProcessing(false);
     }
@@ -221,7 +283,7 @@ export default function Home() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-64">
+      <div className="flex-1 flex flex-col lg:ml-0">
         {/* Top Header */}
         <header className="bg-white shadow-sm border-b border-gray-200 lg:hidden">
           <div className="flex items-center justify-between px-4 py-3">
@@ -305,6 +367,13 @@ export default function Home() {
                 {isProcessing ? 'Procesando...' : 'Procesar Conciliación'}
               </button>
             </div>
+
+            {/* Status Message */}
+            {statusMessage && (
+              <div className="mb-8">
+                <StatusMessage {...statusMessage} />
+              </div>
+            )}
 
             {/* Process Timeline */}
             {processSteps.length > 0 && (

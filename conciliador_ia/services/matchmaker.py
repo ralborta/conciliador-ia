@@ -188,11 +188,11 @@ class MatchmakerService:
         try:
             # Mapear columnas comunes (más flexible)
             column_mapping = {
-                'fecha': ['fecha', 'date', 'fecha_emision', 'fecha_comprobante', 'fecha_venta', 'fecha_factura'],
-                'cliente': ['cliente', 'customer', 'nombre_cliente', 'razon_social', 'nombre', 'empresa'],
-                'concepto': ['concepto', 'description', 'descripcion', 'detalle', 'producto', 'servicio'],
-                'monto': ['monto', 'amount', 'importe', 'total', 'valor', 'precio', 'costo'],
-                'numero_comprobante': ['numero', 'numero_comprobante', 'comprobante', 'factura', 'invoice', 'nro']
+                'fecha': ['fecha', 'date', 'fecha_emision', 'fecha_comprobante', 'fecha_venta', 'fecha_factura', 'Fecha'],
+                'cliente': ['cliente', 'customer', 'nombre_cliente', 'razon_social', 'nombre', 'empresa', 'Cliente'],
+                'concepto': ['concepto', 'description', 'descripcion', 'detalle', 'producto', 'servicio', 'Descripcion_Tipo'],
+                'monto': ['monto', 'amount', 'importe', 'total', 'valor', 'precio', 'costo', 'Importe_Total'],
+                'numero_comprobante': ['numero', 'numero_comprobante', 'comprobante', 'factura', 'invoice', 'nro', 'Numero_Comprobante']
             }
             
             # Buscar y renombrar columnas

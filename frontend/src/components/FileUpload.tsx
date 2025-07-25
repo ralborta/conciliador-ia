@@ -9,7 +9,7 @@ interface FileUploadProps {
   title: string;
   acceptedTypes: string[];
   onFileUpload: (file: File) => Promise<void>;
-  uploadedFile?: string;
+  uploadedFile?: File | string;
   onRemoveFile?: () => void;
 }
 
@@ -62,7 +62,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <CheckCircle className="h-5 w-5 text-green-600" />
             <div>
               <p className="text-sm font-medium text-green-800">Archivo subido</p>
-              <p className="text-xs text-green-600">{uploadedFile}</p>
+              <p className="text-xs text-green-600">
+                {typeof uploadedFile === 'string' ? uploadedFile : uploadedFile.name}
+              </p>
             </div>
           </div>
           {onRemoveFile && (

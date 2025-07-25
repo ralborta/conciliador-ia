@@ -29,18 +29,10 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# URLs permitidas para CORS
-origins = [
-    "https://conciliador-kp3euey2b-nivel-41.vercel.app",  # Vercel domain
-    "https://conciliador-hkzvd6096-nivel-41.vercel.app",  # Vercel domain backup
-    "http://localhost:3000",                              # para desarrollo local
-    "*",  # Permitir todos los orígenes para desarrollo
-]
-
-# CONFIGURAR CORS ANTES DE CARGAR NADA
+# CONFIGURAR CORS ANTES DE CARGAR NADA - SOLUCIÓN RÁPIDA
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # LIBERAR CORS COMPLETAMENTE
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

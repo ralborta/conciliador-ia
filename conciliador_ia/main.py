@@ -35,16 +35,9 @@ app = FastAPI(
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001", 
-        "https://conciliador-ia.vercel.app",
-        "https://conciliador-2bat4lpps-nivel-41.vercel.app",
-        "https://conciliador-a6elsq0ps-nivel-41.vercel.app",
-        "https://*.vercel.app"
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_origins=["*"],  # Permitir todos los orígenes para desarrollo
+    allow_credentials=False,  # Cambiar a False cuando usamos "*"
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 

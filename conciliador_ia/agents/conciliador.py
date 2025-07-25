@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import openai
-from openai import OpenAI
+import openai
 import os
 from dotenv import load_dotenv
 
@@ -20,7 +20,7 @@ class ConciliadorIA:
         if not self.api_key:
             raise ValueError("Se requiere API key de OpenAI")
         
-        self.client = OpenAI(api_key=self.api_key)
+        openai.api_key = self.api_key
         self.model = "gpt-4o-mini"  # Usar gpt-4o-mini para mejor rendimiento/costo
     
     def conciliar_movimientos(self, 
@@ -123,7 +123,7 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin texto adicional.
     def _call_openai_api(self, prompt: str) -> str:
         """Llama a la API de OpenAI"""
         try:
-            response = self.client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model=self.model,
                 messages=[
                     {
@@ -136,8 +136,7 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin texto adicional.
                     }
                 ],
                 temperature=0.1,  # Baja temperatura para respuestas más consistentes
-                max_tokens=4000,
-                response_format={"type": "json_object"}
+                max_tokens=4000
             )
             
             return response.choices[0].message.content

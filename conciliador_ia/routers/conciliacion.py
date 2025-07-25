@@ -36,16 +36,19 @@ async def procesar_conciliacion(
         logger.info(f"Empresa ID: {request.empresa_id}")
         
         # Validar que los archivos existen
-        if not Path(request.extracto_path).exists():
+        extracto_full_path = Path("uploads") / Path(request.extracto_path).name
+        comprobantes_full_path = Path("uploads") / Path(request.comprobantes_path).name
+        
+        if not extracto_full_path.exists():
             raise HTTPException(
                 status_code=404,
-                detail=f"Archivo de extracto no encontrado: {request.extracto_path}"
+                detail=f"Archivo de extracto no encontrado: {extracto_full_path}"
             )
         
-        if not Path(request.comprobantes_path).exists():
+        if not comprobantes_full_path.exists():
             raise HTTPException(
                 status_code=404,
-                detail=f"Archivo de comprobantes no encontrado: {request.comprobantes_path}"
+                detail=f"Archivo de comprobantes no encontrado: {comprobantes_full_path}"
             )
         
         # Procesar conciliación

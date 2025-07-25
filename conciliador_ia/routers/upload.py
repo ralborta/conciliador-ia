@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 # Configuración simple
-UPLOAD_DIR = Path("data/uploads")
+UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.post("/extracto")

@@ -26,10 +26,10 @@ api.interceptors.response.use(
 );
 
 export interface UploadResponse {
-  success: boolean;
-  message: string;
+  status: string;
+  message?: string;
   file_path?: string;
-  file_name?: string;
+  filename?: string;
 }
 
 export interface ConciliacionRequest {

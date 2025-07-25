@@ -104,8 +104,23 @@ export default function Home() {
 
     setIsProcessing(true);
     try {
-      const result = await apiService.processConciliacion(extractoFile, comprobantesFile);
-      setConciliacionResult(result);
+      const response = await apiService.procesarConciliacion({
+        extracto_path: extractoFile,
+        comprobantes_path: comprobantesFile,
+        empresa_id: selectedEmpresa,
+      });
+
+      if (response.success) {
+        setConciliacionResult({
+          totalMovimientos: response.total_movimientos,
+          movimientosConciliados: response.movimientos_conciliados,
+          movimientosPendientes: response.movimientos_pendientes,
+          movimientosParciales: response.movimientos_parciales,
+          items: response.items,
+        });
+      } else {
+        throw new Error(response.message);
+      }
       toast.success('Conciliación procesada exitosamente');
     } catch (error) {
       console.error('Error processing conciliacion:', error);

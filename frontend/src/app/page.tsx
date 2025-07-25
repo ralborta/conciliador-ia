@@ -172,16 +172,14 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <FileUpload
             title="Extracto Bancario"
-            description="Sube tu archivo PDF del extracto bancario"
-            acceptedTypes=".pdf"
+            acceptedTypes={['application/pdf']}
             onFileUpload={handleExtractoUpload}
             uploadedFile={extractoFile}
           />
           
           <FileUpload
             title="Comprobantes de Venta"
-            description="Sube tu archivo Excel o CSV con los comprobantes"
-            acceptedTypes=".xlsx,.xls,.csv"
+            acceptedTypes={['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv']}
             onFileUpload={handleComprobantesUpload}
             uploadedFile={comprobantesFile}
           />

@@ -7,7 +7,8 @@ import SummaryCards from '../components/SummaryCards';
 import MovementsTable from '../components/MovementsTable';
 import { apiService, ConciliacionItem } from '../services/api';
 import toast from 'react-hot-toast';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, HelpCircle } from 'lucide-react';
+import Link from 'next/link';
 
 const empresas = [
   { id: 'smart-it', name: 'Smart IT' },

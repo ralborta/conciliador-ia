@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { X, ArrowLeft, ArrowRight, Copy, Download, Upload, Square } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Copy, Download, Upload, Square, HelpCircle } from 'lucide-react';
+import Link from 'next/link';
 
 const Header: React.FC = () => {
   const handleAction = (action: string) => {
@@ -23,6 +24,14 @@ const Header: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-2">
+          <Link
+            href="/instrucciones"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Instrucciones"
+          >
+            <HelpCircle className="h-4 w-4 text-gray-600" />
+          </Link>
+          
           <button
             onClick={() => handleAction('undo')}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

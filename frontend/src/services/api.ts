@@ -3,7 +3,7 @@ import axios from 'axios';
 // RAILWAY BACKEND: Using Railway URL (replace with your actual Railway URL)
 const API_BASE_URL = 'https://conciliador-ia-production.up.railway.app/api/v1';
 
-console.log('API URL:', API_BASE_URL); // Debug log - FORCE VERCEL DEPLOY V3 - ULTRA SIMPLE
+console.log('API URL:', API_BASE_URL); // Debug log - FORCE VERCEL DEPLOY V4 - IMPROVED LOGGING
 
 const api = axios.create({
   baseURL: API_BASE_URL,

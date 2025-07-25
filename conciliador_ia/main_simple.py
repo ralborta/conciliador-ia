@@ -48,6 +48,9 @@ async def upload_comprobantes(file: UploadFile = File(...)):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+# Para desarrollo local
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000))) 
+    port = int(os.getenv("PORT", 8000))
+    print(f"Starting server on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port) 

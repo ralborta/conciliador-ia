@@ -32,10 +32,14 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configurar CORS - FORZAR DEPLOY RAILWAY
+# Configurar CORS - FORZAR DEPLOY RAILWAY V2
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permitir todos los orígenes para desarrollo
+    allow_origins=[
+        "*",  # Permitir todos los orígenes para desarrollo
+        "https://conciliador-kp3euey2b-nivel-41.vercel.app",  # Vercel domain
+        "https://conciliador-hkzvd6096-nivel-41.vercel.app",  # Vercel domain backup
+    ],
     allow_credentials=False,  # Cambiar a False cuando usamos "*"
     allow_methods=["*"],
     allow_headers=["*"],

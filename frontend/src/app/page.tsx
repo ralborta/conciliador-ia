@@ -35,9 +35,9 @@ export default function Home() {
     items: [],
   });
 
-  // Datos de ejemplo para mostrar la interfaz - FORCE VERCEL DEPLOY
+  // Datos de ejemplo para mostrar la interfaz - FORCE VERCEL DEPLOY 2
   useEffect(() => {
-    // Simular datos de ejemplo
+    // Simular datos de ejemplo - URGENT DEPLOY
     setConciliacionResult({
       totalMovimientos: 128,
       movimientosConciliados: 97,

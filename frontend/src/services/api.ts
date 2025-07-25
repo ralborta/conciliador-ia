@@ -15,9 +15,12 @@ const api = axios.create({
 
 // Interceptor para manejar errores
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response:', response.status, response.data);
+    return response;
+  },
   (error) => {
-    console.error('API Error:', error);
+    console.error('API Error:', error.response?.status, error.response?.data);
     return Promise.reject(error);
   }
 );
@@ -61,30 +64,44 @@ export interface ConciliacionResponse {
 export const apiService = {
   // Subir extracto bancario
   uploadExtracto: async (file: File): Promise<UploadResponse> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await api.post('/upload/extracto', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    
-    return response.data;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      console.log('Uploading extracto:', file.name);
+      const response = await api.post('/upload/extracto', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Extracto upload success:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Extracto upload error:', error);
+      throw error;
+    }
   },
 
   // Subir comprobantes
   uploadComprobantes: async (file: File): Promise<UploadResponse> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await api.post('/upload/comprobantes', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    
-    return response.data;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      console.log('Uploading comprobantes:', file.name);
+      const response = await api.post('/upload/comprobantes', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Comprobantes upload success:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Comprobantes upload error:', error);
+      throw error;
+    }
   },
 
   // Procesar conciliación

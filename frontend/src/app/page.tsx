@@ -17,8 +17,8 @@ const empresas = [
 ];
 
 export default function Home() {
-  const [extractoFile, setExtractoFile] = useState<string | undefined>();
-  const [comprobantesFile, setComprobantesFile] = useState<string | undefined>();
+  const [extractoFile, setExtractoFile] = useState<File | undefined>();
+  const [comprobantesFile, setComprobantesFile] = useState<File | undefined>();
   const [selectedEmpresa, setSelectedEmpresa] = useState('smart-it');
   const [isProcessing, setIsProcessing] = useState(false);
   const [conciliacionResult, setConciliacionResult] = useState<{
@@ -70,16 +70,9 @@ export default function Home() {
 
   const handleExtractoUpload = async (file: File) => {
     try {
-      const response = await apiService.uploadExtracto(file);
-      console.log('Frontend received response:', response);
-      
-      // Backend returns {"status":"ok","filename":"..."}
-      if (response.status === 'ok') {
-        setExtractoFile(response.filename);
-        alert('Extracto subido correctamente!'); // DEBUG
-      } else {
-        throw new Error(response.message || 'Error desconocido');
-      }
+      // Guardar el archivo directamente para procesamiento inmediato
+      setExtractoFile(file);
+      toast.success('Extracto listo para procesar');
     } catch (error) {
       console.error('Error uploading extracto:', error);
       throw error;
@@ -88,16 +81,9 @@ export default function Home() {
 
   const handleComprobantesUpload = async (file: File) => {
     try {
-      const response = await apiService.uploadComprobantes(file);
-      console.log('Frontend received response:', response);
-      
-      // Backend returns {"status":"ok","filename":"..."}
-      if (response.status === 'ok') {
-        setComprobantesFile(response.filename);
-        alert('Comprobantes subidos correctamente!'); // DEBUG
-      } else {
-        throw new Error(response.message || 'Error desconocido');
-      }
+      // Guardar el archivo directamente para procesamiento inmediato
+      setComprobantesFile(file);
+      toast.success('Comprobantes listos para procesar');
     } catch (error) {
       console.error('Error uploading comprobantes:', error);
       throw error;
@@ -112,11 +98,12 @@ export default function Home() {
 
     setIsProcessing(true);
     try {
-      const response = await apiService.procesarConciliacion({
-        extracto_path: extractoFile,
-        comprobantes_path: comprobantesFile,
-        empresa_id: selectedEmpresa,
-      });
+      // Usar el nuevo método de procesamiento inmediato
+      const response = await apiService.procesarInmediato(
+        extractoFile, 
+        comprobantesFile, 
+        selectedEmpresa
+      );
 
       if (response.success) {
         setConciliacionResult({

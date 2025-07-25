@@ -110,6 +110,29 @@ export const apiService = {
     return response.data;
   },
 
+  // Procesar archivos inmediatamente (nuevo método)
+  procesarInmediato: async (extractoFile: File, comprobantesFile: File, empresaId: string): Promise<any> => {
+    try {
+      console.log('Procesando archivos inmediatamente para empresa:', empresaId);
+      const formData = new FormData();
+      formData.append('extracto', extractoFile);
+      formData.append('comprobantes', comprobantesFile);
+      formData.append('empresa_id', empresaId);
+      
+      const response = await api.post('/upload/procesar-inmediato', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Procesamiento inmediato success:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error en procesamiento inmediato:', error);
+      throw error;
+    }
+  },
+
   // Obtener estado del servicio
   getStatus: async () => {
     const response = await api.get('/conciliacion/status');

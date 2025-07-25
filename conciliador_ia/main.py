@@ -40,6 +40,7 @@ app.add_middleware(
         "http://localhost:3001", 
         "https://conciliador-ia.vercel.app",
         "https://conciliador-2bat4lpps-nivel-41.vercel.app",
+        "https://conciliador-a6elsq0ps-nivel-41.vercel.app",
         "https://*.vercel.app"
     ],
     allow_credentials=True,

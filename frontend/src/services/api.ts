@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// CRITICAL FIX: Using correct ngrok URL - FORCE VERCEL DEPLOY
-const API_BASE_URL = 'https://80ce0cf24942.ngrok-free.app/api/v1';
+// RENDER DEPLOYMENT: Using Render backend URL
+const API_BASE_URL = 'https://conciliador-ia-backend.onrender.com/api/v1';
 
 console.log('API URL:', API_BASE_URL); // Debug log
 

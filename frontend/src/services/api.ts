@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// URGENT: Update ngrok URL for Vercel deployment - FORCE DEPLOY 3
+// FIXED: Using correct ngrok URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_APIURL || 'https://80ce0cf24942.ngrok-free.app/api/v1';
 
 const api = axios.create({

@@ -35,9 +35,9 @@ export default function Home() {
     items: [],
   });
 
-  // Datos de ejemplo para mostrar la interfaz - FORCE VERCEL DEPLOY 3
+  // Datos de ejemplo para mostrar la interfaz - FORCE VERCEL DEPLOY 4
   useEffect(() => {
-    // Simular datos de ejemplo - URGENT DEPLOY - FINAL
+    // Simular datos de ejemplo - URGENT DEPLOY - FINAL VERSION
     setConciliacionResult({
       totalMovimientos: 128,
       movimientosConciliados: 97,
@@ -104,24 +104,9 @@ export default function Home() {
 
     setIsProcessing(true);
     try {
-      const response = await apiService.procesarConciliacion({
-        extracto_path: extractoFile,
-        comprobantes_path: comprobantesFile,
-        empresa_id: selectedEmpresa,
-      });
-
-      if (response.success) {
-        setConciliacionResult({
-          totalMovimientos: response.total_movimientos,
-          movimientosConciliados: response.movimientos_conciliados,
-          movimientosPendientes: response.movimientos_pendientes,
-          movimientosParciales: response.movimientos_parciales,
-          items: response.items,
-        });
-        toast.success('Conciliación procesada exitosamente');
-      } else {
-        throw new Error(response.message);
-      }
+      const result = await apiService.processConciliacion(extractoFile, comprobantesFile);
+      setConciliacionResult(result);
+      toast.success('Conciliación procesada exitosamente');
     } catch (error) {
       console.error('Error processing conciliacion:', error);
       toast.error('Error al procesar la conciliación');
@@ -134,83 +119,83 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Conciliación Bancaria</h1>
-        
-        {/* Sección de entrada de archivos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Empresa Selector */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <label className="text-sm font-medium text-gray-700">Empresa:</label>
+              <div className="relative">
+                <select
+                  value={selectedEmpresa}
+                  onChange={(e) => setSelectedEmpresa(e.target.value)}
+                  className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {empresas.map((empresa) => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresa.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Link
+                href="/instrucciones"
+                className="flex items-center text-blue-600 hover:text-blue-800 text-sm"
+              >
+                <HelpCircle className="w-4 h-4 mr-1" />
+                Instrucciones
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* File Upload Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <FileUpload
-            title="Subir extracto bancario"
-            acceptedTypes={['application/pdf']}
+            title="Extracto Bancario"
+            description="Sube tu archivo PDF del extracto bancario"
+            acceptedTypes=".pdf"
             onFileUpload={handleExtractoUpload}
             uploadedFile={extractoFile}
-            onRemoveFile={() => setExtractoFile(undefined)}
           />
           
           <FileUpload
-            title="Subir ventas / cobranzas"
-            acceptedTypes={['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv']}
+            title="Comprobantes de Venta"
+            description="Sube tu archivo Excel o CSV con los comprobantes"
+            acceptedTypes=".xlsx,.xls,.csv"
             onFileUpload={handleComprobantesUpload}
             uploadedFile={comprobantesFile}
-            onRemoveFile={() => setComprobantesFile(undefined)}
           />
         </div>
-        
-        {/* Selección de empresa */}
-        <div className="card mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Seleccionar empresa</h3>
-          <div className="relative">
-            <select
-              value={selectedEmpresa}
-              onChange={(e) => setSelectedEmpresa(e.target.value)}
-              className="input-field appearance-none pr-10"
-            >
-              {empresas.map((empresa) => (
-                <option key={empresa.id} value={empresa.id}>
-                  {empresa.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-          </div>
-        </div>
-        
-        {/* Botón de procesar */}
-        <div className="flex justify-center mb-8">
+
+        {/* Process Button */}
+        <div className="text-center mb-8">
           <button
             onClick={handleProcessConciliacion}
-            disabled={isProcessing || !extractoFile || !comprobantesFile}
-            className={`
-              px-8 py-3 rounded-lg font-medium transition-colors
-              ${isProcessing || !extractoFile || !comprobantesFile
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-primary-600 hover:bg-primary-700 text-white'
-              }
-            `}
+            disabled={!extractoFile || !comprobantesFile || isProcessing}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-8 rounded-lg transition-colors"
           >
-            {isProcessing ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Procesando...</span>
-              </div>
-            ) : (
-              'Procesar Conciliación'
-            )}
+            {isProcessing ? 'Procesando...' : 'Procesar Conciliación'}
           </button>
         </div>
-        
-        {/* Resumen de conciliación */}
-        <SummaryCards
-          totalMovimientos={conciliacionResult.totalMovimientos}
-          movimientosConciliados={conciliacionResult.movimientosConciliados}
-          movimientosPendientes={conciliacionResult.movimientosPendientes}
-          movimientosParciales={conciliacionResult.movimientosParciales}
-        />
-        
-        {/* Tabla de movimientos */}
-        <div className="mt-8">
-          <MovementsTable items={conciliacionResult.items} />
-        </div>
+
+        {/* Results Section */}
+        {conciliacionResult.totalMovimientos > 0 && (
+          <>
+            <SummaryCards
+              totalMovimientos={conciliacionResult.totalMovimientos}
+              movimientosConciliados={conciliacionResult.movimientosConciliados}
+              movimientosPendientes={conciliacionResult.movimientosPendientes}
+              movimientosParciales={conciliacionResult.movimientosParciales}
+            />
+            
+            <MovementsTable items={conciliacionResult.items} />
+          </>
+        )}
       </div>
     </div>
   );

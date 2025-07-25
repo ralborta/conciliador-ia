@@ -30,10 +30,11 @@ async def procesar_conciliacion(
         Resultado de la conciliación estructurado
     """
     try:
-        logger.info(f"Iniciando conciliación")
-        logger.info(f"Extracto: {request.extracto_path}")
-        logger.info(f"Comprobantes: {request.comprobantes_path}")
-        logger.info(f"Empresa ID: {request.empresa_id}")
+        logger.info(f"🚀 Starting conciliation process...")
+        logger.info(f"📄 Request received: {request}")
+        logger.info(f"📁 Extracto: {request.extracto_path}")
+        logger.info(f"📁 Comprobantes: {request.comprobantes_path}")
+        logger.info(f"🏢 Empresa ID: {request.empresa_id}")
         
         # Validar que los archivos existen
         extracto_full_path = Path("uploads") / Path(request.extracto_path).name
@@ -64,7 +65,10 @@ async def procesar_conciliacion(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error en procesamiento de conciliación: {e}")
+        logger.error(f"❌ Process failed: {e}")
+        logger.error(f"❌ Stack trace: {e.__class__.__name__}: {str(e)}")
+        import traceback
+        logger.error(f"❌ Full traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
             detail=f"Error interno del servidor: {str(e)}"

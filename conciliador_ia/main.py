@@ -20,9 +20,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Importar routers
-from routers import upload, conciliacion
-
 # Crear aplicación FastAPI
 app = FastAPI(
     title="Conciliador IA",
@@ -32,20 +29,27 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configurar CORS - FORZAR DEPLOY RAILWAY V2
+# URLs permitidas para CORS
+origins = [
+    "https://conciliador-kp3euey2b-nivel-41.vercel.app",  # Vercel domain
+    "https://conciliador-hkzvd6096-nivel-41.vercel.app",  # Vercel domain backup
+    "http://localhost:3000",                              # para desarrollo local
+    "*",  # Permitir todos los orígenes para desarrollo
+]
+
+# CONFIGURAR CORS ANTES DE CARGAR NADA
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*",  # Permitir todos los orígenes para desarrollo
-        "https://conciliador-kp3euey2b-nivel-41.vercel.app",  # Vercel domain
-        "https://conciliador-hkzvd6096-nivel-41.vercel.app",  # Vercel domain backup
-    ],
-    allow_credentials=False,  # Cambiar a False cuando usamos "*"
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Incluir routers
+# Importar routers DESPUÉS de CORS
+from routers import upload, conciliacion
+
+# INCLUIR RUTAS DESPUÉS DE CORS
 app.include_router(upload.router, prefix="/api/v1")
 app.include_router(conciliacion.router, prefix="/api/v1")
 

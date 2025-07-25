@@ -1,0 +1,5 @@
+FORCE VERCEL DEPLOY - URGENT FINAL
+Timestamp: 2025-07-25 11:00:00
+Reason: Update ngrok URL to fix CORS issues - FINAL ATTEMPT
+Status: PENDING
+URL: https://80ce0cf24942.ngrok-free.app/api/v1 

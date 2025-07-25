@@ -48,6 +48,12 @@ async def upload_comprobantes(file: UploadFile = File(...)):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+# Importar router de conciliación simple
+from routers.conciliacion_simple import router as conciliacion_router
+
+# Incluir router de conciliación
+app.include_router(conciliacion_router, prefix="/api/v1")
+
 # Para desarrollo local
 if __name__ == "__main__":
     import uvicorn

@@ -42,9 +42,22 @@ class MatchmakerService:
             
             # Paso 1: Extraer datos del PDF
             df_movimientos = self._extraer_datos_extracto(extracto_path)
+            logger.info(f"Movimientos extraídos: {len(df_movimientos)} registros")
+            logger.info(f"Columnas de movimientos: {list(df_movimientos.columns)}")
             
             # Paso 2: Cargar datos de comprobantes
             df_comprobantes = self._cargar_datos_comprobantes(comprobantes_path)
+            logger.info(f"Comprobantes cargados: {len(df_comprobantes)} registros")
+            logger.info(f"Columnas de comprobantes: {list(df_comprobantes.columns)}")
+            
+            # Verificar que hay datos para procesar
+            if df_movimientos.empty:
+                logger.warning("No hay movimientos bancarios para procesar")
+                return self._generar_respuesta_vacia(tiempo_procesamiento=time.time() - start_time)
+            
+            if df_comprobantes.empty:
+                logger.warning("No hay comprobantes para procesar")
+                return self._generar_respuesta_vacia(tiempo_procesamiento=time.time() - start_time)
             
             # Paso 3: Realizar conciliación con IA
             items_conciliados = self._realizar_conciliacion_ia(
@@ -64,6 +77,19 @@ class MatchmakerService:
             logger.error(f"Error en procesamiento de conciliación: {e}")
             tiempo_procesamiento = time.time() - start_time
             raise
+    
+    def _generar_respuesta_vacia(self, tiempo_procesamiento: float) -> ConciliacionResponse:
+        """Genera una respuesta vacía cuando no hay datos para procesar"""
+        return ConciliacionResponse(
+            success=True,
+            message="No hay datos para conciliar",
+            total_movimientos=0,
+            movimientos_conciliados=0,
+            movimientos_pendientes=0,
+            movimientos_parciales=0,
+            items=[],
+            tiempo_procesamiento=tiempo_procesamiento
+        )
     
     def _extraer_datos_extracto(self, extracto_path: str) -> pd.DataFrame:
         """Extrae datos del extracto PDF"""

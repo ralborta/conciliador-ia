@@ -28,4 +28,4 @@ RUN mkdir -p data/uploads
 EXPOSE 8000
 
 # Run the application - ULTRA SIMPLE
-CMD uvicorn main_simple:app --host 0.0.0.0 --port $PORT 
+CMD uvicorn main_simple:app --host 0.0.0.0 --port $PORT --reload 

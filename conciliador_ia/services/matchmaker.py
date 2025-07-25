@@ -70,15 +70,23 @@ class MatchmakerService:
         try:
             logger.info("Extrayendo datos del extracto PDF")
             
-            # Validar que el archivo existe - buscar en uploads/
-            file_name = Path(extracto_path).name
-            uploads_path = Path("uploads") / file_name
-            
-            if not uploads_path.exists():
-                raise FileNotFoundError(f"Archivo de extracto no encontrado: {uploads_path}")
-            
-            # Usar la ruta correcta
-            extracto_path = str(uploads_path)
+            # Verificar si es un archivo temporal (empieza con /tmp/)
+            if extracto_path.startswith('/tmp/'):
+                # Es un archivo temporal, usar directamente
+                if not Path(extracto_path).exists():
+                    raise FileNotFoundError(f"Archivo temporal no encontrado: {extracto_path}")
+                logger.info(f"Usando archivo temporal: {extracto_path}")
+            else:
+                # Es un archivo en uploads/, buscar en uploads/
+                file_name = Path(extracto_path).name
+                uploads_path = Path("uploads") / file_name
+                
+                if not uploads_path.exists():
+                    raise FileNotFoundError(f"Archivo de extracto no encontrado: {uploads_path}")
+                
+                # Usar la ruta correcta
+                extracto_path = str(uploads_path)
+                logger.info(f"Usando archivo en uploads: {extracto_path}")
             
             # Extraer datos
             df = self.extractor.extract_from_pdf(extracto_path)
@@ -102,15 +110,23 @@ class MatchmakerService:
         try:
             logger.info("Cargando datos de comprobantes")
             
-            # Validar que el archivo existe - buscar en uploads/
-            file_name = Path(comprobantes_path).name
-            uploads_path = Path("uploads") / file_name
-            
-            if not uploads_path.exists():
-                raise FileNotFoundError(f"Archivo de comprobantes no encontrado: {uploads_path}")
-            
-            # Usar la ruta correcta
-            comprobantes_path = str(uploads_path)
+            # Verificar si es un archivo temporal (empieza con /tmp/)
+            if comprobantes_path.startswith('/tmp/'):
+                # Es un archivo temporal, usar directamente
+                if not Path(comprobantes_path).exists():
+                    raise FileNotFoundError(f"Archivo temporal no encontrado: {comprobantes_path}")
+                logger.info(f"Usando archivo temporal: {comprobantes_path}")
+            else:
+                # Es un archivo en uploads/, buscar en uploads/
+                file_name = Path(comprobantes_path).name
+                uploads_path = Path("uploads") / file_name
+                
+                if not uploads_path.exists():
+                    raise FileNotFoundError(f"Archivo de comprobantes no encontrado: {uploads_path}")
+                
+                # Usar la ruta correcta
+                comprobantes_path = str(uploads_path)
+                logger.info(f"Usando archivo en uploads: {comprobantes_path}")
             
             # Determinar tipo de archivo y cargar
             file_path = Path(comprobantes_path)

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// RAILWAY BACKEND: Using Railway URL (replace with your actual Railway URL)
-const API_BASE_URL = 'https://conciliador-ia-backend-production.up.railway.app/api/v1';
+// RENDER BACKEND: Using Render URL (replace with your actual Render URL)
+const API_BASE_URL = 'https://conciliador-ia-backend.onrender.com/api/v1';
 
 console.log('API URL:', API_BASE_URL); // Debug log - FORCE VERCEL DEPLOY
 

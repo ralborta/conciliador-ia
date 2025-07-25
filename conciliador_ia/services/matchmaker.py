@@ -123,6 +123,10 @@ class MatchmakerService:
             else:
                 raise ValueError(f"Formato de archivo no soportado: {file_extension}")
             
+            # Log de columnas disponibles para debug
+            logger.info(f"Columnas disponibles en comprobantes: {list(df.columns)}")
+            logger.info(f"Primeras 3 filas de comprobantes: {df.head(3).to_dict()}")
+            
             # Validar que se cargaron datos
             if df.empty:
                 raise ValueError("No se pudieron cargar datos de comprobantes")
@@ -140,13 +144,13 @@ class MatchmakerService:
     def _normalizar_comprobantes(self, df: pd.DataFrame) -> pd.DataFrame:
         """Normaliza y limpia los datos de comprobantes"""
         try:
-            # Mapear columnas comunes
+            # Mapear columnas comunes (más flexible)
             column_mapping = {
-                'fecha': ['fecha', 'date', 'fecha_emision', 'fecha_comprobante'],
-                'cliente': ['cliente', 'customer', 'nombre_cliente', 'razon_social'],
-                'concepto': ['concepto', 'description', 'descripcion', 'detalle'],
-                'monto': ['monto', 'amount', 'importe', 'total', 'valor'],
-                'numero_comprobante': ['numero', 'numero_comprobante', 'comprobante', 'factura', 'invoice']
+                'fecha': ['fecha', 'date', 'fecha_emision', 'fecha_comprobante', 'fecha_venta', 'fecha_factura'],
+                'cliente': ['cliente', 'customer', 'nombre_cliente', 'razon_social', 'nombre', 'empresa'],
+                'concepto': ['concepto', 'description', 'descripcion', 'detalle', 'producto', 'servicio'],
+                'monto': ['monto', 'amount', 'importe', 'total', 'valor', 'precio', 'costo'],
+                'numero_comprobante': ['numero', 'numero_comprobante', 'comprobante', 'factura', 'invoice', 'nro']
             }
             
             # Buscar y renombrar columnas
@@ -154,6 +158,7 @@ class MatchmakerService:
                 for col_name in possible_names:
                     if col_name in df.columns:
                         df = df.rename(columns={col_name: target_col})
+                        logger.info(f"Columna '{col_name}' renombrada a '{target_col}'")
                         break
             
             # Verificar columnas requeridas
@@ -161,7 +166,19 @@ class MatchmakerService:
             missing_columns = [col for col in required_columns if col not in df.columns]
             
             if missing_columns:
-                raise ValueError(f"Columnas requeridas faltantes: {missing_columns}")
+                logger.error(f"Columnas faltantes: {missing_columns}")
+                logger.error(f"Columnas disponibles: {list(df.columns)}")
+                # Intentar usar las primeras columnas disponibles como fallback
+                if len(df.columns) >= 4:
+                    logger.info("Usando columnas disponibles como fallback")
+                    df = df.rename(columns={
+                        df.columns[0]: 'fecha',
+                        df.columns[1]: 'cliente', 
+                        df.columns[2]: 'concepto',
+                        df.columns[3]: 'monto'
+                    })
+                else:
+                    raise ValueError(f"Columnas requeridas faltantes: {missing_columns}")
             
             # Limpiar datos
             df = df.dropna(subset=['fecha', 'monto'])

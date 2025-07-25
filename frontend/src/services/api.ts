@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// NGROK WORKING: Using current ngrok URL
-const API_BASE_URL = 'https://80ce0cf24942.ngrok-free.app/api/v1';
+// RENDER BACKEND: Using Render URL (replace with your actual Render URL)
+const API_BASE_URL = 'https://conciliador-ia-backend.onrender.com/api/v1';
 
 console.log('API URL:', API_BASE_URL); // Debug log
 

@@ -219,3 +219,123 @@ async def test_extraction(
         }
 
  
+@router.post("/debug-processing")
+async def debug_processing(
+    extracto: UploadFile = File(...),
+    comprobantes: UploadFile = File(...),
+    empresa_id: str = Form(...)
+):
+    """Endpoint de debug para ver exactamente qué está procesando"""
+    try:
+        logger.info(f"🔍 DEBUG: Procesamiento iniciado para empresa: {empresa_id}")
+        logger.info(f"📄 Extracto: {extracto.filename} - {extracto.size} bytes")
+        logger.info(f"📊 Comprobantes: {comprobantes.filename} - {comprobantes.size} bytes")
+        
+        # Leer archivos
+        extracto_content = await extracto.read()
+        comprobantes_content = await comprobantes.read()
+        
+        logger.info(f"📄 Extracto leído: {len(extracto_content)} bytes")
+        logger.info(f"📊 Comprobantes leído: {len(comprobantes_content)} bytes")
+        
+        # Crear archivos temporales
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_extracto:
+            temp_extracto.write(extracto_content)
+            temp_extracto_path = temp_extracto.name
+            
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_comprobantes:
+            temp_comprobantes.write(comprobantes_content)
+            temp_comprobantes_path = temp_comprobantes.name
+        
+        debug_info = {
+            "empresa_id": empresa_id,
+            "extracto_info": {
+                "filename": extracto.filename,
+                "size_bytes": len(extracto_content),
+                "temp_path": temp_extracto_path
+            },
+            "comprobantes_info": {
+                "filename": comprobantes.filename,
+                "size_bytes": len(comprobantes_content),
+                "temp_path": temp_comprobantes_path
+            },
+            "processing_steps": []
+        }
+        
+        try:
+            # Paso 1: Extraer datos del extracto
+            logger.info("🔍 DEBUG: Paso 1 - Extrayendo datos del extracto")
+            from services.extractor import PDFExtractor
+            
+            extractor = PDFExtractor()
+            df_movimientos = extractor.extract_from_pdf(temp_extracto_path)
+            
+            debug_info["processing_steps"].append({
+                "step": "extracto_extraction",
+                "movements_found": len(df_movimientos),
+                "columns": list(df_movimientos.columns) if not df_movimientos.empty else [],
+                "sample_movements": df_movimientos.head(3).to_dict('records') if not df_movimientos.empty else [],
+                "header_info": getattr(extractor, 'header_info', '')[:500]
+            })
+            
+            logger.info(f"🔍 DEBUG: Extracto - {len(df_movimientos)} movimientos encontrados")
+            
+            # Paso 2: Cargar comprobantes
+            logger.info("🔍 DEBUG: Paso 2 - Cargando comprobantes")
+            from services.matchmaker import MatchmakerService
+            
+            matchmaker = MatchmakerService()
+            df_comprobantes = matchmaker._cargar_datos_comprobantes(temp_comprobantes_path)
+            
+            debug_info["processing_steps"].append({
+                "step": "comprobantes_loading",
+                "comprobantes_found": len(df_comprobantes),
+                "columns": list(df_comprobantes.columns) if not df_comprobantes.empty else [],
+                "sample_comprobantes": df_comprobantes.head(3).to_dict('records') if not df_comprobantes.empty else []
+            })
+            
+            logger.info(f"🔍 DEBUG: Comprobantes - {len(df_comprobantes)} registros encontrados")
+            
+            # Paso 3: Procesar conciliación
+            logger.info("🔍 DEBUG: Paso 3 - Procesando conciliación")
+            response = matchmaker.procesar_conciliacion(
+                extracto_path=temp_extracto_path,
+                comprobantes_path=temp_comprobantes_path,
+                empresa_id=empresa_id
+            )
+            
+            debug_info["processing_steps"].append({
+                "step": "conciliation_processing",
+                "response_status": response.get("status"),
+                "items_conciliados": len(response.get("items_conciliados", [])),
+                "total_movimientos": response.get("total_movimientos", 0),
+                "total_comprobantes": response.get("total_comprobantes", 0)
+            })
+            
+            debug_info["final_response"] = response
+            
+            logger.info("🔍 DEBUG: Procesamiento completado")
+            return debug_info
+            
+        finally:
+            # Limpiar archivos temporales
+            try:
+                os.unlink(temp_extracto_path)
+                os.unlink(temp_comprobantes_path)
+            except:
+                pass
+                
+    except Exception as e:
+        logger.error(f"🔍 DEBUG: Error en procesamiento: {e}")
+        import traceback
+        return {
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc(),
+            "debug_info": debug_info if 'debug_info' in locals() else {}
+        }
+
+ 

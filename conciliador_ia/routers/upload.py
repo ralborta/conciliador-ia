@@ -228,8 +228,8 @@ async def procesar_archivos_inmediato(
             try:
                 os.unlink(temp_extracto_path)
                 os.unlink(temp_comprobantes_path)
-                    except:
-            pass
+            except:
+                pass
                 
     except Exception as e:
         logger.error(f"Error en procesamiento inmediato: {e}")

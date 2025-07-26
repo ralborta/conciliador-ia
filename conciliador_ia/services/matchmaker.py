@@ -145,29 +145,42 @@ class MatchmakerService:
                 # Cargar Excel con múltiples engines
                 logger.info(f"Detectado archivo Excel: {file_extension}")
                 
-                # Intentar con diferentes engines
-                engines_to_try = ['openpyxl', 'xlrd', 'odf']
+                # Intentar con diferentes engines según la extensión
+                if file_extension == 'xlsx':
+                    engines_to_try = ['openpyxl', 'odf']
+                else:  # xls
+                    engines_to_try = ['xlrd', 'openpyxl']
                 
+                df = None
                 for engine in engines_to_try:
                     try:
                         logger.info(f"Intentando cargar con engine: {engine}")
-                        if file_extension == 'xlsx':
-                            df = pd.read_excel(file_path, engine=engine)
-                        else:  # xls
-                            df = pd.read_excel(file_path, engine=engine)
-                        
+                        df = pd.read_excel(file_path, engine=engine)
                         logger.info(f"✅ Archivo cargado exitosamente con engine: {engine}")
                         break
                         
                     except Exception as e:
                         logger.warning(f"❌ Engine {engine} falló: {e}")
                         continue
-                else:
-                    # Si todos los engines fallan, intentar sin especificar engine
-                    logger.info("Intentando cargar sin especificar engine...")
+                
+                # Si ningún engine específico funcionó, intentar con detección automática
+                if df is None:
+                    logger.info("Intentando cargar con detección automática...")
                     try:
-                        df = pd.read_excel(file_path)
-                        logger.info("✅ Archivo cargado sin especificar engine")
+                        # Intentar con diferentes parámetros
+                        for sheet_name in [0, 'Sheet1', 'Hoja1']:
+                            try:
+                                df = pd.read_excel(file_path, sheet_name=sheet_name)
+                                logger.info(f"✅ Archivo cargado con hoja: {sheet_name}")
+                                break
+                            except:
+                                continue
+                        
+                        if df is None:
+                            # Último intento sin especificar nada
+                            df = pd.read_excel(file_path)
+                            logger.info("✅ Archivo cargado con parámetros por defecto")
+                            
                     except Exception as e:
                         logger.error(f"❌ Todos los métodos fallaron: {e}")
                         raise Exception(f"No se pudo cargar el archivo Excel: {e}")

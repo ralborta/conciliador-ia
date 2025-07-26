@@ -289,7 +289,10 @@ export default function Home() {
               setStatusMessage(null);
               setProcessSteps([]);
               // Aquí podrías agregar lógica para validar archivos
-              toast.info('Verifica que los archivos sean válidos y no muy grandes');
+              toast('Verifica que los archivos sean válidos y no muy grandes', {
+                icon: 'ℹ️',
+                duration: 4000
+              });
             }
           }
         ]

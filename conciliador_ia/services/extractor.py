@@ -123,10 +123,16 @@ class PDFExtractor:
         
         # Patrones universales para extractos bancarios argentinos
         patterns = [
-            # Patrón BBVA específico: FECHA CONCEPTO DÉBITO CRÉDITO SALDO
+            # Patrón BBVA específico con ORIGEN: FECHA ORIGEN CONCEPTO DÉBITO CRÉDITO SALDO
+            r'(\d{1,2}/\d{1,2})\s+([A-Z]?\s*\d*)\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
+            # Patrón BBVA sin ORIGEN: FECHA CONCEPTO DÉBITO CRÉDITO SALDO
             r'(\d{1,2}/\d{1,2})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
             
-            # Patrón BBVA sin saldo: FECHA CONCEPTO DÉBITO CRÉDITO
+            # Patrón BBVA con ORIGEN pero sin saldo: FECHA ORIGEN CONCEPTO DÉBITO CRÉDITO
+            r'(\d{1,2}/\d{1,2})\s+([A-Z]?\s*\d*)\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
+            # Patrón BBVA sin ORIGEN ni saldo: FECHA CONCEPTO DÉBITO CRÉDITO
             r'(\d{1,2}/\d{1,2})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
             
             # Patrón estándar: FECHA CONCEPTO IMPORTE SALDO
@@ -159,7 +165,38 @@ class PDFExtractor:
             if match:
                 try:
                     fecha_str = match.group(1)
-                    concepto = match.group(2).strip()
+                    
+                    # Manejar diferentes formatos según el número de grupos
+                    if len(match.groups()) >= 6:  # Patrón con ORIGEN y SALDO
+                        origen = match.group(2).strip()
+                        concepto = match.group(3).strip()
+                        debito_str = match.group(4)
+                        credito_str = match.group(5)
+                        
+                    elif len(match.groups()) >= 5:  # Patrón con ORIGEN sin SALDO o sin ORIGEN con SALDO
+                        # Verificar si el segundo grupo es ORIGEN o CONCEPTO
+                        if re.match(r'^[A-Z]?\s*\d*$', match.group(2).strip()):  # Es ORIGEN
+                            origen = match.group(2).strip()
+                            concepto = match.group(3).strip()
+                            debito_str = match.group(4)
+                            credito_str = match.group(5)
+                        else:  # Es CONCEPTO
+                            origen = ""
+                            concepto = match.group(2).strip()
+                            debito_str = match.group(3)
+                            credito_str = match.group(4)
+                            
+                    elif len(match.groups()) >= 4:  # Patrón con ORIGEN sin SALDO
+                        origen = match.group(2).strip()
+                        concepto = match.group(3).strip()
+                        debito_str = match.group(4)
+                        credito_str = match.group(5) if len(match.groups()) >= 5 else ""
+                        
+                    else:  # Patrón estándar
+                        origen = ""
+                        concepto = match.group(2).strip()
+                        debito_str = ""
+                        credito_str = match.group(3)
                     
                     # Limpiar concepto de caracteres extraños
                     concepto = re.sub(r'\s+', ' ', concepto)  # Múltiples espacios a uno
@@ -172,27 +209,7 @@ class PDFExtractor:
                         continue
                     
                     # Manejar diferentes formatos de importe según el patrón
-                    if len(match.groups()) >= 5:  # Patrón con DÉBITO CRÉDITO SALDO
-                        debito_str = match.group(3)
-                        credito_str = match.group(4)
-                        
-                        debito = self._parse_amount(debito_str) if debito_str.strip() else 0
-                        credito = self._parse_amount(credito_str) if credito_str.strip() else 0
-                        
-                        # Determinar importe y tipo
-                        if debito != 0:
-                            importe = abs(debito)
-                            tipo = "débito"
-                        elif credito != 0:
-                            importe = abs(credito)
-                            tipo = "crédito"
-                        else:
-                            continue
-                            
-                    elif len(match.groups()) >= 4:  # Patrón con DÉBITO CRÉDITO
-                        debito_str = match.group(3)
-                        credito_str = match.group(4)
-                        
+                    if debito_str and credito_str:  # Patrón con DÉBITO CRÉDITO
                         debito = self._parse_amount(debito_str) if debito_str.strip() else 0
                         credito = self._parse_amount(credito_str) if credito_str.strip() else 0
                         
@@ -207,7 +224,7 @@ class PDFExtractor:
                             continue
                             
                     else:  # Patrón estándar con un solo importe
-                        importe_str = match.group(3)
+                        importe_str = credito_str if credito_str else debito_str
                         importe = self._parse_amount(importe_str)
                         if importe is None:
                             logger.debug(f"Importe no válido: {importe_str}")
@@ -221,6 +238,7 @@ class PDFExtractor:
                         'concepto': concepto,
                         'importe': importe,
                         'tipo': tipo,
+                        'origen': origen,
                         'pagina': page_num
                     }
                     

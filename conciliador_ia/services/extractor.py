@@ -366,82 +366,77 @@ class PDFExtractor:
             'banco_detectado': self._detectar_banco(df)
         }
     
-    def _detectar_banco(self, df: pd.DataFrame) -> Optional[str]:
-        """Detecta el banco basado en los conceptos de los movimientos y el header"""
+    def _detectar_banco(self, df: pd.DataFrame) -> str:
+        """Detecta el banco basado en el header y conceptos"""
         try:
-            # Obtener todos los conceptos
-            conceptos = ' '.join(df['concepto'].astype(str).tolist()).lower()
-            
-            # Diccionario universal de bancos argentinos
-            bancos = {
-                'BBVA': ['bbva', 'banco bbva', 'bbva argentina', 'bbva banco frances', 'banco frances bbva'],
-                'Banco Nación': ['banco nacion', 'banco de la nacion', 'banco nacional', 'nacion'],
-                'Banco Provincia': ['banco provincia', 'banco de la provincia', 'provincia'],
-                'Banco Ciudad': ['banco ciudad', 'banco de la ciudad', 'ciudad'],
-                'Banco Santander': ['santander', 'banco santander'],
-                'Banco Galicia': ['galicia', 'banco galicia'],
-                'Banco Macro': ['macro', 'banco macro'],
-                'Banco HSBC': ['hsbc', 'banco hsbc'],
-                'Banco Itaú': ['itau', 'banco itau', 'itaú'],
-                'Banco Supervielle': ['supervielle', 'banco supervielle'],
-                'Banco Comafi': ['comafi', 'banco comafi'],
-                'Banco Industrial': ['industrial', 'banco industrial'],
-                'Banco Credicoop': ['credicoop', 'banco credicoop'],
-                'Banco Patagonia': ['patagonia', 'banco patagonia'],
-                'Banco Piano': ['piano', 'banco piano'],
-                'Banco Comafi': ['comafi', 'banco comafi'],
-                'Banco Supervielle': ['supervielle', 'banco supervielle'],
-                'Banco Macro': ['macro', 'banco macro'],
-                'Banco Galicia': ['galicia', 'banco galicia'],
-                'Banco Santander': ['santander', 'banco santander'],
-                'Banco BBVA': ['bbva', 'banco bbva'],
-                'Banco Itaú': ['itau', 'banco itau', 'itaú'],
-                'Banco HSBC': ['hsbc', 'banco hsbc'],
-                'Banco Nación': ['banco nacion', 'banco de la nacion', 'banco nacional'],
-                'Banco Provincia': ['banco provincia', 'banco de la provincia'],
-                'Banco Ciudad': ['banco ciudad', 'banco de la ciudad']
-            }
-            
-            # Buscar coincidencias en el header primero
+            # Primero buscar en el header
             if hasattr(self, 'header_info') and self.header_info:
-                header_conceptos = ' '.join(self.header_info.lower().split('\n')).strip()
-                logger.info(f"Buscando banco en header: {header_conceptos[:200]}...")
+                header_text = self.header_info.lower()
+                logger.info(f"Buscando banco en header: {header_text[:200]}...")
                 
-                for banco, identificadores in bancos.items():
-                    for identificador in identificadores:
-                        if identificador in header_conceptos:
-                            logger.info(f"Banco detectado en header: {banco} (identificador: {identificador})")
-                            return banco
-            
-            # Buscar coincidencias en los conceptos de movimientos
-            logger.info(f"Buscando banco en conceptos: {conceptos[:200]}...")
-            for banco, identificadores in bancos.items():
-                for identificador in identificadores:
-                    if identificador in conceptos:
-                        logger.info(f"Banco detectado en conceptos: {banco} (identificador: {identificador})")
+                # Bancos argentinos conocidos
+                bancos_conocidos = {
+                    'BBVA': ['bbva', 'banco bilbao vizcaya', 'banco bbva argentina'],
+                    'Santander': ['santander', 'banco santander argentina'],
+                    'Macro': ['macro', 'banco macro'],
+                    'Nación': ['nacion', 'banco nacion', 'banco de la nacion argentina'],
+                    'Galicia': ['galicia', 'banco galicia'],
+                    'HSBC': ['hsbc', 'banco hsbc argentina'],
+                    'Itaú': ['itau', 'banco itau argentina'],
+                    'Banco Ciudad': ['ciudad', 'banco ciudad'],
+                    'Banco Provincia': ['provincia', 'banco provincia'],
+                    'Banco Comafi': ['comafi', 'banco comafi'],
+                    'Banco Industrial': ['industrial', 'banco industrial'],
+                    'Banco Supervielle': ['supervielle', 'banco supervielle'],
+                    'Banco Credicoop': ['credicoop', 'banco credicoop'],
+                    'Banco Patagonia': ['patagonia', 'banco patagonia'],
+                    'Banco Comafi': ['comafi', 'banco comafi'],
+                    'Banco Piano': ['piano', 'banco piano'],
+                    'Banco de Córdoba': ['cordoba', 'banco de cordoba'],
+                    'Banco de Santa Fe': ['santa fe', 'banco de santa fe'],
+                    'Banco de Tucumán': ['tucuman', 'banco de tucuman'],
+                    'MercadoPago': ['mercadopago', 'mercadopago argentina'],
+                    'Ualá': ['uala', 'uala argentina'],
+                    'Naranja X': ['naranja x', 'naranja'],
+                    'Personal Pay': ['personal pay', 'personal'],
+                    'MODO': ['modo', 'modo argentina']
+                }
+                
+                for banco, keywords in bancos_conocidos.items():
+                    if any(keyword in header_text for keyword in keywords):
+                        logger.info(f"Banco detectado en header: {banco}")
                         return banco
             
-            # Si no se encuentra, buscar patrones más específicos
-            if 'transferencia' in conceptos and 'cvu' in conceptos:
-                return 'Banco Digital (CVU)'
-            elif 'pago' in conceptos and 'qr' in conceptos:
-                return 'Banco Digital (QR)'
-            elif 'debito automatico' in conceptos:
-                return 'Banco con Débito Automático'
+            # Si no se detectó en el header, buscar en los conceptos
+            if not df.empty and 'concepto' in df.columns:
+                conceptos = df['concepto'].astype(str).str.lower().str.cat(sep=' ')
+                logger.info(f"Buscando banco en conceptos: {conceptos[:200]}...")
+                
+                for banco, keywords in bancos_conocidos.items():
+                    if any(keyword in conceptos for keyword in keywords):
+                        logger.info(f"Banco detectado en conceptos: {banco}")
+                        return banco
             
-            # Buscar patrones específicos de bancos digitales
-            digital_patterns = [
-                'mercadopago', 'uala', 'naranja x', 'personal pay', 'modo', 'cuenta dni'
-            ]
+            # Si no se detectó, intentar detectar por patrones comunes
+            if hasattr(self, 'header_info') and self.header_info:
+                header_text = self.header_info.lower()
+                
+                # Patrones específicos
+                if 'smart it solutions' in header_text:
+                    logger.info("Detectado patrón de empresa: SMART IT SOLUTIONS")
+                    return "Banco no identificado - Empresa SMART IT SOLUTIONS"
+                
+                if 'cuenta corriente' in header_text or 'cta.cte' in header_text:
+                    logger.info("Detectado cuenta corriente")
+                    return "Banco genérico - Cuenta Corriente"
+                
+                if 'caja de ahorro' in header_text or 'caja ahorro' in header_text:
+                    logger.info("Detectado caja de ahorro")
+                    return "Banco genérico - Caja de Ahorro"
             
-            for pattern in digital_patterns:
-                if pattern in conceptos:
-                    logger.info(f"Banco digital detectado: {pattern}")
-                    return f'Banco Digital ({pattern.title()})'
-            
-            logger.warning(f"No se pudo detectar el banco. Header: {getattr(self, 'header_info', '')[:100]}... Conceptos: {conceptos[:100]}...")
-            return 'Banco no identificado'
+            logger.warning("No se pudo detectar el banco específico")
+            return "Banco no identificado"
             
         except Exception as e:
             logger.error(f"Error detectando banco: {e}")
-            return 'Banco no identificado' 
+            return "Error en detección" 

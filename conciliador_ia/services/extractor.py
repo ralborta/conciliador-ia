@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
 from pathlib import Path
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -15,64 +16,61 @@ class PDFExtractor:
         self.movimientos = []
     
     def extract_from_pdf(self, pdf_path: str) -> pd.DataFrame:
-        """
-        Extrae movimientos bancarios de un PDF de extracto
-        
-        Args:
-            pdf_path: Ruta al archivo PDF
-            
-        Returns:
-            DataFrame con los movimientos extraídos
-        """
+        """Extrae datos de un PDF de extracto bancario"""
         try:
             logger.info(f"Iniciando extracción de PDF: {pdf_path}")
             
-            # Variable para almacenar información del header
-            self.header_info = ""
-            
+            # Guardar información del header para detección de banco
             with pdfplumber.open(pdf_path) as pdf:
                 logger.info(f"PDF abierto. Total de páginas: {len(pdf.pages)}")
                 
+                # Extraer header de la primera página
+                if pdf.pages:
+                    first_page = pdf.pages[0]
+                    header_text = first_page.extract_text()
+                    if header_text:
+                        self.header_info = header_text[:1000]  # Primeros 1000 caracteres
+                        logger.info(f"Header extraído: {self.header_info[:200]}...")
+                    else:
+                        logger.warning("No se pudo extraer texto del header")
+                
+                # Procesar todas las páginas
                 for page_num, page in enumerate(pdf.pages):
                     logger.info(f"Procesando página {page_num + 1}")
-                    
-                    # Extraer texto completo de la página para debugging
                     page_text = page.extract_text()
                     if page_text:
                         logger.info(f"Texto extraído de página {page_num + 1}: {len(page_text)} caracteres")
-                        logger.debug(f"Primeras 200 caracteres: {page_text[:200]}...")
-                        
-                        # Guardar información del header de la primera página
-                        if page_num == 0:
-                            self.header_info = page_text[:1000]  # Primeros 1000 caracteres
-                            logger.info(f"Header extraído: {self.header_info[:200]}...")
+                        logger.info(f"Primeras 500 caracteres: {page_text[:500]}")
                     else:
                         logger.warning(f"No se pudo extraer texto de la página {page_num + 1}")
-                    
                     self._process_page(page, page_num + 1)
             
-            # Convertir a DataFrame
-            df = pd.DataFrame(self.movimientos)
-            
-            if not df.empty:
-                # Limpiar y procesar datos
-                df = self._clean_dataframe(df)
-                logger.info(f"Extracción completada. {len(df)} movimientos encontrados")
-                logger.info(f"Columnas del DataFrame: {list(df.columns)}")
-                logger.info(f"Primeros 3 movimientos: {df.head(3).to_dict('records')}")
+            # Crear DataFrame
+            if self.movimientos:
+                df = pd.DataFrame(self.movimientos)
+                logger.info(f"DataFrame creado con {len(df)} movimientos")
+                logger.info(f"Columnas: {list(df.columns)}")
+                logger.info(f"Primeros 3 movimientos:")
+                for i, mov in enumerate(df.head(3).to_dict('records')):
+                    logger.info(f"  {i+1}. {mov}")
+                
+                # Detectar banco
+                banco_detectado = self._detectar_banco(df)
+                logger.info(f"Banco detectado: {banco_detectado}")
+                
+                return df
             else:
                 logger.warning("No se encontraron movimientos en el PDF")
-            
-            return df
-            
+                return pd.DataFrame()
+                
         except Exception as e:
-            logger.error(f"Error al extraer PDF: {e}")
+            logger.error(f"Error extrayendo datos del extracto: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             raise
     
     def _process_page(self, page, page_num: int):
-        """Procesa una página del PDF"""
+        """Procesa una página del PDF y extrae movimientos"""
         try:
-            # Extraer texto de la página
             text = page.extract_text()
             if not text:
                 logger.warning(f"No se pudo extraer texto de la página {page_num}")
@@ -81,26 +79,33 @@ class PDFExtractor:
             logger.info(f"Texto extraído de página {page_num}: {len(text)} caracteres")
             logger.info(f"Primeras 500 caracteres: {text[:500]}")
             
-            # Dividir en líneas
             lines = text.split('\n')
             logger.info(f"Total de líneas en página {page_num}: {len(lines)}")
             
-            # Mostrar las primeras 10 líneas para debugging
-            for i, line in enumerate(lines[:10]):
-                logger.info(f"Línea {i+1}: '{line}'")
+            # Mostrar las primeras 20 líneas para debug
+            logger.info(f"Primeras 20 líneas de la página {page_num}:")
+            for i, line in enumerate(lines[:20]):
+                if line.strip():  # Solo mostrar líneas no vacías
+                    logger.info(f"  Línea {i+1}: '{line.strip()}'")
             
             movimientos_encontrados = 0
-            for line in lines:
-                movimiento = self._parse_line(line, page_num)
-                if movimiento:
-                    self.movimientos.append(movimiento)
-                    movimientos_encontrados += 1
-                    logger.info(f"Movimiento encontrado en página {page_num}: {movimiento}")
+            for i, line in enumerate(lines):
+                if line.strip():  # Solo procesar líneas no vacías
+                    movimiento = self._parse_line(line, page_num)
+                    if movimiento:
+                        self.movimientos.append(movimiento)
+                        movimientos_encontrados += 1
+                        logger.info(f"✅ Movimiento {movimientos_encontrados} encontrado en línea {i+1}: {movimiento}")
+                    else:
+                        # Log líneas que no coinciden con patrones (solo las primeras 10)
+                        if i < 10:
+                            logger.debug(f"❌ Línea {i+1} no coincide con patrones: '{line.strip()}'")
             
             logger.info(f"Total movimientos encontrados en página {page_num}: {movimientos_encontrados}")
-                    
+            
         except Exception as e:
             logger.error(f"Error procesando página {page_num}: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def _parse_line(self, line: str, page_num: int) -> Optional[Dict[str, Any]]:
         """

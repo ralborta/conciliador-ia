@@ -75,15 +75,29 @@ class PDFExtractor:
             # Extraer texto de la página
             text = page.extract_text()
             if not text:
+                logger.warning(f"No se pudo extraer texto de la página {page_num}")
                 return
+            
+            logger.info(f"Texto extraído de página {page_num}: {len(text)} caracteres")
+            logger.info(f"Primeras 500 caracteres: {text[:500]}")
             
             # Dividir en líneas
             lines = text.split('\n')
+            logger.info(f"Total de líneas en página {page_num}: {len(lines)}")
             
+            # Mostrar las primeras 10 líneas para debugging
+            for i, line in enumerate(lines[:10]):
+                logger.info(f"Línea {i+1}: '{line}'")
+            
+            movimientos_encontrados = 0
             for line in lines:
                 movimiento = self._parse_line(line, page_num)
                 if movimiento:
                     self.movimientos.append(movimiento)
+                    movimientos_encontrados += 1
+                    logger.info(f"Movimiento encontrado en página {page_num}: {movimiento}")
+            
+            logger.info(f"Total movimientos encontrados en página {page_num}: {movimientos_encontrados}")
                     
         except Exception as e:
             logger.error(f"Error procesando página {page_num}: {e}")
@@ -109,6 +123,12 @@ class PDFExtractor:
         
         # Patrones universales para extractos bancarios argentinos
         patterns = [
+            # Patrón BBVA específico: FECHA CONCEPTO DÉBITO CRÉDITO SALDO
+            r'(\d{1,2}/\d{1,2})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
+            # Patrón BBVA sin saldo: FECHA CONCEPTO DÉBITO CRÉDITO
+            r'(\d{1,2}/\d{1,2})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
             # Patrón estándar: FECHA CONCEPTO IMPORTE SALDO
             r'(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
             
@@ -140,7 +160,6 @@ class PDFExtractor:
                 try:
                     fecha_str = match.group(1)
                     concepto = match.group(2).strip()
-                    importe_str = match.group(3)
                     
                     # Limpiar concepto de caracteres extraños
                     concepto = re.sub(r'\s+', ' ', concepto)  # Múltiples espacios a uno
@@ -152,20 +171,55 @@ class PDFExtractor:
                         logger.debug(f"Fecha no válida: {fecha_str}")
                         continue
                     
-                    # Parsear importe
-                    importe = self._parse_amount(importe_str)
-                    if importe is None:
-                        logger.debug(f"Importe no válido: {importe_str}")
-                        continue
-                    
-                    # Determinar tipo de movimiento
-                    tipo = "crédito" if importe > 0 else "débito"
+                    # Manejar diferentes formatos de importe según el patrón
+                    if len(match.groups()) >= 5:  # Patrón con DÉBITO CRÉDITO SALDO
+                        debito_str = match.group(3)
+                        credito_str = match.group(4)
+                        
+                        debito = self._parse_amount(debito_str) if debito_str.strip() else 0
+                        credito = self._parse_amount(credito_str) if credito_str.strip() else 0
+                        
+                        # Determinar importe y tipo
+                        if debito != 0:
+                            importe = abs(debito)
+                            tipo = "débito"
+                        elif credito != 0:
+                            importe = abs(credito)
+                            tipo = "crédito"
+                        else:
+                            continue
+                            
+                    elif len(match.groups()) >= 4:  # Patrón con DÉBITO CRÉDITO
+                        debito_str = match.group(3)
+                        credito_str = match.group(4)
+                        
+                        debito = self._parse_amount(debito_str) if debito_str.strip() else 0
+                        credito = self._parse_amount(credito_str) if credito_str.strip() else 0
+                        
+                        # Determinar importe y tipo
+                        if debito != 0:
+                            importe = abs(debito)
+                            tipo = "débito"
+                        elif credito != 0:
+                            importe = abs(credito)
+                            tipo = "crédito"
+                        else:
+                            continue
+                            
+                    else:  # Patrón estándar con un solo importe
+                        importe_str = match.group(3)
+                        importe = self._parse_amount(importe_str)
+                        if importe is None:
+                            logger.debug(f"Importe no válido: {importe_str}")
+                            continue
+                        tipo = "crédito" if importe > 0 else "débito"
+                        importe = abs(importe)
                     
                     # Crear movimiento
                     movimiento = {
                         'fecha': fecha,
                         'concepto': concepto,
-                        'importe': abs(importe),  # Usar valor absoluto
+                        'importe': importe,
                         'tipo': tipo,
                         'pagina': page_num
                     }

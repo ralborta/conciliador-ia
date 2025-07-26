@@ -145,3 +145,77 @@ async def procesar_archivos_inmediato(
         }
 
  
+@router.post("/test-extraction")
+async def test_extraction(
+    file: UploadFile = File(...)
+):
+    """Endpoint de test para debuggear extracción de PDF"""
+    try:
+        logger.info(f"Test de extracción iniciado para: {file.filename}")
+        
+        # Leer archivo
+        content = await file.read()
+        
+        # Crear archivo temporal
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Test básico con pdfplumber
+            import pdfplumber
+            basic_results = []
+            
+            with pdfplumber.open(temp_file_path) as pdf:
+                for i, page in enumerate(pdf.pages):
+                    text = page.extract_text()
+                    if text:
+                        lines = text.split('\n')
+                        basic_results.append({
+                            'page': i + 1,
+                            'characters': len(text),
+                            'lines': len(lines),
+                            'first_300_chars': text[:300],
+                            'first_10_lines': [line.strip() for line in lines[:10] if line.strip()]
+                        })
+            
+            # Test con nuestro extractor
+            from services.extractor import PDFExtractor
+            extractor = PDFExtractor()
+            df = extractor.extract_from_pdf(temp_file_path)
+            
+            extraction_results = {
+                'movements_found': len(df),
+                'columns': list(df.columns) if not df.empty else [],
+                'movements': df.to_dict('records') if not df.empty else [],
+                'header_info': getattr(extractor, 'header_info', '')[:500]
+            }
+            
+            return {
+                "status": "success",
+                "filename": file.filename,
+                "file_size": len(content),
+                "basic_extraction": basic_results,
+                "extraction_results": extraction_results
+            }
+            
+        finally:
+            # Limpiar archivo temporal
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+                
+    except Exception as e:
+        logger.error(f"Error en test de extracción: {e}")
+        import traceback
+        return {
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+ 

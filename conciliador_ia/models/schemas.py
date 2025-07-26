@@ -54,6 +54,7 @@ class ConciliacionResponse(BaseModel):
     movimientos_parciales: int
     items: List[ConciliacionItem]
     tiempo_procesamiento: float
+    analisis_datos: Optional[dict] = None
 
 class ErrorResponse(BaseModel):
     """Respuesta de error estándar"""

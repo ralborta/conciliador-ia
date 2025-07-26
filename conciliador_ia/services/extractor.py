@@ -213,7 +213,8 @@ class PDFExtractor:
                 'total_creditos': 0,
                 'total_debitos': 0,
                 'rango_fechas': None,
-                'importe_promedio': 0
+                'importe_promedio': 0,
+                'banco_detectado': None
             }
         
         creditos = df[df['tipo'] == 'crédito']
@@ -229,5 +230,62 @@ class PDFExtractor:
             },
             'importe_promedio': df['importe'].mean(),
             'importe_total_creditos': creditos['importe'].sum() if not creditos.empty else 0,
-            'importe_total_debitos': debitos['importe'].sum() if not debitos.empty else 0
-        } 
+            'importe_total_debitos': debitos['importe'].sum() if not debitos.empty else 0,
+            'banco_detectado': self._detectar_banco(df)
+        }
+    
+    def _detectar_banco(self, df: pd.DataFrame) -> Optional[str]:
+        """Detecta el banco basado en los conceptos de los movimientos"""
+        try:
+            # Obtener todos los conceptos
+            conceptos = ' '.join(df['concepto'].astype(str).tolist()).lower()
+            
+            # Diccionario de bancos y sus identificadores
+            bancos = {
+                'Banco Nación': ['banco nacion', 'banco de la nacion', 'banco nacional'],
+                'Banco Provincia': ['banco provincia', 'banco de la provincia'],
+                'Banco Ciudad': ['banco ciudad', 'banco de la ciudad'],
+                'Banco Santander': ['santander', 'banco santander'],
+                'Banco Galicia': ['galicia', 'banco galicia'],
+                'Banco Macro': ['macro', 'banco macro'],
+                'Banco HSBC': ['hsbc', 'banco hsbc'],
+                'Banco Itaú': ['itau', 'banco itau', 'itaú'],
+                'Banco BBVA': ['bbva', 'banco bbva'],
+                'Banco Supervielle': ['supervielle', 'banco supervielle'],
+                'Banco Comafi': ['comafi', 'banco comafi'],
+                'Banco Industrial': ['industrial', 'banco industrial'],
+                'Banco Credicoop': ['credicoop', 'banco credicoop'],
+                'Banco Patagonia': ['patagonia', 'banco patagonia'],
+                'Banco Piano': ['piano', 'banco piano'],
+                'Banco Comafi': ['comafi', 'banco comafi'],
+                'Banco Supervielle': ['supervielle', 'banco supervielle'],
+                'Banco Macro': ['macro', 'banco macro'],
+                'Banco Galicia': ['galicia', 'banco galicia'],
+                'Banco Santander': ['santander', 'banco santander'],
+                'Banco BBVA': ['bbva', 'banco bbva'],
+                'Banco Itaú': ['itau', 'banco itau', 'itaú'],
+                'Banco HSBC': ['hsbc', 'banco hsbc'],
+                'Banco Nación': ['banco nacion', 'banco de la nacion', 'banco nacional'],
+                'Banco Provincia': ['banco provincia', 'banco de la provincia'],
+                'Banco Ciudad': ['banco ciudad', 'banco de la ciudad']
+            }
+            
+            # Buscar coincidencias
+            for banco, identificadores in bancos.items():
+                for identificador in identificadores:
+                    if identificador in conceptos:
+                        return banco
+            
+            # Si no se encuentra, buscar patrones más específicos
+            if 'transferencia' in conceptos and 'cvu' in conceptos:
+                return 'Banco Digital (CVU)'
+            elif 'pago' in conceptos and 'qr' in conceptos:
+                return 'Banco Digital (QR)'
+            elif 'debito automatico' in conceptos:
+                return 'Banco con Débito Automático'
+            
+            return 'Banco no identificado'
+            
+        except Exception as e:
+            logger.error(f"Error detectando banco: {e}")
+            return 'Banco no identificado' 

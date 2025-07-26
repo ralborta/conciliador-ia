@@ -8,6 +8,7 @@ import MovementsTable from '../components/MovementsTable';
 import ProcessTimeline from '../components/ProcessTimeline';
 import DataInconsistencies from '../components/DataInconsistencies';
 import StatusMessage from '../components/StatusMessage';
+import DataAnalysis from '../components/DataAnalysis';
 import { apiService, ConciliacionItem } from '../services/api';
 import toast from 'react-hot-toast';
 import { ChevronDown, HelpCircle, Menu, X } from 'lucide-react';
@@ -28,6 +29,7 @@ export default function Home() {
   const [processSteps, setProcessSteps] = useState<any[]>([]);
   const [inconsistencies, setInconsistencies] = useState<any[]>([]);
   const [statusMessage, setStatusMessage] = useState<any>(null);
+  const [dataAnalysis, setDataAnalysis] = useState<any>(null);
   const [conciliacionResult, setConciliacionResult] = useState<{
     totalMovimientos: number;
     movimientosConciliados: number;
@@ -174,6 +176,11 @@ export default function Home() {
           items: response.items,
         });
         
+        // Guardar análisis de datos si está disponible
+        if (response.analisis_datos) {
+          setDataAnalysis(response.analisis_datos);
+        }
+        
         // Mostrar mensaje de éxito
         setStatusMessage({
           type: 'success',
@@ -192,6 +199,7 @@ export default function Home() {
                 setExtractoFile(undefined);
                 setComprobantesFile(undefined);
                 setStatusMessage(null);
+                setDataAnalysis(null);
                 setProcessSteps([]);
                 setInconsistencies([]);
                 setConciliacionResult({
@@ -283,7 +291,7 @@ export default function Home() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-0">
+      <div className="flex-1 flex flex-col lg:ml-64">
         {/* Top Header */}
         <header className="bg-white shadow-sm border-b border-gray-200 lg:hidden">
           <div className="flex items-center justify-between px-4 py-3">
@@ -372,6 +380,17 @@ export default function Home() {
             {statusMessage && (
               <div className="mb-8">
                 <StatusMessage {...statusMessage} />
+              </div>
+            )}
+
+            {/* Data Analysis */}
+            {dataAnalysis && (
+              <div className="mb-8">
+                <DataAnalysis 
+                  extractoData={dataAnalysis.extracto}
+                  comprobantesData={dataAnalysis.comprobantes}
+                  analysisResult={dataAnalysis.coincidencias}
+                />
               </div>
             )}
 

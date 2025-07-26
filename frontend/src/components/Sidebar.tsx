@@ -70,9 +70,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       
       {/* Sidebar */}
       <div className={`
-        fixed top-0 left-0 h-full w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out z-50
+        fixed top-0 left-0 h-screen w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out z-50
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:z-auto
+        lg:translate-x-0 lg:static lg:z-auto lg:h-screen
       `}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -93,7 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4">
+        <nav className="flex-1 p-4 overflow-y-auto">
           <ul className="space-y-2">
             {menuItems.map((item) => (
               <li key={item.href}>
@@ -113,11 +113,50 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </li>
             ))}
           </ul>
+          
+          {/* Separador */}
+          <div className="my-6 border-t border-gray-200"></div>
+          
+          {/* Sección adicional */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 mb-3">
+              Herramientas
+            </h3>
+            <ul className="space-y-2">
+              <li>
+                <Link
+                  href="/plantillas"
+                  className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200"
+                >
+                  <FileText className="w-5 h-5" />
+                  <span className="font-medium">Plantillas</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/exportar"
+                  className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  <span className="font-medium">Exportar</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/backup"
+                  className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200"
+                >
+                  <History className="w-5 h-5" />
+                  <span className="font-medium">Backup</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
         </nav>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
-          <div className="flex items-center space-x-3">
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center space-x-3 mb-3">
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
               <Users className="w-4 h-4 text-gray-600" />
             </div>
@@ -125,6 +164,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <p className="text-sm font-medium text-gray-900">Usuario</p>
               <p className="text-xs text-gray-500">admin@empresa.com</p>
             </div>
+          </div>
+          
+          {/* Información adicional */}
+          <div className="text-xs text-gray-500 space-y-1">
+            <p>Versión: 1.0.0</p>
+            <p>Último acceso: Hoy</p>
           </div>
         </div>
       </div>

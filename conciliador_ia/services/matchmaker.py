@@ -64,10 +64,10 @@ class MatchmakerService:
                 df_movimientos, df_comprobantes, empresa_id
             )
             
-            # Paso 4: Generar respuesta estructurada
+            # Paso 4: Generar respuesta estructurada con análisis detallado
             tiempo_procesamiento = time.time() - start_time
             response = self._generar_respuesta_conciliacion(
-                items_conciliados, tiempo_procesamiento
+                items_conciliados, tiempo_procesamiento, df_movimientos, df_comprobantes
             )
             
             logger.info(f"Procesamiento completado en {tiempo_procesamiento:.2f} segundos")
@@ -98,34 +98,32 @@ class MatchmakerService:
             
             # Verificar si es un archivo temporal (empieza con /tmp/)
             if extracto_path.startswith('/tmp/'):
-                # Es un archivo temporal, usar directamente
                 if not Path(extracto_path).exists():
                     raise FileNotFoundError(f"Archivo temporal no encontrado: {extracto_path}")
                 logger.info(f"Usando archivo temporal: {extracto_path}")
             else:
-                # Es un archivo en uploads/, buscar en uploads/
                 file_name = Path(extracto_path).name
                 uploads_path = Path("uploads") / file_name
-                
                 if not uploads_path.exists():
                     raise FileNotFoundError(f"Archivo de extracto no encontrado: {uploads_path}")
-                
-                # Usar la ruta correcta
                 extracto_path = str(uploads_path)
                 logger.info(f"Usando archivo en uploads: {extracto_path}")
             
-            # Extraer datos
-            df = self.extractor.extract_from_pdf(extracto_path)
+            # Extraer datos del PDF
+            df_movimientos = self.extractor.extract_from_pdf(extracto_path)
             
-            # Validar que se extrajeron datos
-            if df.empty:
-                raise ValueError("No se pudieron extraer movimientos del extracto PDF")
+            if df_movimientos.empty:
+                logger.warning("No se encontraron movimientos en el extracto")
+                return df_movimientos
             
-            # Obtener resumen de extracción
-            summary = self.extractor.get_extraction_summary(df)
-            logger.info(f"Extracción completada: {summary}")
+            # Obtener información del banco y fechas
+            extracto_info = self.extractor.get_extraction_summary(df_movimientos)
+            logger.info(f"Información del extracto: {extracto_info}")
             
-            return df
+            # Guardar información del extracto para el análisis
+            self.extracto_info = extracto_info
+            
+            return df_movimientos
             
         except Exception as e:
             logger.error(f"Error extrayendo datos del extracto: {e}")
@@ -312,8 +310,10 @@ class MatchmakerService:
     
     def _generar_respuesta_conciliacion(self, 
                                       items_conciliados: list, 
-                                      tiempo_procesamiento: float) -> ConciliacionResponse:
-        """Genera la respuesta estructurada de conciliación"""
+                                      tiempo_procesamiento: float,
+                                      df_movimientos: pd.DataFrame,
+                                      df_comprobantes: pd.DataFrame) -> ConciliacionResponse:
+        """Genera la respuesta estructurada de conciliación con análisis detallado"""
         try:
             # Convertir items a esquemas Pydantic
             items_schemas = []
@@ -335,6 +335,9 @@ class MatchmakerService:
             movimientos_pendientes = sum(1 for item in items_schemas if item.estado == 'pendiente')
             movimientos_parciales = sum(1 for item in items_schemas if item.estado == 'parcial')
             
+            # Generar análisis detallado de datos
+            analisis_datos = self._generar_analisis_datos(df_movimientos, df_comprobantes, items_schemas)
+            
             return ConciliacionResponse(
                 success=True,
                 message="Conciliación completada exitosamente",
@@ -343,9 +346,130 @@ class MatchmakerService:
                 movimientos_pendientes=movimientos_pendientes,
                 movimientos_parciales=movimientos_parciales,
                 items=items_schemas,
-                tiempo_procesamiento=round(tiempo_procesamiento, 2)
+                tiempo_procesamiento=round(tiempo_procesamiento, 2),
+                analisis_datos=analisis_datos
             )
             
         except Exception as e:
             logger.error(f"Error generando respuesta de conciliación: {e}")
-            raise 
+            raise
+    
+    def _generar_analisis_datos(self, 
+                               df_movimientos: pd.DataFrame, 
+                               df_comprobantes: pd.DataFrame,
+                               items_conciliados: list) -> Dict[str, Any]:
+        """Genera análisis detallado de los datos procesados"""
+        try:
+            # Análisis del extracto
+            extracto_analysis = {}
+            if not df_movimientos.empty:
+                extracto_analysis = {
+                    "totalMovimientos": len(df_movimientos),
+                    "columnas": list(df_movimientos.columns),
+                    "fechaInicio": df_movimientos['fecha'].min().strftime('%Y-%m-%d') if 'fecha' in df_movimientos.columns else None,
+                    "fechaFin": df_movimientos['fecha'].max().strftime('%Y-%m-%d') if 'fecha' in df_movimientos.columns else None,
+                    "montoTotal": float(df_movimientos['importe'].sum()) if 'importe' in df_movimientos.columns else None,
+                    "bancoDetectado": getattr(self, 'extracto_info', {}).get('banco_detectado', 'No identificado'),
+                    "totalCreditos": getattr(self, 'extracto_info', {}).get('total_creditos', 0),
+                    "totalDebitos": getattr(self, 'extracto_info', {}).get('total_debitos', 0)
+                }
+            
+            # Análisis de comprobantes
+            comprobantes_analysis = {}
+            if not df_comprobantes.empty:
+                comprobantes_analysis = {
+                    "totalComprobantes": len(df_comprobantes),
+                    "columnas": list(df_comprobantes.columns),
+                    "fechaInicio": df_comprobantes['fecha'].min().strftime('%Y-%m-%d') if 'fecha' in df_comprobantes.columns else None,
+                    "fechaFin": df_comprobantes['fecha'].max().strftime('%Y-%m-%d') if 'fecha' in df_comprobantes.columns else None,
+                    "montoTotal": float(df_comprobantes['monto'].sum()) if 'monto' in df_comprobantes.columns else None
+                }
+            
+            # Análisis de coincidencias
+            coincidencias_analysis = self._analizar_coincidencias(
+                df_movimientos, df_comprobantes, items_conciliados
+            )
+            
+            return {
+                "extracto": extracto_analysis,
+                "comprobantes": comprobantes_analysis,
+                "coincidencias": coincidencias_analysis
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generando análisis de datos: {e}")
+            return {}
+    
+    def _analizar_coincidencias(self, 
+                               df_movimientos: pd.DataFrame, 
+                               df_comprobantes: pd.DataFrame,
+                               items_conciliados: list) -> Dict[str, Any]:
+        """Analiza las posibles razones de falta de coincidencias"""
+        try:
+            coincidencias_encontradas = len([item for item in items_conciliados if item.estado == 'conciliado'])
+            posibles_razones = []
+            recomendaciones = []
+            
+            # Verificar si hay datos para analizar
+            if df_movimientos.empty or df_comprobantes.empty:
+                posibles_razones.append("Uno o ambos archivos están vacíos")
+                recomendaciones.append("Verificar que los archivos contengan datos válidos")
+                return {
+                    "coincidenciasEncontradas": 0,
+                    "posiblesRazones": posibles_razones,
+                    "recomendaciones": recomendaciones
+                }
+            
+            # Verificar rangos de fechas
+            if 'fecha' in df_movimientos.columns and 'fecha' in df_comprobantes.columns:
+                fecha_min_mov = df_movimientos['fecha'].min()
+                fecha_max_mov = df_movimientos['fecha'].max()
+                fecha_min_comp = df_comprobantes['fecha'].min()
+                fecha_max_comp = df_comprobantes['fecha'].max()
+                
+                # Verificar si hay superposición de fechas
+                if fecha_max_mov < fecha_min_comp or fecha_max_comp < fecha_min_mov:
+                    posibles_razones.append(f"Los períodos de fechas no coinciden: Extracto ({fecha_min_mov.strftime('%Y-%m-%d')} a {fecha_max_mov.strftime('%Y-%m-%d')}) vs Comprobantes ({fecha_min_comp.strftime('%Y-%m-%d')} a {fecha_max_comp.strftime('%Y-%m-%d')})")
+                    recomendaciones.append("Usar archivos del mismo período de tiempo")
+                
+                # Verificar si las fechas están muy separadas
+                if abs((fecha_max_mov - fecha_min_comp).days) > 30 or abs((fecha_max_comp - fecha_min_mov).days) > 30:
+                    posibles_razones.append("Los archivos corresponden a períodos muy diferentes")
+                    recomendaciones.append("Verificar que ambos archivos correspondan al mismo mes/trimestre")
+            
+            # Verificar rangos de montos
+            if 'importe' in df_movimientos.columns and 'monto' in df_comprobantes.columns:
+                monto_min_mov = df_movimientos['importe'].min()
+                monto_max_mov = df_movimientos['importe'].max()
+                monto_min_comp = df_comprobantes['monto'].min()
+                monto_max_comp = df_comprobantes['monto'].max()
+                
+                # Verificar si los rangos de montos son muy diferentes
+                if abs(monto_max_mov - monto_max_comp) > 1000000 or abs(monto_min_mov - monto_min_comp) > 1000000:
+                    posibles_razones.append("Los rangos de montos son muy diferentes entre los archivos")
+                    recomendaciones.append("Verificar que los archivos correspondan a la misma empresa/operación")
+            
+            # Si no hay coincidencias pero no se encontraron razones específicas
+            if coincidencias_encontradas == 0 and not posibles_razones:
+                posibles_razones.append("No se encontraron coincidencias exactas entre movimientos y comprobantes")
+                recomendaciones.append("Revisar la calidad de los datos y los criterios de coincidencia")
+                recomendaciones.append("Verificar que los conceptos/descripciones sean similares")
+            
+            # Agregar recomendaciones generales
+            if coincidencias_encontradas == 0:
+                recomendaciones.append("Considerar ajustar los criterios de búsqueda")
+                recomendaciones.append("Verificar que los archivos correspondan a la misma empresa")
+            
+            return {
+                "coincidenciasEncontradas": coincidencias_encontradas,
+                "posiblesRazones": posibles_razones,
+                "recomendaciones": recomendaciones
+            }
+            
+        except Exception as e:
+            logger.error(f"Error analizando coincidencias: {e}")
+            return {
+                "coincidenciasEncontradas": 0,
+                "posiblesRazones": ["Error al analizar los datos"],
+                "recomendaciones": ["Contactar soporte técnico"]
+            } 

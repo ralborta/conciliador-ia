@@ -2,6 +2,8 @@ from fastapi import APIRouter, File, UploadFile, Form
 import shutil
 from pathlib import Path
 import logging
+import time
+import glob
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/upload", tags=["upload"])
@@ -336,6 +338,67 @@ async def debug_processing(
             "message": str(e),
             "traceback": traceback.format_exc(),
             "debug_info": debug_info if 'debug_info' in locals() else {}
+        }
+
+@router.post("/clean-files")
+async def clean_files():
+    """Limpia archivos de ejemplo y temporales"""
+    try:
+        import os
+        import glob
+        
+        # Limpiar archivos de ejemplo
+        example_patterns = [
+            "data/uploads/*ejemplo*",
+            "uploads/*ejemplo*",
+            "data/uploads/extracto_ejemplo*",
+            "data/uploads/comprobantes_ejemplo*",
+            "uploads/extracto_ejemplo*",
+            "uploads/comprobantes_ejemplo*"
+        ]
+        
+        cleaned_files = []
+        
+        for pattern in example_patterns:
+            files = glob.glob(pattern)
+            for file_path in files:
+                try:
+                    os.remove(file_path)
+                    cleaned_files.append(file_path)
+                    logger.info(f"🗑️ Archivo eliminado: {file_path}")
+                except Exception as e:
+                    logger.warning(f"⚠️ No se pudo eliminar {file_path}: {e}")
+        
+        # Limpiar archivos temporales antiguos
+        temp_patterns = [
+            "/tmp/*.pdf",
+            "/tmp/*.xlsx",
+            "/tmp/*.csv"
+        ]
+        
+        for pattern in temp_patterns:
+            files = glob.glob(pattern)
+            for file_path in files:
+                try:
+                    # Solo eliminar archivos más antiguos de 1 hora
+                    if os.path.getmtime(file_path) < (time.time() - 3600):
+                        os.remove(file_path)
+                        cleaned_files.append(file_path)
+                        logger.info(f"🗑️ Archivo temporal eliminado: {file_path}")
+                except Exception as e:
+                    logger.warning(f"⚠️ No se pudo eliminar temporal {file_path}: {e}")
+        
+        return {
+            "status": "success",
+            "message": f"Limpieza completada. {len(cleaned_files)} archivos eliminados",
+            "cleaned_files": cleaned_files
+        }
+        
+    except Exception as e:
+        logger.error(f"Error en limpieza: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
         }
 
  

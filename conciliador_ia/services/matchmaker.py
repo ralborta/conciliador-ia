@@ -137,10 +137,15 @@ class MatchmakerService:
             # Determinar extensión del archivo
             file_extension = file_path.lower().split('.')[-1]
             
+            # Primero intentar detectar si es realmente un CSV (incluso si tiene extensión Excel)
+            if self._es_archivo_csv(file_path):
+                logger.info("Archivo detectado como CSV (aunque tenga extensión Excel)")
+                return self._cargar_csv(file_path)
+            
             if file_extension == 'csv':
                 # Cargar CSV
                 logger.info("Detectado archivo CSV")
-                df = pd.read_csv(file_path, encoding='utf-8')
+                return self._cargar_csv(file_path)
             elif file_extension in ['xlsx', 'xls']:
                 # Cargar Excel con múltiples engines
                 logger.info(f"Detectado archivo Excel: {file_extension}")
@@ -201,6 +206,78 @@ class MatchmakerService:
         except Exception as e:
             logger.error(f"Error cargando comprobantes: {e}")
             raise
+    
+    def _es_archivo_csv(self, file_path: str) -> bool:
+        """Detecta si un archivo es realmente un CSV basándose en su contenido"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                # Leer las primeras líneas para detectar formato CSV
+                primeras_lineas = [f.readline().strip() for _ in range(5)]
+                
+                for linea in primeras_lineas:
+                    if linea:
+                        # Contar comas y punto y coma
+                        comas = linea.count(',')
+                        punto_coma = linea.count(';')
+                        
+                        # Si tiene más de 2 separadores, probablemente es CSV
+                        if comas >= 2 or punto_coma >= 2:
+                            logger.info(f"Archivo detectado como CSV por separadores: comas={comas}, punto_coma={punto_coma}")
+                            return True
+                        
+                        # Si no tiene separadores pero tiene espacios múltiples, podría ser CSV con espacios
+                        if '  ' in linea and len(linea.split()) >= 3:
+                            logger.info("Archivo detectado como CSV por formato de espacios")
+                            return True
+                
+                return False
+                
+        except UnicodeDecodeError:
+            # Si no se puede leer como UTF-8, intentar con otros encodings
+            try:
+                with open(file_path, 'r', encoding='latin1') as f:
+                    primeras_lineas = [f.readline().strip() for _ in range(3)]
+                    
+                    for linea in primeras_lineas:
+                        if linea and (linea.count(',') >= 2 or linea.count(';') >= 2):
+                            logger.info("Archivo detectado como CSV (encoding latin1)")
+                            return True
+                    
+                    return False
+            except:
+                return False
+        except Exception as e:
+            logger.warning(f"Error detectando formato CSV: {e}")
+            return False
+    
+    def _cargar_csv(self, file_path: str) -> pd.DataFrame:
+        """Carga un archivo CSV con múltiples encodings y separadores"""
+        encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
+        separadores = [',', ';', '\t']
+        
+        for encoding in encodings:
+            for sep in separadores:
+                try:
+                    logger.info(f"Intentando cargar CSV con encoding {encoding} y separador '{sep}'")
+                    df = pd.read_csv(file_path, encoding=encoding, sep=sep)
+                    
+                    if not df.empty:
+                        logger.info(f"✅ CSV cargado exitosamente con encoding {encoding} y separador '{sep}'")
+                        return df
+                        
+                except Exception as e:
+                    logger.warning(f"❌ Falló con encoding {encoding} y separador '{sep}': {e}")
+                    continue
+        
+        # Si nada funciona, intentar con parámetros por defecto
+        try:
+            logger.info("Intentando cargar CSV con parámetros por defecto")
+            df = pd.read_csv(file_path)
+            logger.info("✅ CSV cargado con parámetros por defecto")
+            return df
+        except Exception as e:
+            logger.error(f"❌ No se pudo cargar el CSV: {e}")
+            raise Exception(f"No se pudo cargar el archivo CSV: {e}")
     
     def _normalizar_comprobantes(self, df: pd.DataFrame) -> pd.DataFrame:
         """Normaliza los datos de comprobantes para procesamiento"""

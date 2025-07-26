@@ -190,43 +190,89 @@ class MatchmakerService:
             raise
     
     def _normalizar_comprobantes(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Normaliza y limpia los datos de comprobantes"""
+        """Normaliza los datos de comprobantes para procesamiento"""
         try:
-            # Mapear columnas comunes (más flexible)
+            logger.info(f"Normalizando comprobantes con {len(df)} registros")
+            logger.info(f"Columnas originales: {list(df.columns)}")
+            
+            # Mapeo flexible de columnas - intentar encontrar las columnas correctas
             column_mapping = {
-                'fecha': ['fecha', 'date', 'fecha_emision', 'fecha_comprobante', 'fecha_venta', 'fecha_factura', 'Fecha'],
-                'cliente': ['cliente', 'customer', 'nombre_cliente', 'razon_social', 'nombre', 'empresa', 'Cliente'],
-                'concepto': ['concepto', 'description', 'descripcion', 'detalle', 'producto', 'servicio', 'Descripcion_Tipo'],
-                'monto': ['monto', 'amount', 'importe', 'total', 'valor', 'precio', 'costo', 'Importe_Total'],
+                'fecha': ['fecha', 'date', 'fecha_emision', 'fecha_factura', 'fecha_comprobante', 'Fecha', 'FECHA'],
+                'cliente': ['cliente', 'client', 'nombre_cliente', 'razon_social', 'empresa', 'Cliente', 'CLIENTE'],
+                'concepto': ['concepto', 'descripcion', 'detalle', 'producto', 'servicio', 'Concepto', 'CONCEPTO', 'Descripcion_Tipo'],
+                'monto': ['monto', 'amount', 'importe', 'total', 'valor', 'precio', 'costo', 'Importe_Total', 'MONTO'],
                 'numero_comprobante': ['numero', 'numero_comprobante', 'comprobante', 'factura', 'invoice', 'nro', 'Numero_Comprobante']
             }
             
             # Buscar y renombrar columnas
+            renamed_columns = {}
             for target_col, possible_names in column_mapping.items():
                 for col_name in possible_names:
                     if col_name in df.columns:
                         df = df.rename(columns={col_name: target_col})
+                        renamed_columns[target_col] = col_name
                         logger.info(f"Columna '{col_name}' renombrada a '{target_col}'")
                         break
             
-            # Verificar columnas requeridas
-            required_columns = ['fecha', 'cliente', 'concepto', 'monto']
-            missing_columns = [col for col in required_columns if col not in df.columns]
+            logger.info(f"Columnas renombradas: {renamed_columns}")
+            logger.info(f"Columnas después del mapeo: {list(df.columns)}")
             
-            if missing_columns:
-                logger.error(f"Columnas faltantes: {missing_columns}")
-                logger.error(f"Columnas disponibles: {list(df.columns)}")
-                # Intentar usar las primeras columnas disponibles como fallback
-                if len(df.columns) >= 4:
-                    logger.info("Usando columnas disponibles como fallback")
-                    df = df.rename(columns={
-                        df.columns[0]: 'fecha',
-                        df.columns[1]: 'cliente', 
-                        df.columns[2]: 'concepto',
-                        df.columns[3]: 'monto'
-                    })
+            # Si no encontramos las columnas esperadas, usar las disponibles
+            if len(df.columns) >= 2:  # Mínimo fecha y monto
+                # Intentar identificar columnas por tipo de dato
+                for col in df.columns:
+                    if col not in ['fecha', 'cliente', 'concepto', 'monto', 'numero_comprobante']:
+                        # Intentar identificar por contenido
+                        sample_values = df[col].dropna().head(10).astype(str)
+                        
+                        # Si parece fecha
+                        if any('/' in str(v) or '-' in str(v) for v in sample_values):
+                            if 'fecha' not in df.columns:
+                                df = df.rename(columns={col: 'fecha'})
+                                logger.info(f"Columna '{col}' identificada como fecha")
+                        
+                        # Si parece monto (números)
+                        elif df[col].dtype in ['float64', 'int64'] or any(str(v).replace('.', '').replace(',', '').isdigit() for v in sample_values):
+                            if 'monto' not in df.columns:
+                                df = df.rename(columns={col: 'monto'})
+                                logger.info(f"Columna '{col}' identificada como monto")
+                        
+                        # Si parece texto largo (concepto)
+                        elif df[col].dtype == 'object' and df[col].str.len().mean() > 10:
+                            if 'concepto' not in df.columns:
+                                df = df.rename(columns={col: 'concepto'})
+                                logger.info(f"Columna '{col}' identificada como concepto")
+                        
+                        # Si parece texto corto (cliente)
+                        elif df[col].dtype == 'object' and df[col].str.len().mean() <= 10:
+                            if 'cliente' not in df.columns:
+                                df = df.rename(columns={col: 'cliente'})
+                                logger.info(f"Columna '{col}' identificada como cliente")
+            
+            # Crear columnas faltantes con valores por defecto
+            if 'fecha' not in df.columns:
+                df['fecha'] = pd.Timestamp.now()
+                logger.warning("Columna fecha no encontrada, usando fecha actual")
+            
+            if 'cliente' not in df.columns:
+                df['cliente'] = 'Cliente no especificado'
+                logger.warning("Columna cliente no encontrada, usando valor por defecto")
+            
+            if 'concepto' not in df.columns:
+                df['concepto'] = 'Concepto no especificado'
+                logger.warning("Columna concepto no encontrada, usando valor por defecto")
+            
+            if 'monto' not in df.columns:
+                # Buscar cualquier columna numérica
+                numeric_cols = df.select_dtypes(include=['number']).columns
+                if len(numeric_cols) > 0:
+                    df = df.rename(columns={numeric_cols[0]: 'monto'})
+                    logger.info(f"Usando columna numérica '{numeric_cols[0]}' como monto")
                 else:
-                    raise ValueError(f"Columnas requeridas faltantes: {missing_columns}")
+                    df['monto'] = 0
+                    logger.warning("Columna monto no encontrada, usando 0")
+            
+            logger.info(f"Columnas finales: {list(df.columns)}")
             
             # Limpiar datos
             df = df.dropna(subset=['fecha', 'monto'])
@@ -243,6 +289,7 @@ class MatchmakerService:
             # Resetear índice
             df = df.reset_index(drop=True)
             
+            logger.info(f"Comprobantes normalizados: {len(df)} registros válidos")
             return df
             
         except Exception as e:

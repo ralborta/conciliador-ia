@@ -4,6 +4,11 @@ from pathlib import Path
 import logging
 import time
 import glob
+import pandas as pd
+
+# Importar procesadores específicos
+from utils.csv_processor import ARCAProcessor
+from utils.validators import ContabilidadValidator
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/upload", tags=["upload"])
@@ -11,6 +16,10 @@ router = APIRouter(prefix="/upload", tags=["upload"])
 # Configuración simple
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# Inicializar procesadores
+arca_processor = ARCAProcessor()
+validator = ContabilidadValidator()
 
 @router.post("/extracto")
 async def upload_extracto(file: UploadFile = File(...)):
@@ -60,6 +69,62 @@ async def upload_comprobantes(file: UploadFile = File(...)):
         return {"status": "ok", "filename": safe_filename, "file_path": str(temp_path)}
     except Exception as e:
         logger.error(f"Error subiendo comprobantes: {e}")
+        return {"status": "error", "message": str(e)}
+
+@router.post("/csv-arca")
+async def procesar_csv_arca(file: UploadFile = File(...)):
+    """Procesa específicamente archivos CSV de ARCA con validaciones argentinas"""
+    try:
+        logger.info(f"Procesando CSV de ARCA: {file.filename}")
+        
+        # Validar que sea CSV
+        if not file.filename.lower().endswith('.csv'):
+            return {"status": "error", "message": "El archivo debe ser CSV"}
+        
+        # Leer el contenido del archivo
+        content = await file.read()
+        
+        # Sanitizar nombre del archivo
+        import re
+        safe_filename = re.sub(r'[^a-zA-Z0-9._-]', '_', file.filename)
+        safe_filename = safe_filename.replace(' ', '_')
+        
+        # Guardar temporalmente
+        temp_path = UPLOAD_DIR / safe_filename
+        with temp_path.open("wb") as buffer:
+            buffer.write(content)
+        
+        # Procesar CSV con validaciones argentinas
+        df_procesado = arca_processor.procesar_csv_arca(str(temp_path))
+        
+        if df_procesado.empty:
+            return {
+                "status": "error", 
+                "message": "No se pudo procesar el CSV. Verifica el formato."
+            }
+        
+        # Generar resumen del procesamiento
+        df_original = pd.read_csv(temp_path)
+        resumen = arca_processor.generar_resumen_procesamiento(df_original, df_procesado)
+        
+        # Guardar CSV procesado
+        csv_procesado_path = UPLOAD_DIR / f"procesado_{safe_filename}"
+        df_procesado.to_csv(csv_procesado_path, index=False)
+        
+        logger.info(f"CSV de ARCA procesado exitosamente: {len(df_procesado)} registros")
+        
+        return {
+            "status": "ok",
+            "filename": safe_filename,
+            "file_path": str(temp_path),
+            "csv_procesado": str(csv_procesado_path),
+            "resumen_procesamiento": resumen,
+            "registros_procesados": len(df_procesado),
+            "columnas_detectadas": list(df_procesado.columns)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error procesando CSV de ARCA: {e}")
         return {"status": "error", "message": str(e)}
 
  
@@ -117,6 +182,26 @@ async def procesar_archivos_inmediato(
             temp_comprobantes_path = temp_comprobantes.name
         
         try:
+            # Procesar CSV si es necesario
+            if comprobantes.filename.lower().endswith('.csv'):
+                logger.info("Detectado CSV - aplicando procesamiento específico de ARCA")
+                
+                # Procesar CSV con validaciones argentinas
+                df_procesado = arca_processor.procesar_csv_arca(temp_comprobantes_path)
+                
+                if not df_procesado.empty:
+                    # Guardar CSV procesado
+                    csv_procesado_path = temp_comprobantes_path.replace('.csv', '_procesado.csv')
+                    df_procesado.to_csv(csv_procesado_path, index=False)
+                    
+                    # Usar CSV procesado para conciliación
+                    comprobantes_path_final = csv_procesado_path
+                    logger.info(f"CSV procesado guardado: {csv_procesado_path}")
+                else:
+                    comprobantes_path_final = temp_comprobantes_path
+            else:
+                comprobantes_path_final = temp_comprobantes_path
+            
             # Procesar con los archivos temporales
             from services.matchmaker import MatchmakerService
             matchmaker = MatchmakerService()
@@ -124,7 +209,7 @@ async def procesar_archivos_inmediato(
             logger.info("Iniciando procesamiento de conciliación...")
             response = matchmaker.procesar_conciliacion(
                 extracto_path=temp_extracto_path,
-                comprobantes_path=temp_comprobantes_path,
+                comprobantes_path=comprobantes_path_final,
                 empresa_id=empresa_id
             )
             
@@ -143,8 +228,8 @@ async def procesar_archivos_inmediato(
             try:
                 os.unlink(temp_extracto_path)
                 os.unlink(temp_comprobantes_path)
-            except:
-                pass
+                    except:
+            pass
                 
     except Exception as e:
         logger.error(f"Error en procesamiento inmediato: {e}")
@@ -152,6 +237,62 @@ async def procesar_archivos_inmediato(
             "status": "error", 
             "message": f"Error general: {str(e)}",
             "details": "Verifica la conexión y los archivos subidos."
+        }
+
+@router.post("/test-csv")
+async def test_csv_processing(file: UploadFile = File(...)):
+    """Endpoint de test para debuggear procesamiento de CSV"""
+    try:
+        logger.info(f"Test de procesamiento CSV iniciado para: {file.filename}")
+        
+        # Validar que sea CSV
+        if not file.filename.lower().endswith('.csv'):
+            return {"status": "error", "message": "El archivo debe ser CSV"}
+        
+        # Leer archivo
+        content = await file.read()
+        
+        # Crear archivo temporal
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as temp_file:
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Test de procesamiento CSV
+            df_original = pd.read_csv(temp_file_path)
+            df_procesado = arca_processor.procesar_csv_arca(temp_file_path)
+            
+            # Generar resumen
+            resumen = arca_processor.generar_resumen_procesamiento(df_original, df_procesado)
+            
+            # Detectar formato
+            formato_detectado = arca_processor.detectar_formato_arca(df_procesado)
+            
+            return {
+                "status": "ok",
+                "filename": file.filename,
+                "resumen_procesamiento": resumen,
+                "formato_detectado": formato_detectado,
+                "columnas_originales": list(df_original.columns),
+                "columnas_procesadas": list(df_procesado.columns),
+                "muestra_datos": df_procesado.head(5).to_dict('records') if not df_procesado.empty else []
+            }
+            
+        finally:
+            # Limpiar archivo temporal
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+                
+    except Exception as e:
+        logger.error(f"Error en test de CSV: {e}")
+        return {
+            "status": "error", 
+            "message": f"Error procesando CSV: {str(e)}"
         }
 
  

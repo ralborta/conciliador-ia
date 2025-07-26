@@ -347,16 +347,37 @@ class MatchmakerService:
     def _preparar_comprobantes_para_ia(self, df: pd.DataFrame) -> pd.DataFrame:
         """Prepara los comprobantes para enviar a la IA"""
         try:
-            # Seleccionar columnas relevantes
-            columns_to_keep = ['fecha', 'cliente', 'concepto', 'monto']
+            logger.info(f"Preparando comprobantes para IA con columnas: {list(df.columns)}")
+            
+            # Verificar que tenemos las columnas necesarias después de la normalización
+            required_columns = ['fecha', 'cliente', 'concepto', 'monto']
+            available_columns = [col for col in required_columns if col in df.columns]
+            
+            logger.info(f"Columnas disponibles: {available_columns}")
+            
+            # Si faltan columnas, intentar normalizar nuevamente
+            if len(available_columns) < len(required_columns):
+                logger.warning(f"Faltan columnas: {[col for col in required_columns if col not in df.columns]}")
+                logger.info("Intentando normalizar comprobantes...")
+                df = self._normalizar_comprobantes(df)
+                available_columns = [col for col in required_columns if col in df.columns]
+            
+            # Seleccionar columnas disponibles
+            columns_to_keep = available_columns.copy()
             if 'numero_comprobante' in df.columns:
                 columns_to_keep.append('numero_comprobante')
             
+            logger.info(f"Columnas seleccionadas para IA: {columns_to_keep}")
+            
+            # Crear DataFrame con las columnas disponibles
             df_clean = df[columns_to_keep].copy()
             
-            # Asegurar formato de fecha
-            df_clean['fecha'] = pd.to_datetime(df_clean['fecha'])
+            # Asegurar formato de fecha si existe
+            if 'fecha' in df_clean.columns:
+                df_clean['fecha'] = pd.to_datetime(df_clean['fecha'], errors='coerce')
+                df_clean = df_clean.dropna(subset=['fecha'])
             
+            logger.info(f"Comprobantes preparados para IA: {len(df_clean)} registros")
             return df_clean
             
         except Exception as e:

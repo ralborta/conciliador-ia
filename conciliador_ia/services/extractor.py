@@ -27,6 +27,9 @@ class PDFExtractor:
         try:
             logger.info(f"Iniciando extracción de PDF: {pdf_path}")
             
+            # Variable para almacenar información del header
+            self.header_info = ""
+            
             with pdfplumber.open(pdf_path) as pdf:
                 logger.info(f"PDF abierto. Total de páginas: {len(pdf.pages)}")
                 
@@ -38,6 +41,11 @@ class PDFExtractor:
                     if page_text:
                         logger.info(f"Texto extraído de página {page_num + 1}: {len(page_text)} caracteres")
                         logger.debug(f"Primeras 200 caracteres: {page_text[:200]}...")
+                        
+                        # Guardar información del header de la primera página
+                        if page_num == 0:
+                            self.header_info = page_text[:1000]  # Primeros 1000 caracteres
+                            logger.info(f"Header extraído: {self.header_info[:200]}...")
                     else:
                         logger.warning(f"No se pudo extraer texto de la página {page_num + 1}")
                     
@@ -282,7 +290,7 @@ class PDFExtractor:
         }
     
     def _detectar_banco(self, df: pd.DataFrame) -> Optional[str]:
-        """Detecta el banco basado en los conceptos de los movimientos"""
+        """Detecta el banco basado en los conceptos de los movimientos y el header"""
         try:
             # Obtener todos los conceptos
             conceptos = ' '.join(df['concepto'].astype(str).tolist()).lower()
@@ -317,11 +325,23 @@ class PDFExtractor:
                 'Banco Ciudad': ['banco ciudad', 'banco de la ciudad']
             }
             
-            # Buscar coincidencias
+            # Buscar coincidencias en el header primero
+            if hasattr(self, 'header_info') and self.header_info:
+                header_conceptos = ' '.join(self.header_info.lower().split('\n')).strip()
+                logger.info(f"Buscando banco en header: {header_conceptos[:200]}...")
+                
+                for banco, identificadores in bancos.items():
+                    for identificador in identificadores:
+                        if identificador in header_conceptos:
+                            logger.info(f"Banco detectado en header: {banco} (identificador: {identificador})")
+                            return banco
+            
+            # Buscar coincidencias en los conceptos de movimientos
+            logger.info(f"Buscando banco en conceptos: {conceptos[:200]}...")
             for banco, identificadores in bancos.items():
                 for identificador in identificadores:
                     if identificador in conceptos:
-                        logger.info(f"Banco detectado: {banco} (identificador: {identificador})")
+                        logger.info(f"Banco detectado en conceptos: {banco} (identificador: {identificador})")
                         return banco
             
             # Si no se encuentra, buscar patrones más específicos
@@ -342,7 +362,7 @@ class PDFExtractor:
                     logger.info(f"Banco digital detectado: {pattern}")
                     return f'Banco Digital ({pattern.title()})'
             
-            logger.warning(f"No se pudo detectar el banco. Conceptos encontrados: {conceptos[:200]}...")
+            logger.warning(f"No se pudo detectar el banco. Header: {getattr(self, 'header_info', '')[:100]}... Conceptos: {conceptos[:100]}...")
             return 'Banco no identificado'
             
         except Exception as e:

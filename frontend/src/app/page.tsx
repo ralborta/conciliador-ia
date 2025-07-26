@@ -105,6 +105,33 @@ export default function Home() {
       return;
     }
 
+    // Validar tamaño de archivos
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (extractoFile.size > maxSize) {
+      toast.error('El extracto es demasiado grande. Máximo 10MB permitido.');
+      return;
+    }
+    if (comprobantesFile.size > maxSize) {
+      toast.error('Los comprobantes son demasiado grandes. Máximo 10MB permitido.');
+      return;
+    }
+
+    // Validar tipos de archivo
+    if (!extractoFile.type.includes('pdf')) {
+      toast.error('El extracto debe ser un archivo PDF');
+      return;
+    }
+    
+    const validComprobantesTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/csv'
+    ];
+    if (!validComprobantesTypes.includes(comprobantesFile.type)) {
+      toast.error('Los comprobantes deben ser Excel (.xlsx, .xls) o CSV');
+      return;
+    }
+
     setIsProcessing(true);
     
     // Inicializar pasos del proceso
@@ -221,12 +248,31 @@ export default function Home() {
     } catch (error) {
       console.error('Error processing conciliacion:', error);
       
+      // Obtener mensaje de error más claro
+      let errorMessage = 'Error desconocido';
+      let errorDetails = '';
+      
+      if (error instanceof Error) {
+        // Usar mensaje personalizado si está disponible
+        if ((error as any).userMessage) {
+          errorMessage = (error as any).userMessage;
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'El procesamiento tardó demasiado tiempo';
+          errorDetails = 'Esto puede deberse a archivos muy grandes, conexión lenta, o procesamiento complejo. Intenta con archivos más pequeños.';
+        } else if (error.message.includes('Network Error')) {
+          errorMessage = 'Error de conexión con el servidor';
+          errorDetails = 'Verifica tu conexión a internet e intenta nuevamente.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       // Mostrar mensaje de error detallado
       setStatusMessage({
         type: 'error',
         title: 'Error en la Conciliación',
-        message: 'No se pudo completar el proceso de conciliación. Revisa los detalles para más información.',
-        details: error instanceof Error ? error.message : 'Error desconocido',
+        message: errorMessage,
+        details: errorDetails || (error instanceof Error ? error.message : 'Error desconocido'),
         actions: [
           {
             label: 'Reintentar',
@@ -242,19 +288,19 @@ export default function Home() {
             onClick: () => {
               setStatusMessage(null);
               setProcessSteps([]);
+              // Aquí podrías agregar lógica para validar archivos
+              toast.info('Verifica que los archivos sean válidos y no muy grandes');
             }
           }
         ]
       });
       
-      // Marcar pasos como error
       const errorSteps = initialSteps.map(step => ({
         ...step,
         status: 'error' as const,
-        details: 'Error en el procesamiento'
+        timestamp: new Date().toLocaleTimeString()
       }));
       setProcessSteps(errorSteps);
-      
       toast.error('Error al procesar la conciliación');
     } finally {
       setIsProcessing(false);

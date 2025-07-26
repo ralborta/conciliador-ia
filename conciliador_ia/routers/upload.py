@@ -71,9 +71,28 @@ async def procesar_archivos_inmediato(
     try:
         logger.info(f"Procesamiento inmediato iniciado para empresa: {empresa_id}")
         
-        # Leer contenido de ambos archivos
+        # Validar archivos
+        if not extracto.filename or not comprobantes.filename:
+            return {"status": "error", "message": "Ambos archivos son requeridos"}
+        
+        # Validar tipos de archivo
+        if not extracto.filename.lower().endswith('.pdf'):
+            return {"status": "error", "message": "El extracto debe ser un archivo PDF"}
+        
+        valid_comprobantes_extensions = ['.xlsx', '.xls', '.csv']
+        if not any(comprobantes.filename.lower().endswith(ext) for ext in valid_comprobantes_extensions):
+            return {"status": "error", "message": "Los comprobantes deben ser Excel (.xlsx, .xls) o CSV"}
+        
+        # Validar tamaño de archivos (máximo 10MB cada uno)
+        max_size = 10 * 1024 * 1024  # 10MB
         extracto_content = await extracto.read()
         comprobantes_content = await comprobantes.read()
+        
+        if len(extracto_content) > max_size:
+            return {"status": "error", "message": "El extracto es demasiado grande. Máximo 10MB permitido."}
+        
+        if len(comprobantes_content) > max_size:
+            return {"status": "error", "message": "Los comprobantes son demasiado grandes. Máximo 10MB permitido."}
         
         # Crear archivos temporales únicos
         import tempfile
@@ -92,6 +111,7 @@ async def procesar_archivos_inmediato(
             from services.matchmaker import MatchmakerService
             matchmaker = MatchmakerService()
             
+            logger.info("Iniciando procesamiento de conciliación...")
             response = matchmaker.procesar_conciliacion(
                 extracto_path=temp_extracto_path,
                 comprobantes_path=temp_comprobantes_path,
@@ -101,6 +121,13 @@ async def procesar_archivos_inmediato(
             logger.info("Procesamiento inmediato completado exitosamente")
             return response
             
+        except Exception as processing_error:
+            logger.error(f"Error en procesamiento: {processing_error}")
+            return {
+                "status": "error", 
+                "message": f"Error en el procesamiento: {str(processing_error)}",
+                "details": "Verifica que los archivos contengan datos válidos y no estén corruptos."
+            }
         finally:
             # Limpiar archivos temporales
             try:
@@ -111,6 +138,10 @@ async def procesar_archivos_inmediato(
                 
     except Exception as e:
         logger.error(f"Error en procesamiento inmediato: {e}")
-        return {"status": "error", "message": str(e)}
+        return {
+            "status": "error", 
+            "message": f"Error general: {str(e)}",
+            "details": "Verifica la conexión y los archivos subidos."
+        }
 
  

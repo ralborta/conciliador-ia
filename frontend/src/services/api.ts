@@ -7,13 +7,13 @@ console.log('API URL:', API_BASE_URL); // Debug log - FORCE VERCEL DEPLOY V4 - I
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 120000, // Aumentar a 2 minutos para archivos grandes
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor para manejar errores
+// Interceptor para manejar errores con mensajes más claros
 api.interceptors.response.use(
   (response) => {
     console.log('API Response:', response.status, response.data);
@@ -21,6 +21,22 @@ api.interceptors.response.use(
   },
   (error) => {
     console.error('API Error:', error.response?.status, error.response?.data);
+    
+    // Mejorar mensajes de error
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      error.userMessage = 'El procesamiento tardó demasiado tiempo. Esto puede deberse a: archivos muy grandes, conexión lenta, o procesamiento complejo. Intenta con archivos más pequeños o verifica tu conexión.';
+    } else if (error.response?.status === 413) {
+      error.userMessage = 'Los archivos son demasiado grandes. El tamaño máximo permitido es 10MB por archivo.';
+    } else if (error.response?.status === 422) {
+      error.userMessage = 'Formato de archivo no válido. Asegúrate de subir un PDF para el extracto y Excel/CSV para los comprobantes.';
+    } else if (error.response?.status === 500) {
+      error.userMessage = 'Error interno del servidor. El procesamiento falló. Intenta nuevamente o contacta soporte.';
+    } else if (error.response?.status === 503) {
+      error.userMessage = 'Servicio temporalmente no disponible. Intenta en unos minutos.';
+    } else {
+      error.userMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
+    }
+    
     return Promise.reject(error);
   }
 );

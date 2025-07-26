@@ -23,7 +23,28 @@ class ConciliadorIA:
             raise ValueError("Se requiere OPENAI_API_KEY")
         
         # Inicializar cliente OpenAI con la nueva API
-        self.client = OpenAI(api_key=self.api_key)
+        # Manejar proxies de Railway si existen
+        try:
+            # Intentar sin proxies primero
+            self.client = OpenAI(api_key=self.api_key)
+            logger.info("Cliente OpenAI inicializado sin proxies")
+        except Exception as e:
+            logger.warning(f"Error inicializando cliente OpenAI: {e}")
+            # Si falla, intentar con configuración mínima
+            try:
+                import httpx
+                self.client = OpenAI(
+                    api_key=self.api_key,
+                    http_client=httpx.Client(
+                        timeout=httpx.Timeout(30.0),
+                        limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
+                    )
+                )
+                logger.info("Cliente OpenAI inicializado con configuración mínima")
+            except Exception as e2:
+                logger.error(f"Error crítico inicializando OpenAI: {e2}")
+                raise
+        
         self.model = "gpt-4o-mini"  # Modelo más económico y eficiente
         
         logger.info("Conciliador IA inicializado con OpenAI API v1.0.0")

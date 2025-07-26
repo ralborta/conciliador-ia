@@ -129,56 +129,64 @@ class MatchmakerService:
             logger.error(f"Error extrayendo datos del extracto: {e}")
             raise
     
-    def _cargar_datos_comprobantes(self, comprobantes_path: str) -> pd.DataFrame:
+    def _cargar_datos_comprobantes(self, file_path: str) -> pd.DataFrame:
         """Carga datos de comprobantes desde Excel o CSV"""
         try:
-            logger.info("Cargando datos de comprobantes")
+            logger.info(f"Cargando comprobantes desde: {file_path}")
             
-            # Verificar si es un archivo temporal (empieza con /tmp/)
-            if comprobantes_path.startswith('/tmp/'):
-                # Es un archivo temporal, usar directamente
-                if not Path(comprobantes_path).exists():
-                    raise FileNotFoundError(f"Archivo temporal no encontrado: {comprobantes_path}")
-                logger.info(f"Usando archivo temporal: {comprobantes_path}")
-            else:
-                # Es un archivo en uploads/, buscar en uploads/
-                file_name = Path(comprobantes_path).name
-                uploads_path = Path("uploads") / file_name
+            # Determinar extensión del archivo
+            file_extension = file_path.lower().split('.')[-1]
+            
+            if file_extension == 'csv':
+                # Cargar CSV
+                logger.info("Detectado archivo CSV")
+                df = pd.read_csv(file_path, encoding='utf-8')
+            elif file_extension in ['xlsx', 'xls']:
+                # Cargar Excel con múltiples engines
+                logger.info(f"Detectado archivo Excel: {file_extension}")
                 
-                if not uploads_path.exists():
-                    raise FileNotFoundError(f"Archivo de comprobantes no encontrado: {uploads_path}")
+                # Intentar con diferentes engines
+                engines_to_try = ['openpyxl', 'xlrd', 'odf']
                 
-                # Usar la ruta correcta
-                comprobantes_path = str(uploads_path)
-                logger.info(f"Usando archivo en uploads: {comprobantes_path}")
-            
-            # Determinar tipo de archivo y cargar
-            file_path = Path(comprobantes_path)
-            file_extension = file_path.suffix.lower()
-            
-            if file_extension in ['.xlsx', '.xls']:
-                df = pd.read_excel(comprobantes_path)
-            elif file_extension == '.csv':
-                df = pd.read_csv(comprobantes_path)
+                for engine in engines_to_try:
+                    try:
+                        logger.info(f"Intentando cargar con engine: {engine}")
+                        if file_extension == 'xlsx':
+                            df = pd.read_excel(file_path, engine=engine)
+                        else:  # xls
+                            df = pd.read_excel(file_path, engine=engine)
+                        
+                        logger.info(f"✅ Archivo cargado exitosamente con engine: {engine}")
+                        break
+                        
+                    except Exception as e:
+                        logger.warning(f"❌ Engine {engine} falló: {e}")
+                        continue
+                else:
+                    # Si todos los engines fallan, intentar sin especificar engine
+                    logger.info("Intentando cargar sin especificar engine...")
+                    try:
+                        df = pd.read_excel(file_path)
+                        logger.info("✅ Archivo cargado sin especificar engine")
+                    except Exception as e:
+                        logger.error(f"❌ Todos los métodos fallaron: {e}")
+                        raise Exception(f"No se pudo cargar el archivo Excel: {e}")
             else:
-                raise ValueError(f"Formato de archivo no soportado: {file_extension}")
+                raise Exception(f"Formato de archivo no soportado: {file_extension}")
             
-            # Log de columnas disponibles para debug
-            logger.info(f"Columnas disponibles en comprobantes: {list(df.columns)}")
-            logger.info(f"Primeras 3 filas de comprobantes: {df.head(3).to_dict()}")
+            # Mostrar información del DataFrame
+            logger.info(f"DataFrame cargado: {len(df)} filas, {len(df.columns)} columnas")
+            logger.info(f"Columnas disponibles: {list(df.columns)}")
             
-            # Validar que se cargaron datos
-            if df.empty:
-                raise ValueError("No se pudieron cargar datos de comprobantes")
+            if not df.empty:
+                logger.info("Primeras 3 filas:")
+                for i, row in df.head(3).iterrows():
+                    logger.info(f"  Fila {i+1}: {dict(row)}")
             
-            # Limpiar y normalizar datos
-            df = self._normalizar_comprobantes(df)
-            
-            logger.info(f"Comprobantes cargados: {len(df)} registros")
             return df
             
         except Exception as e:
-            logger.error(f"Error cargando datos de comprobantes: {e}")
+            logger.error(f"Error cargando comprobantes: {e}")
             raise
     
     def _normalizar_comprobantes(self, df: pd.DataFrame) -> pd.DataFrame:

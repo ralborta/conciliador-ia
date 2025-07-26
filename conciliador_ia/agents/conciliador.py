@@ -7,21 +7,26 @@ import openai
 import openai
 import os
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 class ConciliadorIA:
-    """Agente de IA para conciliar movimientos bancarios con comprobantes"""
+    """Clase para realizar conciliación bancaria usando IA"""
     
     def __init__(self, api_key: Optional[str] = None):
+        """Inicializa el conciliador con la API key de OpenAI"""
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         if not self.api_key:
-            raise ValueError("Se requiere API key de OpenAI")
+            raise ValueError("Se requiere OPENAI_API_KEY")
         
-        openai.api_key = self.api_key
-        self.model = "gpt-4o-mini"  # Usar gpt-4o-mini para mejor rendimiento/costo
+        # Inicializar cliente OpenAI con la nueva API
+        self.client = OpenAI(api_key=self.api_key)
+        self.model = "gpt-4o-mini"  # Modelo más económico y eficiente
+        
+        logger.info("Conciliador IA inicializado con OpenAI API v1.0.0")
     
     def conciliar_movimientos(self, 
                             df_movimientos: pd.DataFrame, 
@@ -121,9 +126,9 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin texto adicional.
         return prompt
     
     def _call_openai_api(self, prompt: str) -> str:
-        """Llama a la API de OpenAI"""
+        """Llama a la API de OpenAI usando la nueva API v1.0.0"""
         try:
-            response = openai.ChatCompletion.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {

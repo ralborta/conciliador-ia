@@ -28,8 +28,19 @@ class PDFExtractor:
             logger.info(f"Iniciando extracción de PDF: {pdf_path}")
             
             with pdfplumber.open(pdf_path) as pdf:
+                logger.info(f"PDF abierto. Total de páginas: {len(pdf.pages)}")
+                
                 for page_num, page in enumerate(pdf.pages):
                     logger.info(f"Procesando página {page_num + 1}")
+                    
+                    # Extraer texto completo de la página para debugging
+                    page_text = page.extract_text()
+                    if page_text:
+                        logger.info(f"Texto extraído de página {page_num + 1}: {len(page_text)} caracteres")
+                        logger.debug(f"Primeras 200 caracteres: {page_text[:200]}...")
+                    else:
+                        logger.warning(f"No se pudo extraer texto de la página {page_num + 1}")
+                    
                     self._process_page(page, page_num + 1)
             
             # Convertir a DataFrame
@@ -39,6 +50,8 @@ class PDFExtractor:
                 # Limpiar y procesar datos
                 df = self._clean_dataframe(df)
                 logger.info(f"Extracción completada. {len(df)} movimientos encontrados")
+                logger.info(f"Columnas del DataFrame: {list(df.columns)}")
+                logger.info(f"Primeros 3 movimientos: {df.head(3).to_dict('records')}")
             else:
                 logger.warning("No se encontraron movimientos en el PDF")
             
@@ -83,14 +96,34 @@ class PDFExtractor:
         if not line or len(line) < 10:
             return None
         
-        # Patrones comunes para extractos bancarios
+        # Log para debugging
+        logger.debug(f"Procesando línea: {line}")
+        
+        # Patrones universales para extractos bancarios argentinos
         patterns = [
-            # Patrón: FECHA CONCEPTO IMPORTE SALDO
-            r'(\d{1,2}/\d{1,2}/\d{2,4})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
-            # Patrón: FECHA CONCEPTO IMPORTE
-            r'(\d{1,2}/\d{1,2}/\d{2,4})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            # Patrón estándar: FECHA CONCEPTO IMPORTE SALDO
+            r'(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
+            # Patrón sin saldo: FECHA CONCEPTO IMPORTE
+            r'(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
             # Patrón con formato DD/MM/YYYY
             r'(\d{2}/\d{2}/\d{4})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
+            # Patrón con formato DD-MM-YYYY
+            r'(\d{2}-\d{2}-\d{4})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
+            # Patrón con formato DD.MM.YYYY
+            r'(\d{2}\.\d{2}\.\d{4})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
+            # Patrón más flexible para cualquier banco
+            r'(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
+            # Patrón con espacios múltiples
+            r'(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\s+(.+?)\s+([-]?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            
+            # Patrón para formatos con coma decimal
+            r'(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\s+(.+?)\s+([-]?\d{1,3}(?:\.\d{3})*(?:,\d{2})?)',
         ]
         
         for pattern in patterns:
@@ -101,34 +134,36 @@ class PDFExtractor:
                     concepto = match.group(2).strip()
                     importe_str = match.group(3)
                     
+                    # Limpiar concepto de caracteres extraños
+                    concepto = re.sub(r'\s+', ' ', concepto)  # Múltiples espacios a uno
+                    concepto = concepto.strip()
+                    
                     # Parsear fecha
                     fecha = self._parse_date(fecha_str)
                     if not fecha:
+                        logger.debug(f"Fecha no válida: {fecha_str}")
                         continue
                     
                     # Parsear importe
                     importe = self._parse_amount(importe_str)
                     if importe is None:
+                        logger.debug(f"Importe no válido: {importe_str}")
                         continue
                     
                     # Determinar tipo de movimiento
                     tipo = "crédito" if importe > 0 else "débito"
                     
-                    # Parsear saldo si está disponible
-                    saldo = None
-                    if len(match.groups()) > 3:
-                        saldo_str = match.group(4)
-                        saldo = self._parse_amount(saldo_str)
-                    
-                    return {
+                    # Crear movimiento
+                    movimiento = {
                         'fecha': fecha,
                         'concepto': concepto,
-                        'importe': abs(importe),
+                        'importe': abs(importe),  # Usar valor absoluto
                         'tipo': tipo,
-                        'saldo': saldo,
-                        'pagina': page_num,
-                        'linea_original': line
+                        'pagina': page_num
                     }
+                    
+                    logger.debug(f"Movimiento extraído: {movimiento}")
+                    return movimiento
                     
                 except Exception as e:
                     logger.debug(f"Error parseando línea: {line} - {e}")
@@ -141,9 +176,20 @@ class PDFExtractor:
         date_formats = [
             '%d/%m/%Y',
             '%d/%m/%y',
+            '%d-%m-%Y',
+            '%d-%m-%y',
+            '%d.%m.%Y',
+            '%d.%m.%y',
             '%Y-%m-%d',
-            '%d-%m-%Y'
+            '%Y/%m/%d',
+            '%Y.%m.%d',
+            '%m/%d/%Y',
+            '%m-%d-%Y',
+            '%m.%d.%Y'
         ]
+        
+        # Limpiar la fecha
+        date_str = date_str.strip()
         
         for fmt in date_formats:
             try:
@@ -151,6 +197,7 @@ class PDFExtractor:
             except ValueError:
                 continue
         
+        logger.debug(f"No se pudo parsear la fecha: {date_str}")
         return None
     
     def _parse_amount(self, amount_str: str) -> Optional[float]:
@@ -240,17 +287,17 @@ class PDFExtractor:
             # Obtener todos los conceptos
             conceptos = ' '.join(df['concepto'].astype(str).tolist()).lower()
             
-            # Diccionario de bancos y sus identificadores
+            # Diccionario universal de bancos argentinos
             bancos = {
-                'Banco Nación': ['banco nacion', 'banco de la nacion', 'banco nacional'],
-                'Banco Provincia': ['banco provincia', 'banco de la provincia'],
-                'Banco Ciudad': ['banco ciudad', 'banco de la ciudad'],
+                'BBVA': ['bbva', 'banco bbva', 'bbva argentina', 'bbva banco frances', 'banco frances bbva'],
+                'Banco Nación': ['banco nacion', 'banco de la nacion', 'banco nacional', 'nacion'],
+                'Banco Provincia': ['banco provincia', 'banco de la provincia', 'provincia'],
+                'Banco Ciudad': ['banco ciudad', 'banco de la ciudad', 'ciudad'],
                 'Banco Santander': ['santander', 'banco santander'],
                 'Banco Galicia': ['galicia', 'banco galicia'],
                 'Banco Macro': ['macro', 'banco macro'],
                 'Banco HSBC': ['hsbc', 'banco hsbc'],
                 'Banco Itaú': ['itau', 'banco itau', 'itaú'],
-                'Banco BBVA': ['bbva', 'banco bbva'],
                 'Banco Supervielle': ['supervielle', 'banco supervielle'],
                 'Banco Comafi': ['comafi', 'banco comafi'],
                 'Banco Industrial': ['industrial', 'banco industrial'],
@@ -274,6 +321,7 @@ class PDFExtractor:
             for banco, identificadores in bancos.items():
                 for identificador in identificadores:
                     if identificador in conceptos:
+                        logger.info(f"Banco detectado: {banco} (identificador: {identificador})")
                         return banco
             
             # Si no se encuentra, buscar patrones más específicos
@@ -284,6 +332,17 @@ class PDFExtractor:
             elif 'debito automatico' in conceptos:
                 return 'Banco con Débito Automático'
             
+            # Buscar patrones específicos de bancos digitales
+            digital_patterns = [
+                'mercadopago', 'uala', 'naranja x', 'personal pay', 'modo', 'cuenta dni'
+            ]
+            
+            for pattern in digital_patterns:
+                if pattern in conceptos:
+                    logger.info(f"Banco digital detectado: {pattern}")
+                    return f'Banco Digital ({pattern.title()})'
+            
+            logger.warning(f"No se pudo detectar el banco. Conceptos encontrados: {conceptos[:200]}...")
             return 'Banco no identificado'
             
         except Exception as e:

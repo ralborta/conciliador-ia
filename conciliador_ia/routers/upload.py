@@ -77,6 +77,14 @@ async def procesar_archivos_inmediato(
         if not extracto.filename or not comprobantes.filename:
             return {"status": "error", "message": "Ambos archivos son requeridos"}
         
+        # IGNORAR ARCHIVOS DE EJEMPLO
+        if "ejemplo" in extracto.filename.lower() or "ejemplo" in comprobantes.filename.lower():
+            return {
+                "status": "error", 
+                "message": "No se pueden procesar archivos de ejemplo. Sube tus archivos reales.",
+                "details": "Los archivos de ejemplo han sido bloqueados para evitar confusión."
+            }
+        
         # Validar tipos de archivo
         if not extracto.filename.lower().endswith('.pdf'):
             return {"status": "error", "message": "El extracto debe ser un archivo PDF"}

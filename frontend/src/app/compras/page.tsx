@@ -257,7 +257,10 @@ export default function ComprasPage() {
         });
         
         if (totalCompras === 0) {
-          toast.warning('No se encontraron compras para procesar. Verifica que los archivos contengan datos válidos.');
+          toast('No se encontraron compras para procesar. Verifica que los archivos contengan datos válidos.', {
+            icon: '⚠️',
+            duration: 4000
+          });
         } else {
           toast.success('Conciliación de compras procesada exitosamente');
         }

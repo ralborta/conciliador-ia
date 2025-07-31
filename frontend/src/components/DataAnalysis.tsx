@@ -218,7 +218,7 @@ const DataAnalysis: React.FC<DataAnalysisProps> = ({
       )}
 
       {/* Análisis de Resultados */}
-      {analysisResult && (
+      {analysisResult && analysisResult.coincidenciasEncontradas !== undefined && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
           <div className="flex items-center space-x-3 mb-4">
             <AlertTriangle className="w-5 h-5 text-yellow-600" />
@@ -256,12 +256,14 @@ const DataAnalysis: React.FC<DataAnalysisProps> = ({
                 <span className="font-semibold text-gray-800">Posibles Razones</span>
               </div>
               <ul className="space-y-2">
-                {analysisResult.posiblesRazones.map((razon, index) => (
+                {analysisResult.posiblesRazones?.map((razon, index) => (
                   <li key={index} className="flex items-start space-x-2">
                     <div className="w-1.5 h-1.5 bg-orange-400 rounded-full mt-2 flex-shrink-0"></div>
                     <span className="text-sm text-gray-700">{razon}</span>
                   </li>
-                ))}
+                )) || (
+                  <li className="text-sm text-gray-500">No hay razones disponibles</li>
+                )}
               </ul>
             </div>
             
@@ -272,12 +274,14 @@ const DataAnalysis: React.FC<DataAnalysisProps> = ({
                 <span className="font-semibold text-gray-800">Recomendaciones</span>
               </div>
               <ul className="space-y-2">
-                {analysisResult.recomendaciones.map((recomendacion, index) => (
+                {analysisResult.recomendaciones?.map((recomendacion, index) => (
                   <li key={index} className="flex items-start space-x-2">
                     <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
                     <span className="text-sm text-gray-700">{recomendacion}</span>
                   </li>
-                ))}
+                )) || (
+                  <li className="text-sm text-gray-500">No hay recomendaciones disponibles</li>
+                )}
               </ul>
             </div>
           </div>

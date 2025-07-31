@@ -27,6 +27,22 @@ interface DataInconsistenciesProps {
 }
 
 const DataInconsistencies: React.FC<DataInconsistenciesProps> = ({ inconsistencies }) => {
+  // Validar que inconsistencies existe y es un array
+  if (!inconsistencies || !Array.isArray(inconsistencies)) {
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+            <TrendingUp className="w-5 h-5 text-green-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-green-800">Datos Consistentes</h3>
+            <p className="text-green-700">No se encontraron inconsistencias en los datos procesados.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'high':

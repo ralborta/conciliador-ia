@@ -39,6 +39,15 @@ const ComprasTable: React.FC<ComprasTableProps> = ({ items }) => {
   const [filterEstado, setFilterEstado] = useState<string>('todos');
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
+  // Validar que items existe y es un array
+  if (!items || !Array.isArray(items)) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <p className="text-gray-500 text-center">No hay datos de compras disponibles</p>
+      </div>
+    );
+  }
+
   // Filtrar y ordenar items
   const filteredAndSortedItems = items
     .filter(item => {

@@ -46,35 +46,38 @@ export default function ComprasPage() {
 
   // Datos de ejemplo para mostrar la interfaz
   useEffect(() => {
-    setConciliacionResult({
-      totalCompras: 85,
-      comprasConciliadas: 72,
-      comprasPendientes: 10,
-      comprasParciales: 3,
-      items: [
-        {
-          fecha_compra: '2024-12-08T00:00:00',
-          concepto_compra: 'Compra de insumos',
-          monto_compra: 150000,
-          proveedor_compra: 'Proveedor ABC',
-          numero_factura: 'F001-2024',
-          proveedor_libro: 'Proveedor ABC',
-          estado: 'conciliado',
-          explicacion: 'Coincidencia exacta por monto, fecha y proveedor',
-          confianza: 0.95,
-        },
-        {
-          fecha_compra: '2024-02-14T00:00:00',
-          concepto_compra: 'Servicios de mantenimiento',
-          monto_compra: 75000.50,
-          proveedor_compra: 'Servicios XYZ',
-          estado: 'pendiente',
-          explicacion: 'No se encontró comprobante correspondiente',
-          confianza: 0.0,
-        },
-      ],
-    });
-  }, []);
+    // Solo cargar datos de ejemplo si no hay datos reales
+    if (conciliacionResult.totalCompras === 0) {
+      setConciliacionResult({
+        totalCompras: 85,
+        comprasConciliadas: 72,
+        comprasPendientes: 10,
+        comprasParciales: 3,
+        items: [
+          {
+            fecha_compra: '2024-12-08T00:00:00',
+            concepto_compra: 'Compra de insumos',
+            monto_compra: 150000,
+            proveedor_compra: 'Proveedor ABC',
+            numero_factura: 'F001-2024',
+            proveedor_libro: 'Proveedor ABC',
+            estado: 'conciliado',
+            explicacion: 'Coincidencia exacta por monto, fecha y proveedor',
+            confianza: 0.95,
+          },
+          {
+            fecha_compra: '2024-02-14T00:00:00',
+            concepto_compra: 'Servicios de mantenimiento',
+            monto_compra: 75000.50,
+            proveedor_compra: 'Servicios XYZ',
+            estado: 'pendiente',
+            explicacion: 'No se encontró comprobante correspondiente',
+            confianza: 0.0,
+          },
+        ],
+      });
+    }
+  }, [conciliacionResult.totalCompras]);
 
   const handleExtractoComprasUpload = async (file: File) => {
     try {
@@ -455,7 +458,7 @@ export default function ComprasPage() {
             )}
 
             {/* Results Section */}
-            {conciliacionResult.totalCompras > 0 && (
+            {conciliacionResult.totalCompras > 0 && conciliacionResult.items && (
               <>
                 <ComprasSummaryCards
                   totalCompras={conciliacionResult.totalCompras}

@@ -52,12 +52,12 @@ const ComprasTable: React.FC<ComprasTableProps> = ({ items }) => {
       return matchesSearch && matchesEstado;
     })
     .sort((a, b) => {
-      let aValue = a[sortField];
-      let bValue = b[sortField];
+      let aValue: any = a[sortField];
+      let bValue: any = b[sortField];
       
       if (sortField === 'fecha_compra') {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
+        aValue = new Date(String(aValue)).getTime();
+        bValue = new Date(String(bValue)).getTime();
       } else if (sortField === 'monto_compra') {
         aValue = Number(aValue);
         bValue = Number(bValue);

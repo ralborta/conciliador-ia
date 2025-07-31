@@ -113,9 +113,17 @@ async def procesar_compras(extracto_path: str, libro_path: str, empresa: str) ->
     try:
         # Extraer datos del PDF de extracto de compras
         extracto_data = extraer_datos_extracto_compras(extracto_path)
+        logger.info(f"Datos extraídos del extracto: {len(extracto_data)} compras")
         
         # Cargar datos del libro de compras
         libro_data = cargar_libro_compras(libro_path)
+        logger.info(f"Datos cargados del libro: {len(libro_data)} compras")
+        
+        # Log de ejemplo de datos
+        if extracto_data:
+            logger.info(f"Ejemplo de dato del extracto: {extracto_data[0]}")
+        if libro_data:
+            logger.info(f"Ejemplo de dato del libro: {libro_data[0]}")
         
         # Realizar conciliación
         conciliacion_result = conciliar_compras(extracto_data, libro_data)
@@ -320,8 +328,8 @@ def parsear_linea_compra(linea: str) -> Optional[Dict[str, Any]]:
         # Buscar patrones de fecha, monto, proveedor
         import re
         
-        # Patrón para fecha (dd/mm/yyyy o yyyy-mm-dd)
-        fecha_pattern = r'(\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{1,2}-\d{1,2})'
+        # Patrón para fecha (dd/mm/yyyy, yyyy-mm-dd, dd-mm-yyyy, etc.)
+        fecha_pattern = r'(\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})'
         fecha_match = re.search(fecha_pattern, linea)
         
         # Patrón para monto (números con decimales)
@@ -419,15 +427,32 @@ def calcular_score_coincidencia(compra_extracto: Dict, compra_libro: Dict) -> fl
     if fecha_extracto and fecha_libro:
         try:
             from datetime import datetime
-            fecha1 = datetime.strptime(fecha_extracto, "%d/%m/%Y")
-            fecha2 = datetime.strptime(fecha_libro, "%d/%m/%Y")
-            diferencia_dias = abs((fecha1 - fecha2).days)
             
-            if diferencia_dias == 0:
-                score += 0.3
-            elif diferencia_dias <= 3:
-                score += 0.15
-        except:
+            def parsear_fecha(fecha_str):
+                """Intenta parsear una fecha en diferentes formatos"""
+                if not fecha_str:
+                    return None
+                
+                formatos = ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y", "%Y/%m/%d"]
+                for formato in formatos:
+                    try:
+                        return datetime.strptime(str(fecha_str), formato)
+                    except:
+                        continue
+                return None
+            
+            fecha1 = parsear_fecha(fecha_extracto)
+            fecha2 = parsear_fecha(fecha_libro)
+            
+            if fecha1 and fecha2:
+                diferencia_dias = abs((fecha1 - fecha2).days)
+                
+                if diferencia_dias == 0:
+                    score += 0.3
+                elif diferencia_dias <= 3:
+                    score += 0.15
+        except Exception as e:
+            logger.warning(f"Error comparando fechas: {e}")
             pass
     
     # Coincidencia de proveedor (30% del score)
@@ -457,14 +482,45 @@ def generar_analisis_compras(extracto_data: List[Dict], libro_data: List[Dict], 
     """
     Genera análisis de los datos de compras con estructura compatible con el frontend
     """
-    # Calcular fechas mínimas y máximas
-    fechas_extracto = [c.get("fecha", "") for c in extracto_data if c.get("fecha")]
-    fechas_libro = [c.get("fecha", "") for c in libro_data if c.get("fecha")]
+    from datetime import datetime
     
-    fecha_inicio_extracto = min(fechas_extracto) if fechas_extracto else "No disponible"
-    fecha_fin_extracto = max(fechas_extracto) if fechas_extracto else "No disponible"
-    fecha_inicio_libro = min(fechas_libro) if fechas_libro else "No disponible"
-    fecha_fin_libro = max(fechas_libro) if fechas_libro else "No disponible"
+    # Calcular fechas mínimas y máximas
+    def parsear_fecha(fecha_str):
+        """Intenta parsear una fecha en diferentes formatos"""
+        if not fecha_str:
+            return None
+        
+        formatos = ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y", "%Y/%m/%d"]
+        for formato in formatos:
+            try:
+                return datetime.strptime(str(fecha_str), formato)
+            except:
+                continue
+        return None
+    
+    # Procesar fechas del extracto
+    fechas_extracto = []
+    for c in extracto_data:
+        fecha = c.get("fecha", "")
+        if fecha:
+            fecha_parsed = parsear_fecha(fecha)
+            if fecha_parsed:
+                fechas_extracto.append(fecha_parsed)
+    
+    # Procesar fechas del libro
+    fechas_libro = []
+    for c in libro_data:
+        fecha = c.get("fecha", "")
+        if fecha:
+            fecha_parsed = parsear_fecha(fecha)
+            if fecha_parsed:
+                fechas_libro.append(fecha_parsed)
+    
+    # Obtener fechas mínimas y máximas
+    fecha_inicio_extracto = min(fechas_extracto).strftime("%d/%m/%Y") if fechas_extracto else "No disponible"
+    fecha_fin_extracto = max(fechas_extracto).strftime("%d/%m/%Y") if fechas_extracto else "No disponible"
+    fecha_inicio_libro = min(fechas_libro).strftime("%d/%m/%Y") if fechas_libro else "No disponible"
+    fecha_fin_libro = max(fechas_libro).strftime("%d/%m/%Y") if fechas_libro else "No disponible"
     
     # Obtener columnas únicas del libro de compras
     columnas_libro = []

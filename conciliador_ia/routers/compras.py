@@ -149,7 +149,8 @@ async def procesar_compras(extracto_path: str, libro_path: str, empresa: str) ->
 
 def extraer_datos_extracto_compras(pdf_path: str) -> List[Dict[str, Any]]:
     """
-    Extrae datos del PDF de extracto de compras
+    Extrae datos del PDF de extracto de compras (Galicia)
+    Filtra solo transferencias y pagos a proveedores (excluye impuestos y comisiones)
     """
     compras = []
     
@@ -161,8 +162,22 @@ def extraer_datos_extracto_compras(pdf_path: str) -> List[Dict[str, Any]]:
                     # Procesar texto para extraer compras
                     lines = text.split('\n')
                     for line in lines:
-                        # Buscar cualquier línea que contenga números (montos) y fechas
-                        if any(char.isdigit() for char in line):
+                        # Filtrar solo transferencias y pagos a proveedores
+                        # Excluir impuestos, comisiones, retenciones, etc.
+                        line_lower = line.lower()
+                        
+                        # Palabras clave que indican pagos a proveedores
+                        proveedor_keywords = ['transferencia', 'pago', 'proveedor', 'factura', 'compra']
+                        
+                        # Palabras clave que indican impuestos/comisiones (excluir)
+                        exclusion_keywords = ['impuesto', 'iva', 'iibb', 'ganancias', 'comisión', 'retención', 
+                                            'percepción', 'afip', 'arba', 'agip', 'interés', 'costo financiero']
+                        
+                        # Verificar si es un pago a proveedor y no un impuesto/comisión
+                        is_proveedor = any(keyword in line_lower for keyword in proveedor_keywords)
+                        is_exclusion = any(keyword in line_lower for keyword in exclusion_keywords)
+                        
+                        if is_proveedor and not is_exclusion and any(char.isdigit() for char in line):
                             compra = parsear_linea_compra(line)
                             if compra:
                                 compras.append(compra)
@@ -175,7 +190,7 @@ def extraer_datos_extracto_compras(pdf_path: str) -> List[Dict[str, Any]]:
                     "fecha": "15/12/2024",
                     "monto": 150000.0,
                     "proveedor": "Proveedor ABC",
-                    "concepto": "Compra de insumos",
+                    "concepto": "Transferencia a proveedor",
                     "numero_factura": "F001-2024",
                     "cuit": "20-12345678-9"
                 },
@@ -183,7 +198,7 @@ def extraer_datos_extracto_compras(pdf_path: str) -> List[Dict[str, Any]]:
                     "fecha": "20/12/2024",
                     "monto": 75000.0,
                     "proveedor": "Servicios XYZ",
-                    "concepto": "Servicios de mantenimiento",
+                    "concepto": "Pago a proveedor",
                     "numero_factura": "F002-2024",
                     "cuit": "20-87654321-0"
                 }
@@ -197,7 +212,7 @@ def extraer_datos_extracto_compras(pdf_path: str) -> List[Dict[str, Any]]:
                 "fecha": "15/12/2024",
                 "monto": 150000.0,
                 "proveedor": "Proveedor ABC",
-                "concepto": "Compra de insumos",
+                "concepto": "Transferencia a proveedor",
                 "numero_factura": "F001-2024",
                 "cuit": "20-12345678-9"
             },
@@ -205,7 +220,7 @@ def extraer_datos_extracto_compras(pdf_path: str) -> List[Dict[str, Any]]:
                 "fecha": "20/12/2024",
                 "monto": 75000.0,
                 "proveedor": "Servicios XYZ",
-                "concepto": "Servicios de mantenimiento",
+                "concepto": "Pago a proveedor",
                 "numero_factura": "F002-2024",
                 "cuit": "20-87654321-0"
             }
@@ -215,17 +230,40 @@ def extraer_datos_extracto_compras(pdf_path: str) -> List[Dict[str, Any]]:
 
 def cargar_libro_compras(excel_path: str) -> List[Dict[str, Any]]:
     """
-    Carga datos del libro de compras en Excel
+    Carga datos del libro de compras en Excel (hoja Acumulativo)
+    Filtra solo registros con Medio de Pago = BCO
     """
     try:
-        # Leer archivo Excel
-        df = pd.read_excel(excel_path)
+        # Leer archivo Excel - intentar leer la hoja "Acumulativo"
+        try:
+            df = pd.read_excel(excel_path, sheet_name="Acumulativo")
+            logger.info("Leyendo hoja 'Acumulativo'")
+        except:
+            # Si no existe la hoja Acumulativo, leer la primera hoja
+            df = pd.read_excel(excel_path)
+            logger.info("Leyendo primera hoja del Excel")
         
         logger.info(f"Columnas encontradas en Excel: {list(df.columns)}")
         
+        # Buscar columna de Medio de Pago
+        medio_pago_col = None
+        for col in df.columns:
+            if 'medio' in col.lower() and 'pago' in col.lower():
+                medio_pago_col = col
+                break
+        
+        if medio_pago_col:
+            # Filtrar solo registros con Medio de Pago = BCO
+            df_filtrado = df[df[medio_pago_col].str.contains('BCO', case=False, na=False)]
+            logger.info(f"Filtrado por Medio de Pago = BCO: {len(df_filtrado)} registros de {len(df)} total")
+        else:
+            # Si no se encuentra la columna, usar todos los datos
+            df_filtrado = df
+            logger.warning("No se encontró columna 'Medio de Pago', usando todos los datos")
+        
         # Convertir a lista de diccionarios
         compras = []
-        for _, row in df.iterrows():
+        for _, row in df_filtrado.iterrows():
             # Buscar columnas con diferentes nombres posibles
             fecha = None
             for col in df.columns:
@@ -235,13 +273,13 @@ def cargar_libro_compras(excel_path: str) -> List[Dict[str, Any]]:
             
             proveedor = None
             for col in df.columns:
-                if 'proveedor' in col.lower() or 'supplier' in col.lower() or 'vendor' in col.lower():
+                if 'proveedor' in col.lower() or 'supplier' in col.lower() or 'vendor' in col.lower() or 'razón' in col.lower():
                     proveedor = row[col]
                     break
             
             monto = None
             for col in df.columns:
-                if 'monto' in col.lower() or 'amount' in col.lower() or 'total' in col.lower():
+                if 'monto' in col.lower() or 'amount' in col.lower() or 'total' in col.lower() or 'importe' in col.lower():
                     monto = row[col]
                     break
             
@@ -449,8 +487,10 @@ def calcular_score_coincidencia(compra_extracto: Dict, compra_libro: Dict) -> fl
                 
                 if diferencia_dias == 0:
                     score += 0.3
-                elif diferencia_dias <= 3:
-                    score += 0.15
+                elif diferencia_dias <= 2:  # Tolerancia de 1-2 días como especificaste
+                    score += 0.2
+                elif diferencia_dias <= 5:
+                    score += 0.1
         except Exception as e:
             logger.warning(f"Error comparando fechas: {e}")
             pass

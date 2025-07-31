@@ -77,6 +77,30 @@ export interface ConciliacionResponse {
   tiempo_procesamiento: number;
 }
 
+export interface CompraItem {
+  fecha_compra: string;
+  concepto_compra: string;
+  monto_compra: number;
+  proveedor_compra: string;
+  numero_factura?: string;
+  proveedor_libro?: string;
+  estado: 'conciliado' | 'parcial' | 'pendiente';
+  explicacion?: string;
+  confianza?: number;
+}
+
+export interface ComprasResponse {
+  success: boolean;
+  message: string;
+  total_compras: number;
+  compras_conciliadas: number;
+  compras_pendientes: number;
+  compras_parciales: number;
+  items: CompraItem[];
+  tiempo_procesamiento: number;
+  analisis_datos?: any;
+}
+
 export const apiService = {
   // Subir extracto bancario
   uploadExtracto: async (file: File): Promise<UploadResponse> => {
@@ -174,6 +198,52 @@ export const apiService = {
   healthCheck: async () => {
     const response = await axios.get(`${API_BASE_URL.replace('/api/v1', '')}/health`);
     return response.data;
+  },
+
+  // ===== MÉTODOS PARA COMPRAS =====
+  
+  // Procesar conciliación de compras inmediatamente
+  procesarComprasInmediato: async (extractoComprasFile: File, libroComprasFile: File, empresaId: string): Promise<ComprasResponse> => {
+    try {
+      console.log('Procesando compras inmediatamente para empresa:', empresaId);
+      const formData = new FormData();
+      formData.append('extracto_compras', extractoComprasFile);
+      formData.append('libro_compras', libroComprasFile);
+      formData.append('empresa', empresaId);
+      
+      const response = await api.post('/compras/procesar-inmediato', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Procesamiento de compras success:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error en procesamiento de compras:', error);
+      throw error;
+    }
+  },
+
+  // Subir archivos de compras
+  uploadComprasFiles: async (extractoComprasFile: File, libroComprasFile: File, empresaId: string): Promise<any> => {
+    try {
+      const formData = new FormData();
+      formData.append('extracto_compras', extractoComprasFile);
+      formData.append('libro_compras', libroComprasFile);
+      formData.append('empresa', empresaId);
+      
+      const response = await api.post('/compras/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error subiendo archivos de compras:', error);
+      throw error;
+    }
   },
 };
 

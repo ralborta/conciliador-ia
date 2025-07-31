@@ -9,7 +9,8 @@ import {
   HelpCircle, 
   Upload,
   History,
-  Users
+  Users,
+  ShoppingCart
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -30,6 +31,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       icon: Upload,
       label: 'Nueva Conciliación',
       href: '/nueva-conciliacion'
+    },
+    {
+      icon: ShoppingCart,
+      label: 'Conciliación de Compras',
+      href: '/compras'
     },
     {
       icon: History,

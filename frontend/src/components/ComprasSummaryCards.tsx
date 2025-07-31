@@ -23,12 +23,18 @@ const ComprasSummaryCards: React.FC<ComprasSummaryCardsProps> = ({
   comprasPendientes,
   comprasParciales
 }) => {
-  const porcentajeConciliacion = totalCompras > 0 ? (comprasConciliadas / totalCompras) * 100 : 0;
+  // Validar que los valores sean números válidos
+  const total = Number(totalCompras) || 0;
+  const conciliadas = Number(comprasConciliadas) || 0;
+  const pendientes = Number(comprasPendientes) || 0;
+  const parciales = Number(comprasParciales) || 0;
+  
+  const porcentajeConciliacion = total > 0 ? (conciliadas / total) * 100 : 0;
 
   const cards = [
     {
       title: 'Total de Compras',
-      value: totalCompras.toLocaleString(),
+      value: total.toLocaleString(),
       icon: ShoppingCart,
       color: 'bg-blue-500',
       bgColor: 'bg-blue-50',
@@ -37,7 +43,7 @@ const ComprasSummaryCards: React.FC<ComprasSummaryCardsProps> = ({
     },
     {
       title: 'Compras Conciliadas',
-      value: comprasConciliadas.toLocaleString(),
+      value: conciliadas.toLocaleString(),
       icon: CheckCircle,
       color: 'bg-green-500',
       bgColor: 'bg-green-50',
@@ -47,7 +53,7 @@ const ComprasSummaryCards: React.FC<ComprasSummaryCardsProps> = ({
     },
     {
       title: 'Compras Pendientes',
-      value: comprasPendientes.toLocaleString(),
+      value: pendientes.toLocaleString(),
       icon: Clock,
       color: 'bg-red-500',
       bgColor: 'bg-red-50',
@@ -56,7 +62,7 @@ const ComprasSummaryCards: React.FC<ComprasSummaryCardsProps> = ({
     },
     {
       title: 'Compras Parciales',
-      value: comprasParciales.toLocaleString(),
+      value: parciales.toLocaleString(),
       icon: AlertCircle,
       color: 'bg-yellow-500',
       bgColor: 'bg-yellow-50',
@@ -88,7 +94,7 @@ const ComprasSummaryCards: React.FC<ComprasSummaryCardsProps> = ({
           </div>
           
           {/* Barra de progreso para compras conciliadas */}
-          {card.title === 'Compras Conciliadas' && totalCompras > 0 && (
+          {card.title === 'Compras Conciliadas' && total > 0 && (
             <div className="mt-4">
               <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
                 <span>Progreso de conciliación</span>

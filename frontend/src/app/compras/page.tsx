@@ -194,12 +194,28 @@ export default function ComprasPage() {
       setInconsistencies(detectedInconsistencies);
 
       if (data.success) {
+        // Validar que los datos existen y tienen la estructura correcta
+        const totalCompras = data.total_compras || 0;
+        const comprasConciliadas = data.compras_conciliadas || 0;
+        const comprasPendientes = data.compras_pendientes || 0;
+        const comprasParciales = data.compras_parciales || 0;
+        const items = Array.isArray(data.items) ? data.items : [];
+        
+        console.log('Datos recibidos del backend:', {
+          totalCompras,
+          comprasConciliadas,
+          comprasPendientes,
+          comprasParciales,
+          itemsCount: items.length,
+          items: items
+        });
+        
         setConciliacionResult({
-          totalCompras: data.total_compras,
-          comprasConciliadas: data.compras_conciliadas,
-          comprasPendientes: data.compras_pendientes,
-          comprasParciales: data.compras_parciales,
-          items: data.items,
+          totalCompras,
+          comprasConciliadas,
+          comprasPendientes,
+          comprasParciales,
+          items,
         });
         
         // Guardar análisis de datos si está disponible
@@ -240,7 +256,11 @@ export default function ComprasPage() {
           ]
         });
         
-        toast.success('Conciliación de compras procesada exitosamente');
+        if (totalCompras === 0) {
+          toast.warning('No se encontraron compras para procesar. Verifica que los archivos contengan datos válidos.');
+        } else {
+          toast.success('Conciliación de compras procesada exitosamente');
+        }
       } else {
         throw new Error(data.message || 'Error desconocido en la conciliación');
       }

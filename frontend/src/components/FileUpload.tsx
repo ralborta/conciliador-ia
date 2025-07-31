@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 
 interface FileUploadProps {
   title: string;
+  description?: string;
   acceptedTypes: string[];
   onFileUpload: (file: File) => Promise<void>;
   uploadedFile?: File | string;
@@ -15,6 +16,7 @@ interface FileUploadProps {
 
 const FileUpload: React.FC<FileUploadProps> = ({
   title,
+  description,
   acceptedTypes,
   onFileUpload,
   uploadedFile,
@@ -54,7 +56,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div className="card">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      {description && (
+        <p className="text-sm text-gray-600 mb-4">{description}</p>
+      )}
       
       {uploadedFile ? (
         <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">

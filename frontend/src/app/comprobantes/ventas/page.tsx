@@ -4,9 +4,9 @@ import React from 'react';
 import FileUpload from '@/components/FileUpload';
 
 export default function VentasPage() {
-  const handleFileUpload = async (files: FileList) => {
+  const handleFileUpload = async (file: File) => {
     // TODO: Implementar la lógica de carga de archivos
-    console.log('Archivos seleccionados:', files);
+    console.log('Archivo seleccionado:', file);
   };
 
   return (
@@ -16,8 +16,9 @@ export default function VentasPage() {
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="max-w-xl mx-auto">
           <FileUpload 
-            onFileSelect={handleFileUpload}
-            acceptedFileTypes=".pdf,.xls,.xlsx"
+            title="Comprobantes de Ventas"
+            onFileUpload={handleFileUpload}
+            acceptedTypes={['application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']}
             description="Arrastra aquí tus comprobantes de ventas o haz clic para seleccionarlos"
           />
         </div>

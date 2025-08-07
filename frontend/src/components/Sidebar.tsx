@@ -13,7 +13,8 @@ import {
   ShoppingCart,
   Receipt,
   FileCheck,
-  FileInput
+  FileInput,
+  FileSpreadsheet
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -54,6 +55,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           href: '/comprobantes/compras'
         }
       ]
+    },
+    {
+      icon: FileSpreadsheet,
+      label: 'ARCA-Xubio',
+      href: '/arca-xubio'
     },
     {
       icon: Upload,

@@ -7,7 +7,7 @@ import ProcessingCard from '@/components/arca-xubio/ProcessingCard';
 import ErrorSummary from '@/components/arca-xubio/ErrorSummary';
 import ProcessingTimeline from '@/components/arca-xubio/ProcessingTimeline';
 import { Button } from '@/components/ui/button';
-import { Download, Upload } from 'lucide-react';
+import { Download, Upload, ArrowRight } from 'lucide-react';
 import { apiService, ARCAProcessingResponse } from '@/services/api';
 import toast from 'react-hot-toast';
 

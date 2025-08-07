@@ -79,8 +79,37 @@ export default function ARCAXubioPage() {
       status: 'processing'
     });
 
+    // Mostrar feedback inicial
+    setTimelineEvents([
+      {
+        id: '1',
+        timestamp: new Date().toLocaleTimeString(),
+        status: 'pending',
+        title: 'Iniciando procesamiento',
+        description: 'Preparando archivos para análisis...'
+      }
+    ]);
+
     try {
+      // Actualizar timeline con inicio de carga
+      setTimelineEvents(prev => [...prev, {
+        id: '2',
+        timestamp: new Date().toLocaleTimeString(),
+        status: 'pending',
+        title: 'Subiendo archivos',
+        description: 'Enviando archivos al servidor...'
+      }]);
+
       const result = await apiService.procesarVentasARCA(arcaFile, clientFile || undefined);
+      
+      // Actualizar timeline con éxito de carga
+      setTimelineEvents(prev => [...prev, {
+        id: '3',
+        timestamp: new Date().toLocaleTimeString(),
+        status: 'completed',
+        title: 'Archivos procesados',
+        description: `Se procesaron ${result.total_processed} registros exitosamente`
+      }]);
       
       setProcessingResult(result);
       
@@ -143,6 +172,16 @@ export default function ARCAXubioPage() {
       toast.success('Procesamiento completado exitosamente');
     } catch (error: any) {
       console.error('Error procesando archivos:', error);
+      
+      // Actualizar timeline con error
+      setTimelineEvents(prev => [...prev, {
+        id: '4',
+        timestamp: new Date().toLocaleTimeString(),
+        status: 'error',
+        title: 'Error en el procesamiento',
+        description: error.userMessage || 'Error procesando archivos'
+      }]);
+
       toast.error(error.userMessage || 'Error procesando archivos');
       
       setProcessingStatus({

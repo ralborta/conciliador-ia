@@ -7,7 +7,7 @@ console.log('API URL:', API_BASE_URL); // Debug log - FORCE VERCEL DEPLOY V4 - I
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 120000, // Aumentar a 2 minutos para archivos grandes
+  timeout: 300000, // Aumentar a 5 minutos para archivos grandes
   headers: {
     'Content-Type': 'application/json',
   },

@@ -1,6 +1,16 @@
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 
+class ConciliacionRequest(BaseModel):
+    extracto_path: str
+    comprobantes_path: str
+    empresa_id: Optional[str] = None
+
+class ErrorResponse(BaseModel):
+    success: bool = False
+    error: str
+    details: Optional[str] = None
+
 class ConciliacionItem(BaseModel):
     fecha_movimiento: str
     concepto_movimiento: str

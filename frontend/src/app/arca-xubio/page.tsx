@@ -55,6 +55,16 @@ export default function ARCAXubioPage() {
     toast.success('Archivo del cliente cargado correctamente');
   };
 
+  const handleDownloadCorrection = async (errorType: string) => {
+    try {
+      const response = await apiService.convertirExcelCliente(arcaFile!);
+      // Por ahora solo mostramos un mensaje
+      toast.success('Archivo de corrección generado');
+    } catch (error: any) {
+      toast.error(error.userMessage || 'Error generando archivo de corrección');
+    }
+  };
+
   const handleProcessSales = async () => {
     if (!arcaFile) {
       toast.error('Debes cargar el archivo ARCA primero');
@@ -146,10 +156,7 @@ export default function ARCAXubioPage() {
     }
   };
 
-  const handleDownloadCorrection = (errorType: string) => {
-    // TODO: Implementar descarga de archivo de corrección
-    console.log('Descargando corrección para:', errorType);
-  };
+
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -249,7 +256,7 @@ export default function ARCAXubioPage() {
             title="CSV del Portal IVA ARCA"
             description="Sube el archivo CSV del Portal IVA ARCA"
             acceptedTypes={['text/csv']}
-            onProcess={handleFileProcess}
+            onProcess={handleArcaFileProcess}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

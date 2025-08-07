@@ -39,12 +39,13 @@ app.add_middleware(
 )
 
 # Importar routers DESPUÉS de CORS
-from routers import upload, conciliacion, compras
+from routers import upload, conciliacion, compras, arca_xubio
 
 # INCLUIR RUTAS DESPUÉS DE CORS
 app.include_router(upload.router, prefix="/api/v1")
 app.include_router(conciliacion.router, prefix="/api/v1")
 app.include_router(compras.router, prefix="/api/v1")
+app.include_router(arca_xubio.router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup_event():

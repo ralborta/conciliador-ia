@@ -45,23 +45,31 @@ const ProcessingCard: React.FC<ProcessingCardProps> = ({
   };
 
   return (
-    <div className={`rounded-lg border p-4 ${getStatusColor()}`}>
-      <div className="flex items-center justify-between mb-3">
+    <div className={`rounded-lg border p-6 ${getStatusColor()} hover:shadow-lg transition-all duration-300 transform hover:scale-105`}>
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">{title}</h3>
-        {getStatusIcon()}
+        <div className="animate-pulse">
+          {getStatusIcon()}
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <div>
-          <p className="text-sm text-gray-600">Total</p>
-          <p className="text-2xl font-bold">{total}</p>
+        <div className="text-center">
+          <p className="text-sm text-gray-600 mb-1">Total</p>
+          <p className="text-3xl font-bold bg-gradient-to-r from-gray-700 to-gray-900 bg-clip-text text-transparent">
+            {total}
+          </p>
         </div>
-        <div>
-          <p className="text-sm text-gray-600">Procesados</p>
-          <p className="text-2xl font-bold text-green-600">{processed}</p>
+        <div className="text-center">
+          <p className="text-sm text-gray-600 mb-1">Procesados</p>
+          <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
+            {processed}
+          </p>
         </div>
-        <div>
-          <p className="text-sm text-gray-600">Errores</p>
-          <p className="text-2xl font-bold text-red-600">{errors}</p>
+        <div className="text-center">
+          <p className="text-sm text-gray-600 mb-1">Errores</p>
+          <p className="text-3xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">
+            {errors}
+          </p>
         </div>
       </div>
     </div>

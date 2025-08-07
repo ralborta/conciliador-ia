@@ -1,6 +1,27 @@
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 
+class ConciliacionItem(BaseModel):
+    fecha_movimiento: str
+    concepto_movimiento: str
+    monto_movimiento: float
+    tipo_movimiento: str
+    numero_comprobante: Optional[str] = None
+    cliente_comprobante: Optional[str] = None
+    estado: str
+    explicacion: Optional[str] = None
+    confianza: Optional[float] = None
+
+class ConciliacionResponse(BaseModel):
+    success: bool
+    message: str
+    total_movimientos: int
+    movimientos_conciliados: int
+    movimientos_pendientes: int
+    movimientos_parciales: int
+    items: List[ConciliacionItem]
+    tiempo_procesamiento: float
+
 class ConversionResponse(BaseModel):
     conversion_status: str
     original_rows: Optional[int] = None

@@ -160,14 +160,19 @@ export default function ARCAXubioPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestión ARCA-Xubio</h1>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Gestión ARCA-Xubio
+          </h1>
+          <p className="text-gray-600 mt-2">Procesamiento inteligente de comprobantes</p>
+        </div>
         <div className="flex space-x-4">
-          <Button variant="outline" className="flex items-center space-x-2">
+          <Button variant="outline" className="flex items-center space-x-2 hover:bg-blue-50 transition-colors">
             <Upload className="w-4 h-4" />
             <span>Subir a Xubio</span>
           </Button>
-          <Button variant="outline" className="flex items-center space-x-2">
+          <Button variant="outline" className="flex items-center space-x-2 hover:bg-green-50 transition-colors">
             <Download className="w-4 h-4" />
             <span>Descargar Archivo Final</span>
           </Button>
@@ -175,9 +180,19 @@ export default function ARCAXubioPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="ventas">VENTAS</TabsTrigger>
-          <TabsTrigger value="compras">COMPRAS</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-lg">
+          <TabsTrigger 
+            value="ventas" 
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+          >
+            VENTAS
+          </TabsTrigger>
+          <TabsTrigger 
+            value="compras"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+          >
+            COMPRAS
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="ventas" className="space-y-6">
@@ -201,9 +216,23 @@ export default function ARCAXubioPage() {
             <Button
               onClick={handleProcessSales}
               disabled={!arcaFile || isProcessing}
-              className="px-8 py-3 text-lg"
+              className={`px-8 py-4 text-lg font-semibold transition-all duration-300 transform ${
+                !arcaFile || isProcessing 
+                  ? 'bg-gray-300 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:scale-105 shadow-lg hover:shadow-xl'
+              }`}
             >
-              {isProcessing ? 'Procesando...' : 'Procesar Ventas'}
+              {isProcessing ? (
+                <div className="flex items-center space-x-3">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Procesando archivos...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-3">
+                  <span>Procesar Ventas</span>
+                  <ArrowRight className="w-5 h-5" />
+                </div>
+              )}
             </Button>
           </div>
 

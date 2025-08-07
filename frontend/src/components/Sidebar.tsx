@@ -10,9 +10,20 @@ import {
   Upload,
   History,
   Users,
-  ShoppingCart
+  ShoppingCart,
+  Receipt,
+  FileCheck,
+  FileInput
 } from 'lucide-react';
 import Link from 'next/link';
+
+interface MenuItem {
+  icon: React.ElementType;
+  label: string;
+  href: string;
+  active?: boolean;
+  subItems?: MenuItem[];
+}
 
 interface SidebarProps {
   isOpen: boolean;
@@ -20,12 +31,29 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     {
       icon: Home,
       label: 'Dashboard',
       href: '/',
       active: true
+    },
+    {
+      icon: Receipt,
+      label: 'Comprobantes',
+      href: '#',
+      subItems: [
+        {
+          icon: FileCheck,
+          label: 'Ventas',
+          href: '/comprobantes/ventas'
+        },
+        {
+          icon: FileInput,
+          label: 'Compras',
+          href: '/comprobantes/compras'
+        }
+      ]
     },
     {
       icon: Upload,
@@ -103,19 +131,47 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <ul className="space-y-2">
             {menuItems.map((item) => (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`
-                    flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200
-                    ${item.active 
-                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600' 
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                    }
-                  `}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
-                </Link>
+                {item.subItems ? (
+                  <div className="space-y-1">
+                    <div className={`
+                      flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200
+                      text-gray-700 font-medium
+                    `}>
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.label}</span>
+                    </div>
+                    <ul className="ml-6 space-y-1">
+                      {item.subItems.map((subItem) => (
+                        <li key={subItem.href}>
+                          <Link
+                            href={subItem.href}
+                            className={`
+                              flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200
+                              text-gray-600 hover:bg-gray-50 hover:text-gray-900
+                            `}
+                          >
+                            <subItem.icon className="w-4 h-4" />
+                            <span className="font-medium">{subItem.label}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className={`
+                      flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200
+                      ${item.active 
+                        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600' 
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                      }
+                    `}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                )}
               </li>
             ))}
           </ul>

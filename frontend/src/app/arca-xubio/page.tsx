@@ -8,6 +8,8 @@ import ErrorSummary from '@/components/arca-xubio/ErrorSummary';
 import ProcessingTimeline from '@/components/arca-xubio/ProcessingTimeline';
 import { Button } from '@/components/ui/button';
 import { Download, Upload } from 'lucide-react';
+import { apiService, ARCAProcessingResponse } from '@/services/api';
+import toast from 'react-hot-toast';
 
 export default function ARCAXubioPage() {
   const [activeTab, setActiveTab] = useState('ventas');
@@ -38,9 +40,110 @@ export default function ARCAXubioPage() {
     items: Array<{ id: string; description: string; }>;
   }>>([]);
 
-  const handleFileProcess = async (file: File) => {
-    // TODO: Implementar lógica de procesamiento
-    console.log('Procesando archivo:', file);
+  const [arcaFile, setArcaFile] = useState<File | null>(null);
+  const [clientFile, setClientFile] = useState<File | null>(null);
+  const [processingResult, setProcessingResult] = useState<ARCAProcessingResponse | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleArcaFileProcess = async (file: File) => {
+    setArcaFile(file);
+    toast.success('Archivo ARCA cargado correctamente');
+  };
+
+  const handleClientFileProcess = async (file: File) => {
+    setClientFile(file);
+    toast.success('Archivo del cliente cargado correctamente');
+  };
+
+  const handleProcessSales = async () => {
+    if (!arcaFile) {
+      toast.error('Debes cargar el archivo ARCA primero');
+      return;
+    }
+
+    setIsProcessing(true);
+    setProcessingStatus({
+      total: 0,
+      processed: 0,
+      errors: 0,
+      status: 'processing'
+    });
+
+    try {
+      const result = await apiService.procesarVentasARCA(arcaFile, clientFile || undefined);
+      
+      setProcessingResult(result);
+      
+      // Actualizar estado de procesamiento
+      setProcessingStatus({
+        total: result.total_processed,
+        processed: result.total_processed,
+        errors: result.errors.type_1.length + result.errors.type_2.length + result.errors.type_3.length,
+        status: result.status === 'success' ? 'success' : 'error'
+      });
+
+      // Actualizar timeline
+      setTimelineEvents([
+        {
+          id: '1',
+          timestamp: new Date().toLocaleTimeString(),
+          status: 'completed',
+          title: 'Archivos procesados',
+          description: `Procesados ${result.total_processed} registros`
+        }
+      ]);
+
+      // Actualizar errores
+      const errorList = [];
+      if (result.errors.type_1.length > 0) {
+        errorList.push({
+          type: 'type_1',
+          message: 'Comprobantes mal emitidos',
+          count: result.errors.type_1.length,
+          items: result.errors.type_1.map((err, index) => ({
+            id: `1-${index}`,
+            description: `Error tipo 1 - ${err}`
+          }))
+        });
+      }
+      if (result.errors.type_2.length > 0) {
+        errorList.push({
+          type: 'type_2',
+          message: 'Consumidores finales no registrados',
+          count: result.errors.type_2.length,
+          items: result.errors.type_2.map((err, index) => ({
+            id: `2-${index}`,
+            description: `Error tipo 2 - ${err}`
+          }))
+        });
+      }
+      if (result.errors.type_3.length > 0) {
+        errorList.push({
+          type: 'type_3',
+          message: 'Comprobantes con doble alícuota',
+          count: result.errors.type_3.length,
+          items: result.errors.type_3.map((err, index) => ({
+            id: `3-${index}`,
+            description: `Error tipo 3 - ${err}`
+          }))
+        });
+      }
+      setErrors(errorList);
+
+      toast.success('Procesamiento completado exitosamente');
+    } catch (error: any) {
+      console.error('Error procesando archivos:', error);
+      toast.error(error.userMessage || 'Error procesando archivos');
+      
+      setProcessingStatus({
+        total: 0,
+        processed: 0,
+        errors: 1,
+        status: 'error'
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleDownloadCorrection = (errorType: string) => {
@@ -73,40 +176,62 @@ export default function ARCAXubioPage() {
         <TabsContent value="ventas" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FileProcessor
-              title="Excel Original del Cliente"
-              description="Sube el archivo Excel original (ej: Smart IT formato original)"
-              acceptedTypes={['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']}
-              onProcess={handleFileProcess}
-            />
-            <FileProcessor
               title="CSV de ARCA"
               description="Sube el archivo CSV de 'Mis comprobantes ARCA'"
               acceptedTypes={['text/csv']}
-              onProcess={handleFileProcess}
+              onProcess={handleArcaFileProcess}
+            />
+            <FileProcessor
+              title="Excel Original del Cliente"
+              description="Sube el archivo Excel original (ej: Smart IT formato original)"
+              acceptedTypes={['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']}
+              onProcess={handleClientFileProcess}
+              isOptional={true}
             />
           </div>
 
-          <FileProcessor
-            title="Archivos de Doble Alícuota"
-            description="Sube los archivos de doble alícuota si los tienes"
-            acceptedTypes={['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']}
-            onProcess={handleFileProcess}
-            isOptional={true}
-          />
+          <div className="flex justify-center">
+            <Button
+              onClick={handleProcessSales}
+              disabled={!arcaFile || isProcessing}
+              className="px-8 py-3 text-lg"
+            >
+              {isProcessing ? 'Procesando...' : 'Procesar Ventas'}
+            </Button>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ProcessingCard
-              title="Estado del Procesamiento"
-              total={processingStatus.total}
-              processed={processingStatus.processed}
-              errors={processingStatus.errors}
-              status={processingStatus.status}
-            />
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Línea de Tiempo</h3>
-              <ProcessingTimeline events={timelineEvents} />
+          {processingResult && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ProcessingCard
+                title="Estado del Procesamiento"
+                total={processingStatus.total}
+                processed={processingStatus.processed}
+                errors={processingStatus.errors}
+                status={processingStatus.status}
+              />
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-semibold mb-4">Resumen</h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-600">Archivo ARCA:</p>
+                    <p className="font-medium">{processingResult.summary.arca_file.total_rows} registros</p>
+                    <p className="text-xs text-gray-500">
+                      Columnas: {processingResult.summary.arca_file.columns_found.join(', ')}
+                    </p>
+                  </div>
+                  {processingResult.summary.client_file.processed && (
+                    <div>
+                      <p className="text-sm text-gray-600">Archivo Cliente:</p>
+                      <p className="font-medium">{processingResult.summary.client_file.total_rows} registros</p>
+                      <p className="text-xs text-gray-500">
+                        Columnas: {processingResult.summary.client_file.columns_found.join(', ')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {errors.length > 0 && (
             <div className="mt-6">

@@ -101,6 +101,38 @@ export interface ComprasResponse {
   analisis_datos?: any;
 }
 
+// ARCA-Xubio interfaces
+export interface ARCAProcessingResponse {
+  status: string;
+  total_processed: number;
+  summary: {
+    arca_file: {
+      total_rows: number;
+      columns_found: string[];
+      date_range: {
+        from: string | null;
+        to: string | null;
+      };
+    };
+    client_file: {
+      processed: boolean;
+      total_rows: number;
+      columns_found: string[];
+      date_range: {
+        from: string | null;
+        to: string | null;
+      };
+    };
+  };
+  errors: {
+    type_1: any[];
+    type_2: any[];
+    type_3: any[];
+  };
+  generated_files: string[];
+  log: string[];
+}
+
 export const apiService = {
   // Subir extracto bancario
   uploadExtracto: async (file: File): Promise<UploadResponse> => {
@@ -242,6 +274,53 @@ export const apiService = {
       return response.data;
     } catch (error) {
       console.error('Error subiendo archivos de compras:', error);
+      throw error;
+    }
+  },
+
+  // ===== MÉTODOS PARA ARCA-XUBIO =====
+  
+  // Procesar archivos de ventas ARCA-Xubio
+  procesarVentasARCA: async (arcaFile: File, clientFile?: File): Promise<ARCAProcessingResponse> => {
+    try {
+      console.log('Procesando archivos de ventas ARCA-Xubio');
+      const formData = new FormData();
+      formData.append('arca_file', arcaFile);
+      if (clientFile) {
+        formData.append('client_file', clientFile);
+      }
+      
+      const response = await api.post('/arca-xubio/process-sales', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Procesamiento ARCA-Xubio success:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error en procesamiento ARCA-Xubio:', error);
+      throw error;
+    }
+  },
+
+  // Convertir Excel del cliente
+  convertirExcelCliente: async (excelFile: File): Promise<any> => {
+    try {
+      console.log('Convirtiendo Excel del cliente');
+      const formData = new FormData();
+      formData.append('excel_file', excelFile);
+      
+      const response = await api.post('/arca-xubio/convert-client-excel', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Conversión Excel success:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error en conversión Excel:', error);
       throw error;
     }
   },

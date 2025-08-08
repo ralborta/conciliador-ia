@@ -9,6 +9,7 @@ import ProcessingTimeline from '@/components/arca-xubio/ProcessingTimeline';
 import ProcessingSummary from '@/components/arca-xubio/ProcessingSummary';
 import { Button } from '@/components/ui/button';
 import { Download, Upload, ArrowRight, Sparkles } from 'lucide-react';
+import ProcessingProgress from '@/components/arca-xubio/ProcessingProgress';
 import { apiService, ARCAProcessingResponse } from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -45,6 +46,7 @@ export default function ARCAXubioPage() {
   const [clientFile, setClientFile] = useState<File | null>(null);
   const [processingResult, setProcessingResult] = useState<ARCAProcessingResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
 
   const handleArcaFileProcess = async (file: File) => {
     setArcaFile(file);
@@ -92,16 +94,42 @@ export default function ARCAXubioPage() {
     ]);
 
     try {
-      // Actualizar timeline con inicio de carga
+      // Paso 1: Validando archivos
+      setCurrentStep(0);
       setTimelineEvents(prev => [...prev, {
         id: '2',
         timestamp: new Date().toLocaleTimeString(),
         status: 'pending',
-        title: 'Subiendo archivos',
-        description: 'Enviando archivos al servidor...'
+        title: 'Validando archivos',
+        description: 'Verificando formato y estructura...'
+      }]);
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simular validación
+
+      // Paso 2: Analizando contenido
+      setCurrentStep(1);
+      setTimelineEvents(prev => [...prev, {
+        id: '3',
+        timestamp: new Date().toLocaleTimeString(),
+        status: 'pending',
+        title: 'Analizando contenido',
+        description: 'Extrayendo información relevante...'
+      }]);
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simular análisis
+
+      // Paso 3: Procesando datos
+      setCurrentStep(2);
+      setTimelineEvents(prev => [...prev, {
+        id: '4',
+        timestamp: new Date().toLocaleTimeString(),
+        status: 'pending',
+        title: 'Procesando datos',
+        description: 'Aplicando reglas de negocio...'
       }]);
 
       const result = await apiService.procesarVentasARCA(arcaFile, clientFile || undefined);
+
+      // Paso 4: Finalizando
+      setCurrentStep(3);
       
       // Actualizar timeline con éxito de carga
       setTimelineEvents(prev => [...prev, {
@@ -252,28 +280,37 @@ export default function ARCAXubioPage() {
             />
           </div>
 
-          <div className="flex justify-center">
-            <Button
-              onClick={handleProcessSales}
-              disabled={!arcaFile || isProcessing}
-              className={`px-8 py-4 text-lg font-semibold transition-all duration-300 transform ${
-                !arcaFile || isProcessing 
-                  ? 'bg-gray-300 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:scale-105 shadow-lg hover:shadow-xl'
-              }`}
-            >
-              {isProcessing ? (
-                <div className="flex items-center space-x-3">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Procesando archivos...</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-3">
-                  <span>Procesar Ventas</span>
-                  <ArrowRight className="w-5 h-5" />
-                </div>
-              )}
-            </Button>
+          <div className="space-y-6">
+            <div className="flex justify-center">
+              <Button
+                onClick={handleProcessSales}
+                disabled={!arcaFile || isProcessing}
+                className={`px-8 py-4 text-lg font-semibold transition-all duration-300 transform ${
+                  !arcaFile || isProcessing 
+                    ? 'bg-gray-300 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:scale-105 shadow-lg hover:shadow-xl'
+                }`}
+              >
+                {isProcessing ? (
+                  <div className="flex items-center space-x-3">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Procesando archivos...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-3">
+                    <span>Procesar Ventas</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </div>
+                )}
+              </Button>
+            </div>
+
+            {isProcessing && (
+              <ProcessingProgress
+                currentStep={currentStep}
+                isProcessing={isProcessing}
+              />
+            )}
           </div>
 
           {processingResult && (

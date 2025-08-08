@@ -103,7 +103,6 @@ export default function ARCAXubioPage() {
         title: 'Validando archivos',
         description: 'Verificando formato y estructura...'
       }]);
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simular validación
 
       // Paso 2: Analizando contenido
       setCurrentStep(1);
@@ -114,7 +113,6 @@ export default function ARCAXubioPage() {
         title: 'Analizando contenido',
         description: 'Extrayendo información relevante...'
       }]);
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simular análisis
 
       // Paso 3: Procesando datos
       setCurrentStep(2);

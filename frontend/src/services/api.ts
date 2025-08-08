@@ -7,7 +7,9 @@ console.log('API URL:', API_BASE_URL); // Debug log - FORCE VERCEL DEPLOY V4 - I
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 300000, // Aumentar a 5 minutos para archivos grandes
+  timeout: 180000, // 3 minutos para archivos grandes
+  maxContentLength: Infinity, // Sin límite de tamaño
+  maxBodyLength: Infinity, // Sin límite de tamaño
   headers: {
     'Content-Type': 'application/json',
   },
@@ -285,14 +287,29 @@ export const apiService = {
     try {
       console.log('Procesando archivos de ventas ARCA-Xubio');
       const formData = new FormData();
+      
+      // Comprimir archivos antes de enviar si son muy grandes
+      if (arcaFile.size > 10 * 1024 * 1024) { // Si es mayor a 10MB
+        console.log('Comprimiendo archivo ARCA...');
+        // TODO: Implementar compresión si es necesario
+      }
       formData.append('arca_file', arcaFile);
+
       if (clientFile) {
+        if (clientFile.size > 10 * 1024 * 1024) {
+          console.log('Comprimiendo archivo del cliente...');
+          // TODO: Implementar compresión si es necesario
+        }
         formData.append('client_file', clientFile);
       }
       
       const response = await api.post('/arca-xubio/process-sales', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total!);
+          console.log(`Progreso de carga: ${percentCompleted}%`);
         },
       });
       

@@ -24,6 +24,9 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p data/uploads
 
+# Add project root to PYTHONPATH
+ENV PYTHONPATH=/app:$PYTHONPATH
+
 # Expose port
 EXPOSE 8000
 

@@ -39,7 +39,7 @@ app.add_middleware(
 )
 
 # Importar routers DESPUÉS de CORS
-from .routers import upload, conciliacion, compras, arca_xubio
+from conciliador_ia.routers import upload, conciliacion, compras, arca_xubio
 
 # INCLUIR RUTAS DESPUÉS DE CORS
 app.include_router(upload.router, prefix="/api/v1")

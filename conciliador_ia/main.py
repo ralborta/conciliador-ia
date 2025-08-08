@@ -143,7 +143,7 @@ if __name__ == "__main__":
     logger.info(f"Iniciando servidor en {host}:{port}")
     
     uvicorn.run(
-        "conciliador_ia.main:app",
+        "main:app",
         host=host,
         port=port,
         reload=debug,

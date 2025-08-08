@@ -19,16 +19,16 @@ COPY requirements_simple.txt .
 RUN pip install --no-cache-dir -r requirements_simple.txt
 
 # Copy the entire application
-COPY . /app/conciliador_ia/
+COPY . .
+
+# Install the package in development mode
+RUN pip install -e .
 
 # Create uploads directory
-RUN mkdir -p /app/conciliador_ia/data/uploads
-
-# Add project root to PYTHONPATH
-ENV PYTHONPATH=/app
+RUN mkdir -p data/uploads
 
 # Expose port
 EXPOSE 8000
 
 # Run the application
-CMD ["uvicorn", "conciliador_ia.main:app", "--host", "0.0.0.0", "--port", "$PORT"] 
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "$PORT"] 

@@ -19,13 +19,13 @@ COPY requirements_simple.txt .
 RUN pip install --no-cache-dir -r requirements_simple.txt
 
 # Copy the entire application
-COPY . .
+COPY . /app/conciliador_ia/
 
 # Create uploads directory
-RUN mkdir -p data/uploads
+RUN mkdir -p /app/conciliador_ia/data/uploads
 
 # Add project root to PYTHONPATH
-ENV PYTHONPATH=/app:$PYTHONPATH
+ENV PYTHONPATH=/app
 
 # Expose port
 EXPOSE 8000

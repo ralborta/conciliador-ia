@@ -6,8 +6,9 @@ import FileProcessor from '@/components/arca-xubio/FileProcessor';
 import ProcessingCard from '@/components/arca-xubio/ProcessingCard';
 import ErrorSummary from '@/components/arca-xubio/ErrorSummary';
 import ProcessingTimeline from '@/components/arca-xubio/ProcessingTimeline';
+import ProcessingSummary from '@/components/arca-xubio/ProcessingSummary';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, ArrowRight } from 'lucide-react';
+import { Download, Upload, ArrowRight, Sparkles } from 'lucide-react';
 import { apiService, ARCAProcessingResponse } from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -276,35 +277,27 @@ export default function ARCAXubioPage() {
           </div>
 
           {processingResult && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ProcessingCard
-                title="Estado del Procesamiento"
-                total={processingStatus.total}
-                processed={processingStatus.processed}
-                errors={processingStatus.errors}
-                status={processingStatus.status}
-              />
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4">Resumen</h3>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-600">Archivo ARCA:</p>
-                    <p className="font-medium">{processingResult.summary.arca_file.total_rows} registros</p>
-                    <p className="text-xs text-gray-500">
-                      Columnas: {processingResult.summary.arca_file.columns_found.join(', ')}
-                    </p>
-                  </div>
-                  {processingResult.summary.client_file.processed && (
-                    <div>
-                      <p className="text-sm text-gray-600">Archivo Cliente:</p>
-                      <p className="font-medium">{processingResult.summary.client_file.total_rows} registros</p>
-                      <p className="text-xs text-gray-500">
-                        Columnas: {processingResult.summary.client_file.columns_found.join(', ')}
-                      </p>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <ProcessingCard
+                  title="Estado del Procesamiento"
+                  total={processingStatus.total}
+                  processed={processingStatus.processed}
+                  errors={processingStatus.errors}
+                  status={processingStatus.status}
+                />
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <Sparkles className="w-5 h-5 text-purple-600" />
                     </div>
-                  )}
+                    <h3 className="text-lg font-semibold">Línea de Tiempo</h3>
+                  </div>
+                  <ProcessingTimeline events={timelineEvents} />
                 </div>
               </div>
+
+              <ProcessingSummary summary={processingResult.summary} />
             </div>
           )}
 

@@ -39,7 +39,7 @@ app.add_middleware(
 )
 
 # Importar routers DESPUÉS de CORS
-from routers import upload, conciliacion, compras, arca_xubio
+from .routers import upload, conciliacion, compras, arca_xubio
 
 # INCLUIR RUTAS DESPUÉS DE CORS
 app.include_router(upload.router, prefix="/api/v1")
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     logger.info(f"Iniciando servidor en {host}:{port}")
     
     uvicorn.run(
-        "main:app",
+        "conciliador_ia.main:app",
         host=host,
         port=port,
         reload=debug,

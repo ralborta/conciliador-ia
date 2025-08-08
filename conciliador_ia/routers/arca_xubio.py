@@ -3,8 +3,8 @@ from typing import List, Optional
 import tempfile
 import os
 import shutil
-from conciliador_ia.services.arca_xubio_service import ARCAXubioService
-from conciliador_ia.models.schemas import ProcessingResponse, ConversionResponse
+from ..services.arca_xubio_service import ARCAXubioService
+from ..models.schemas import ProcessingResponse, ConversionResponse
 
 router = APIRouter(
     prefix="/arca-xubio",

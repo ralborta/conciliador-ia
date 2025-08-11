@@ -7,4 +7,4 @@ PORT=${PORT:-8000}
 echo "Starting server on port $PORT"
 
 # Start the FastAPI application
-exec uvicorn main:app --host 0.0.0.0 --port $PORT 
+exec uvicorn conciliador_ia.main:app --host 0.0.0.0 --port $PORT

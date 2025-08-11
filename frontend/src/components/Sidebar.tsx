@@ -67,6 +67,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       href: '/nueva-conciliacion'
     },
     {
+      icon: FileInput,
+      label: 'Carga de Información',
+      href: '/carga-informacion'
+    },
+    {
       icon: ShoppingCart,
       label: 'Conciliación de Compras',
       href: '/compras'

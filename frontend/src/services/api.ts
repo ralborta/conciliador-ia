@@ -321,6 +321,22 @@ export const apiService = {
     }
   },
 
+  // Procesar CSV ARCA directo (utilidad de carga)
+  procesarCsvArca: async (file: File): Promise<any> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post('/upload/csv-arca', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error procesando CSV ARCA:', error);
+      throw error;
+    }
+  },
+
   // Convertir Excel del cliente
   convertirExcelCliente: async (excelFile: File): Promise<any> => {
     try {

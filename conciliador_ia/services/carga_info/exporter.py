@@ -128,34 +128,35 @@ class ExportadorVentas:
                     return norm[n]
             return None
 
-        def build_base_rows() -> pd.DataFrame:
-            out = pd.DataFrame()
+        def build_base_line(i: int) -> dict:
+            base: dict = {}
             # Fecha
             col_fecha = get("fecha", "fecha de emisión", "fecha de emision")
             if col_fecha:
-                out["Fecha"] = pd.to_datetime(df[col_fecha], errors="coerce").dt.strftime("%d/%m/%Y")
+                base["Fecha"] = pd.to_datetime(df[col_fecha].iloc[i], errors="coerce").strftime("%d/%m/%Y") if pd.notna(df[col_fecha].iloc[i]) else ""
             else:
-                out["Fecha"] = ""
+                base["Fecha"] = ""
 
             # Tipo, PV, Número
             col_tipo = get("tipo_comprobante", "tipo comprobante", "código de comprobante", "codigo de comprobante")
-            out["Tipo Comprobante"] = df[col_tipo] if col_tipo else ""
+            base["Tipo Comprobante"] = df[col_tipo].iloc[i] if col_tipo else ""
             col_pv = get("punto de venta", "pv")
-            out["Punto de Venta"] = df[col_pv] if col_pv else ""
+            base["Punto de Venta"] = df[col_pv].iloc[i] if col_pv else ""
             col_num = get("numero_comprobante", "número de comprobante", "nro comprobante", "número de comprobante hasta", "numero de comprobante hasta")
-            out["Número de Comprobante"] = df[col_num] if col_num else ""
+            base["Número de Comprobante"] = df[col_num].iloc[i] if col_num else ""
 
             # Cliente y CUIT
             col_cuit = get("cuit", "cuit cliente", "nro. doc. comprador")
-            out["CUIT Cliente"] = df[col_cuit] if col_cuit else ""
+            base["CUIT Cliente"] = df[col_cuit].iloc[i] if col_cuit else ""
             col_cliente = get("cliente", "razón social", "razon social", "razón social cliente", "denominación comprador", "denominacion comprador")
-            out["Razón Social Cliente"] = df[col_cliente] if col_cliente else ""
+            base["Razón Social Cliente"] = df[col_cliente].iloc[i] if col_cliente else ""
             col_cond = get("condición iva cliente", "condicion iva cliente", "condicion iva")
-            out["Condición IVA Cliente"] = df[col_cond] if col_cond else ""
-            return out
+            base["Condición IVA Cliente"] = df[col_cond].iloc[i] if col_cond else ""
+            return base
 
         if not multiline:
-            out = build_base_rows()
+            # Construcción simple en una sola línea
+            out = pd.DataFrame([build_base_line(i) for i in range(len(df))])
             map_pairs = [
                 ("Neto Gravado IVA 21%", ["neto gravado iva 21%", "neto 21", "neto iva 21"]),
                 ("Importe IVA 21%", ["importe iva 21%", "iva 21%", "iva 21"]),
@@ -174,15 +175,8 @@ class ExportadorVentas:
                 src = get(*candidates)
                 out[target] = df[src] if src else 0
         else:
-            # Construir multilínea (una fila por componente impositivo/percepciones/retenciones y una fila de total)
-            base = build_base_rows()
-            lines = []
-            def add_line(values: Dict[str, any]):
-                row = {col: base[col] if col in base else 0 for col in base.columns}
-                # Expand a dict of scalars/Series to aligned Series
-                for k, v in values.items():
-                    row[k] = v
-                lines.append(pd.DataFrame(row))
+            # Construir multilínea (una fila por componente y una por total)
+            rows: list[dict] = []
 
             # Detectar columnas fuente
             srcs = {
@@ -202,42 +196,44 @@ class ExportadorVentas:
 
             # Por cada fila de df, expandir a N líneas
             for idx in range(len(df)):
-                base_row = {col: base[col].iloc[idx:idx+1] for col in base.columns}
+                base_row = build_base_line(idx)
                 # IVA 21%
                 if srcs["Neto Gravado IVA 21%"] or srcs["Importe IVA 21%"]:
                     ng = df[srcs["Neto Gravado IVA 21%"]].iloc[idx] if srcs["Neto Gravado IVA 21%"] else 0
                     iv = df[srcs["Importe IVA 21%"]].iloc[idx] if srcs["Importe IVA 21%"] else 0
                     if (pd.to_numeric(pd.Series([ng]), errors='coerce').fillna(0).abs() > 0).any() or (pd.to_numeric(pd.Series([iv]), errors='coerce').fillna(0).abs() > 0).any():
-                        add_line({**base_row, "Neto Gravado IVA 21%": [ng], "Importe IVA 21%": [iv]})
+                        row = {**base_row, "Neto Gravado IVA 21%": ng, "Importe IVA 21%": iv}
+                        rows.append(row)
                 # IVA 10,5%
                 if srcs["Neto Gravado IVA 10,5%"] or srcs["Importe IVA 10,5%"]:
                     ng = df[srcs["Neto Gravado IVA 10,5%"]].iloc[idx] if srcs["Neto Gravado IVA 10,5%"] else 0
                     iv = df[srcs["Importe IVA 10,5%"]].iloc[idx] if srcs["Importe IVA 10,5%"] else 0
                     if (pd.to_numeric(pd.Series([ng]), errors='coerce').fillna(0).abs() > 0).any() or (pd.to_numeric(pd.Series([iv]), errors='coerce').fillna(0).abs() > 0).any():
-                        add_line({**base_row, "Neto Gravado IVA 10,5%": [ng], "Importe IVA 10,5%": [iv]})
+                        row = {**base_row, "Neto Gravado IVA 10,5%": ng, "Importe IVA 10,5%": iv}
+                        rows.append(row)
                 # No gravado
                 if srcs["No Gravado"]:
                     v = df[srcs["No Gravado"]].iloc[idx]
                     if (pd.to_numeric(pd.Series([v]), errors='coerce').fillna(0).abs() > 0).any():
-                        add_line({**base_row, "No Gravado": [v]})
+                        rows.append({**base_row, "No Gravado": v})
                 # Exento
                 if srcs["Exento"]:
                     v = df[srcs["Exento"]].iloc[idx]
                     if (pd.to_numeric(pd.Series([v]), errors='coerce').fillna(0).abs() > 0).any():
-                        add_line({**base_row, "Exento": [v]})
+                        rows.append({**base_row, "Exento": v})
                 # Percepciones / Retenciones
                 for key in ["Percepciones IVA","Percepciones IIBB","Retenciones IVA","Retenciones IIBB","Retenciones Ganancias"]:
                     s = srcs[key]
                     if s:
                         v = df[s].iloc[idx]
                         if (pd.to_numeric(pd.Series([v]), errors='coerce').fillna(0).abs() > 0).any():
-                            add_line({**base_row, key: [v]})
+                            rows.append({**base_row, key: v})
                 # Total
                 if srcs["Total"]:
                     v = df[srcs["Total"]].iloc[idx]
-                    add_line({**base_row, "Total": [v]})
+                    rows.append({**base_row, "Total": v})
 
-            out = pd.concat(lines, ignore_index=True) if lines else build_base_rows()
+            out = pd.DataFrame(rows) if rows else pd.DataFrame([build_base_line(i) for i in range(len(df))])
 
         # Asegurar orden exacto; si el modelo trae un orden, respetarlo
         if model_cols:

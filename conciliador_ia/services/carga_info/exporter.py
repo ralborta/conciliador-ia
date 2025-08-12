@@ -323,30 +323,26 @@ class ExportadorVentas:
             for clave_factura, filas_factura in facturas_grupo.items():
                 logger.info(f"Procesando factura: {clave_factura} con {len(filas_factura)} productos")
                 
-                # Primera fila: datos completos de la factura + primer producto
+                # Primera fila: SOLO datos de la factura (SIN productos)
                 if filas_factura:
                     primera_fila = filas_factura[0]
                     base_line = build_base_line(primera_fila)
                     
-                    # Llenar datos específicos del primer producto
-                    if "producto_servicio" in df.columns:
-                        base_line["PRODUCTOSERVICIO"] = primera_fila.get("producto_servicio", "Producto al 21%")
-                    if "cantidad" in df.columns:
-                        base_line["CANTIDAD"] = primera_fila.get("cantidad", 1)
-                    if "precio" in df.columns:
-                        base_line["PRECIO"] = primera_fila.get("precio", primera_fila.get("monto", 0))
-                    if "descuento" in df.columns:
-                        base_line["DESCUENTO"] = primera_fila.get("descuento", 0)
-                    if "monto" in df.columns:
-                        base_line["IMPORTE"] = primera_fila.get("monto", 0)
-                    if "iva" in df.columns:
-                        base_line["IVA"] = primera_fila.get("iva", 21)
+                    # LIMPIAR campos de producto en la primera fila
+                    base_line["PRODUCTOSERVICIO"] = ""
+                    base_line["CENTRODECOSTO"] = ""
+                    base_line["PRODUCTOOBSERVACION"] = ""
+                    base_line["CANTIDAD"] = ""
+                    base_line["PRECIO"] = ""
+                    base_line["DESCUENTO"] = ""
+                    base_line["IMPORTE"] = ""
+                    base_line["IVA"] = ""
                     
                     rows.append(base_line)
-                    logger.info(f"Fila 1 agregada para factura {clave_factura}")
+                    logger.info(f"Fila 1 agregada para factura {clave_factura} - SOLO datos de factura")
                 
-                # Filas adicionales: solo datos del producto (campos CLIENTE a OBSERVACIONES vacíos)
-                for i, fila_producto in enumerate(filas_factura[1:], 2):
+                # Filas siguientes: SOLO datos del producto (campos CLIENTE a OBSERVACIONES vacíos)
+                for i, fila_producto in enumerate(filas_factura, 1):
                     # Crear fila solo con datos del producto
                     fila_producto_data = {
                         "NUMERODECONTROL": len(rows) + 1,
@@ -370,7 +366,7 @@ class ExportadorVentas:
                     }
                     
                     rows.append(fila_producto_data)
-                    logger.info(f"Fila {i} agregada para factura {clave_factura} - Producto: {fila_producto_data['PRODUCTOSERVICIO']}")
+                    logger.info(f"Fila {i+1} agregada para factura {clave_factura} - Producto: {fila_producto_data['PRODUCTOSERVICIO']} con IVA: {fila_producto_data['IVA']}")
             
             out = pd.DataFrame(rows)
 

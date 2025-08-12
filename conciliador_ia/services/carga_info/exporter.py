@@ -65,6 +65,20 @@ class ExportadorVentas:
             '208': 3, '213': 3
         }
 
+    def _limpiar_monto(self, valor):
+        """Limpia montos quitando signos negativos y convirtiendo a positivo"""
+        if valor is None or valor == "":
+            return 0
+        
+        try:
+            # Convertir a string y quitar signos negativos
+            valor_str = str(valor).replace('-', '').replace('(', '').replace(')', '')
+            # Convertir a float y asegurar que sea positivo
+            valor_float = float(valor_str)
+            return abs(valor_float)  # Siempre positivo
+        except (ValueError, TypeError):
+            return 0
+
     def _construir_xubio_df(self, df: pd.DataFrame, multiline: bool = False) -> pd.DataFrame:
         """Construye DataFrame con estructura Xubio hardcodeada - NO depende de archivos externos"""
         logger = logging.getLogger(__name__)
@@ -343,6 +357,13 @@ class ExportadorVentas:
                 
                 # Filas siguientes: SOLO datos del producto (campos CLIENTE a OBSERVACIONES vacíos)
                 for i, fila_producto in enumerate(filas_factura, 1):
+                    # Logging detallado para debug
+                    logger.info(f"Procesando producto {i} de factura {clave_factura}:")
+                    logger.info(f"  - Producto: {fila_producto.get('producto_servicio', 'N/A')}")
+                    logger.info(f"  - IVA: {fila_producto.get('iva', 'N/A')}")
+                    logger.info(f"  - Monto: {fila_producto.get('monto', 'N/A')}")
+                    logger.info(f"  - Precio: {fila_producto.get('precio', 'N/A')}")
+                    
                     # Crear fila solo con datos del producto
                     fila_producto_data = {
                         "NUMERODECONTROL": len(rows) + 1,
@@ -359,9 +380,9 @@ class ExportadorVentas:
                         "CENTRODECOSTO": "",
                         "PRODUCTOOBSERVACION": "",
                         "CANTIDAD": fila_producto.get("cantidad", 1),
-                        "PRECIO": fila_producto.get("precio", fila_producto.get("monto", 0)),
-                        "DESCUENTO": fila_producto.get("descuento", 0),
-                        "IMPORTE": fila_producto.get("monto", 0),
+                        "PRECIO": self._limpiar_monto(fila_producto.get("precio", fila_producto.get("monto", 0))),
+                        "DESCUENTO": self._limpiar_monto(fila_producto.get("descuento", 0)),
+                        "IMPORTE": self._limpiar_monto(fila_producto.get("monto", 0)),
                         "IVA": fila_producto.get("iva", 21)
                     }
                     

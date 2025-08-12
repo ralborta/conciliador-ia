@@ -99,7 +99,8 @@ def detect_doble_alicuota(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]
     if not posibles:
         return df.copy(), df.iloc[0:0].copy()
 
-    cols_10 = [c for c in posibles if re.search(r"10(\.5)?", str(c).lower())]
+    # CORREGIDO: Ahora detecta tanto "10.5" como "10,5" (punto y coma)
+    cols_10 = [c for c in posibles if re.search(r"10[.,]?5?", str(c).lower())]
     cols_21 = [c for c in posibles if re.search(r"21|27", str(c).lower())]
 
     if not cols_10 or not cols_21:
@@ -175,6 +176,28 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
         df = map_tipo_comprobante(df, tabla_comprobantes)
     except Exception as e:
         logger.warning(f"Fallo en mapeo de tipos: {e}")
+
+    # AGREGADO: Generar campo 'iva' basado en qué columna de IVA tiene valor
+    df['iva'] = 21  # Default a 21%
+    
+    # Detectar columnas de IVA específicas
+    cols_10_5 = [c for c in df.columns if re.search(r"10[.,]?5?", str(c).lower())]
+    cols_21 = [c for c in df.columns if re.search(r"21|27", str(c).lower())]
+    
+    # Asignar IVA basado en qué columna tiene valor
+    for idx, row in df.iterrows():
+        has_10_5 = any(pd.notna(row.get(col, 0)) and abs(row.get(col, 0)) > 0 for col in cols_10_5)
+        has_21 = any(pd.notna(row.get(col, 0)) and abs(row.get(col, 0)) > 0 for col in cols_21)
+        
+        if has_10_5 and not has_21:
+            df.at[idx, 'iva'] = 10.5
+        elif has_21 and not has_10_5:
+            df.at[idx, 'iva'] = 21
+        elif has_10_5 and has_21:
+            df.at[idx, 'iva'] = 21  # Si tiene ambos, usar 21 como principal
+        # Si no tiene ninguno, mantiene el default 21
+    
+    logger.info(f"Campo 'iva' generado. Valores únicos: {df['iva'].unique()}")
 
     # Detectar doble alícuota
     validos, doble = detect_doble_alicuota(df)

@@ -83,6 +83,7 @@ async def procesar(
         if missing:
             raise HTTPException(status_code=422, detail={"error": "Campos requeridos faltantes", "missing": missing})
 
+        logger.info(f"Procesar: ventas={ventas_excel_path}, tabla={tabla_comprobantes_path}, periodo={periodo}, portal={portal_iva_csv_path}")
         data = loader.load_inputs(
             str(ventas_excel_path),
             str(tabla_comprobantes_path),
@@ -98,8 +99,9 @@ async def procesar(
         outputs = exporter.exportar(resultados, str(periodo), reporte_portal)
         return {"status": "ok", "outputs": outputs, "stats": {k: len(v) for k, v in resultados.items()}}
     except Exception as e:
-        logger.error(f"Error procesando archivos: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        logger.error(f"Error procesando archivos: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
 @router.get("/download")

@@ -1,6 +1,9 @@
 from typing import Dict, Any, Tuple
 import pandas as pd
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def clean_text(value: Any) -> str:
@@ -54,6 +57,8 @@ def detect_doble_alicuota(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]
 
 
 def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    logger.info(f"Procesando ventas: filas={len(ventas)} columnas={list(ventas.columns)}")
+    logger.info(f"TABLACOMPROBANTES: filas={len(tabla_comprobantes)} columnas={list(tabla_comprobantes.columns)}")
     df = ventas.copy()
     # Limpieza básica
     for col in df.columns:
@@ -67,13 +72,19 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
             break
 
     # Mapear tipos
-    df = map_tipo_comprobante(df, tabla_comprobantes)
+    try:
+        df = map_tipo_comprobante(df, tabla_comprobantes)
+    except Exception as e:
+        logger.warning(f"Fallo en mapeo de tipos: {e}")
 
     # Detectar doble alícuota
     validos, doble = detect_doble_alicuota(df)
 
     # Basado en reglas simples para demo: errores si faltan campos clave
-    errores_mask = validos[[c for c in validos.columns if re.search(r"fecha|monto|importe|cliente|razon", str(c), re.I)]].isna().any(axis=1)
+    columnas_clave = [c for c in validos.columns if re.search(r"fecha|monto|importe|cliente|razon", str(c), re.I)]
+    if not columnas_clave:
+        columnas_clave = list(validos.columns[:1])
+    errores_mask = validos[columnas_clave].isna().any(axis=1)
     errores = validos[errores_mask].copy()
     validos = validos[~errores_mask].copy()
 

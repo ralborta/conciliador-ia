@@ -2,6 +2,9 @@ import os
 from pathlib import Path
 from typing import Optional, Dict
 import pandas as pd
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 DATA_DIR = Path("data")
@@ -36,11 +39,44 @@ class CargaArchivos:
         modelo_doble_alicuota_path: Optional[str] = None,
     ) -> Dict[str, pd.DataFrame]:
         data: Dict[str, pd.DataFrame] = {}
-        data["ventas"] = pd.read_excel(ventas_excel_path)
-        data["tabla_comprobantes"] = pd.read_excel(tabla_comprobantes_path)
+        data["ventas"] = self._read_any_table(ventas_excel_path)
+        data["tabla_comprobantes"] = self._read_any_table(tabla_comprobantes_path)
         if portal_iva_csv_path and Path(portal_iva_csv_path).exists():
-            data["portal_iva"] = pd.read_csv(portal_iva_csv_path)
-        # Los modelos pueden usarse como estructura, no es necesario cargarlos si no hace falta
+            data["portal_iva"] = self._read_any_table(portal_iva_csv_path)
         return data
+
+    def _read_any_table(self, path: str) -> pd.DataFrame:
+        """Lee CSV o Excel con tolerancia a encodings/separadores."""
+        p = Path(path)
+        suffix = p.suffix.lower()
+        if suffix == ".csv":
+            encodings = ["utf-8", "latin1", "iso-8859-1", "cp1252"]
+            seps = [",", ";", "\t"]
+            for enc in encodings:
+                for sep in seps:
+                    try:
+                        df = pd.read_csv(p, encoding=enc, sep=sep)
+                        if df is not None and df.shape[1] >= 1:
+                            logger.info(f"CSV cargado: {p.name} encoding={enc} sep='{sep}' filas={len(df)}")
+                            return df
+                    except Exception:
+                        continue
+            # último intento por defecto
+            return pd.read_csv(p)
+        else:
+            # Excel xlsx/xls/odf
+            engines = [None, "openpyxl", "xlrd", "odf"]
+            for engine in engines:
+                try:
+                    if engine:
+                        df = pd.read_excel(p, engine=engine)
+                    else:
+                        df = pd.read_excel(p)
+                    logger.info(f"Excel cargado: {p.name} engine={engine} filas={len(df)}")
+                    return df
+                except Exception:
+                    continue
+            # último recurso
+            return pd.read_excel(p)
 
 

@@ -18,12 +18,13 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
-        {/* Banner superior con logo alineado a la derecha */}
-        <div className="w-full bg-[#3E3557] border-b border-[#2e2741]">
-          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div />
-            <img src="/empleadosnet.svg" alt="Empleados.net" className="h-10 md:h-12" />
-          </div>
+        {/* Logo superior flotante (sin barra) */}
+        <div className="fixed top-3 right-4 z-50">
+          <img
+            src="/empleadosnet.svg"
+            alt="Empleados.net"
+            className="h-10 md:h-12 drop-shadow-sm opacity-95"
+          />
         </div>
 
         {children}

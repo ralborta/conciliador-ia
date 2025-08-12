@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, FileResponse
 from typing import Optional
 import logging
@@ -55,15 +55,37 @@ async def upload_archivos(
 
 @router.post("/procesar")
 async def procesar(
-    ventas_excel_path: str = Form(...),
-    tabla_comprobantes_path: str = Form(...),
-    periodo: str = Form(...),
+    request: Request,
+    ventas_excel_path: Optional[str] = Form(None),
+    tabla_comprobantes_path: Optional[str] = Form(None),
+    periodo: Optional[str] = Form(None),
     portal_iva_csv_path: Optional[str] = Form(None),
 ):
     try:
+        # Permitir tanto multipart/form-data como JSON
+        if ventas_excel_path is None or tabla_comprobantes_path is None or periodo is None:
+            try:
+                payload = await request.json()
+                ventas_excel_path = ventas_excel_path or payload.get("ventas_excel_path")
+                tabla_comprobantes_path = tabla_comprobantes_path or payload.get("tabla_comprobantes_path")
+                periodo = periodo or payload.get("periodo")
+                portal_iva_csv_path = portal_iva_csv_path or payload.get("portal_iva_csv_path")
+            except Exception:
+                pass
+
+        missing = [
+            name for name, val in [
+                ("ventas_excel_path", ventas_excel_path),
+                ("tabla_comprobantes_path", tabla_comprobantes_path),
+                ("periodo", periodo),
+            ] if not val
+        ]
+        if missing:
+            raise HTTPException(status_code=422, detail={"error": "Campos requeridos faltantes", "missing": missing})
+
         data = loader.load_inputs(
-            ventas_excel_path,
-            tabla_comprobantes_path,
+            str(ventas_excel_path),
+            str(tabla_comprobantes_path),
             portal_iva_csv_path,
         )
         resultados = process(data["ventas"], data["tabla_comprobantes"])
@@ -73,7 +95,7 @@ async def procesar(
             # En una versión posterior, se comparará con reglas más ricas
             reporte_portal = data["portal_iva"].head(100)
 
-        outputs = exporter.exportar(resultados, periodo, reporte_portal)
+        outputs = exporter.exportar(resultados, str(periodo), reporte_portal)
         return {"status": "ok", "outputs": outputs, "stats": {k: len(v) for k, v in resultados.items()}}
     except Exception as e:
         logger.error(f"Error procesando archivos: {e}")

@@ -42,6 +42,57 @@ def map_tipo_comprobante(df: pd.DataFrame, tabla: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def map_afip_portal_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Mapea encabezados típicos del Portal IVA/AFIP a nombres estándar.
+
+    Estándar destino: fecha, cliente, monto, numero_comprobante, tipo_comprobante, cuit
+    """
+    df = df.copy()
+    lower_map = {str(c).strip().lower(): c for c in df.columns}
+
+    def pick(*candidates: str) -> str:
+        for cand in candidates:
+            if cand in lower_map:
+                return lower_map[cand]
+        return ""
+
+    # Fecha
+    col_fecha = pick(
+        "fecha", "fecha de emisión", "fecha de emision", "fecha comprobante",
+        "fecha de vencimiento del pago", "fecha emi"
+    )
+    if col_fecha:
+        df = df.rename(columns={col_fecha: "fecha"})
+
+    # Cliente / Razón Social
+    col_cliente = pick("cliente", "razón social", "razon social", "denominación comprador", "denominacion comprador")
+    if col_cliente:
+        df = df.rename(columns={col_cliente: "cliente"})
+
+    # CUIT
+    col_cuit = pick("cuit", "nro. doc. comprador", "nro doc comprador", "numero documento", "nro documento")
+    if col_cuit:
+        df = df.rename(columns={col_cuit: "cuit"})
+
+    # Tipo/ Código Comprobante
+    col_tipo = pick("tipo de comprobante", "código de comprobante", "codigo de comprobante", "tipo comprobante")
+    if col_tipo:
+        df = df.rename(columns={col_tipo: "tipo_comprobante"})
+
+    # Número de comprobante (preferimos "Hasta")
+    col_nro_hasta = pick("número de comprobante hasta", "numero de comprobante hasta", "nro comprobante hasta")
+    col_nro = col_nro_hasta or pick("número de comprobante", "numero de comprobante", "nro comprobante")
+    if col_nro:
+        df = df.rename(columns={col_nro: "numero_comprobante"})
+
+    # Importe total
+    col_importe = pick("importe total", "total", "importe", "monto")
+    if col_importe:
+        df = df.rename(columns={col_importe: "monto"})
+
+    return df
+
+
 def detect_doble_alicuota(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     # Heurística: columnas que contengan '10.5' y '21' positivas simultáneamente
     posibles = [c for c in df.columns if any(x in str(c).lower() for x in ["iva", "alicuota", "10", "21", "27"])]
@@ -60,6 +111,9 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
     logger.info(f"Procesando ventas: filas={len(ventas)} columnas={list(ventas.columns)}")
     logger.info(f"TABLACOMPROBANTES: filas={len(tabla_comprobantes)} columnas={list(tabla_comprobantes.columns)}")
     df = ventas.copy()
+
+    # Mapear columnas AFIP/Portal a estándar si es posible
+    df = map_afip_portal_columns(df)
     # Limpieza básica
     for col in df.columns:
         if df[col].dtype == object:
@@ -81,11 +135,15 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
     validos, doble = detect_doble_alicuota(df)
 
     # Basado en reglas simples para demo: errores si faltan campos clave
-    columnas_clave = [c for c in validos.columns if re.search(r"fecha|monto|importe|cliente|razon", str(c), re.I)]
+    columnas_clave = [c for c in validos.columns if re.search(r"^fecha$|^monto$|importe|cliente|razon", str(c), re.I)]
     if not columnas_clave:
         columnas_clave = list(validos.columns[:1])
     errores_mask = validos[columnas_clave].isna().any(axis=1)
     errores = validos[errores_mask].copy()
+    # Motivo de error básico
+    if not errores.empty:
+        faltantes = errores[columnas_clave].isna()
+        errores["motivo_error"] = faltantes.apply(lambda r: ", ".join([c for c, v in r.items() if v]), axis=1)
     validos = validos[~errores_mask].copy()
 
     return {

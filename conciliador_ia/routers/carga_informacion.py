@@ -120,3 +120,12 @@ async def download_output(filename: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/inspect")
+async def inspect_file(path: str):
+    """Inspecciona un archivo subido y devuelve columnas y muestra para ver si el portal exportó ok."""
+    try:
+        return loader.inspect_file(path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+

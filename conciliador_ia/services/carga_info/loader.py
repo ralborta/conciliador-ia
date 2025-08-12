@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 import pandas as pd
 import logging
 
@@ -78,5 +78,49 @@ class CargaArchivos:
                     continue
             # último recurso
             return pd.read_excel(p)
+
+    def inspect_file(self, path: str) -> Dict[str, Any]:
+        """Devuelve metadatos de lectura (encoding/sep/engine) y muestra."""
+        p = Path(path)
+        result: Dict[str, Any] = {
+            "filename": p.name,
+            "suffix": p.suffix.lower(),
+            "detected": {},
+        }
+
+        if p.suffix.lower() == ".csv":
+            encodings = ["utf-8", "latin1", "iso-8859-1", "cp1252"]
+            seps = [",", ";", "\t"]
+            for enc in encodings:
+                for sep in seps:
+                    try:
+                        df = pd.read_csv(p, encoding=enc, sep=sep)
+                        if df is not None and df.shape[1] >= 1:
+                            result["detected"] = {"type": "csv", "encoding": enc, "sep": sep}
+                            result["columns"] = list(df.columns)
+                            result["rows"] = len(df)
+                            result["sample"] = df.head(5).to_dict(orient="records")
+                            return result
+                    except Exception:
+                        continue
+            result["error"] = "No se pudo leer CSV con los encodings/separadores probados"
+            return result
+        else:
+            engines = [None, "openpyxl", "xlrd", "odf"]
+            for engine in engines:
+                try:
+                    if engine:
+                        df = pd.read_excel(p, engine=engine)
+                    else:
+                        df = pd.read_excel(p)
+                    result["detected"] = {"type": "excel", "engine": engine or "auto"}
+                    result["columns"] = list(df.columns)
+                    result["rows"] = len(df)
+                    result["sample"] = df.head(5).to_dict(orient="records")
+                    return result
+                except Exception:
+                    continue
+            result["error"] = "No se pudo leer Excel con engines conocidos"
+            return result
 
 

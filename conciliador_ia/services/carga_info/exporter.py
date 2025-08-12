@@ -50,22 +50,19 @@ class ExportadorVentas:
         # TABLA DE EQUIVALENCIAS AFIP → XUBIO (Tipo de Comprobante)
         self.TIPO_COMPROBANTE_MAP = {
             # Facturas (F.) → Código Xubio 1
-            '001': 1, '006': 1, '011': 1, '019': 1, '022': 1, '051': 1, 
-            '081': 1, '082': 1, '083': 1, '111': 1, '118': 1, '201': 1, '211': 1,
+            '1': 1, '6': 1, '11': 1, '19': 1, '22': 1, '51': 1, 
+            '81': 1, '82': 1, '83': 1, '111': 1, '118': 1, '201': 1, '211': 1,
             
             # Notas de Crédito/Débito (N.) → Código Xubio 2
-            '002': 2, '007': 2, '012': 2, '020': 2, '037': 2, '045': 2, 
-            '046': 2, '047': 2, '052': 2, '115': 2, '116': 2, '117': 2, 
+            '2': 2, '7': 2, '12': 2, '20': 2, '37': 2, '45': 2, 
+            '46': 2, '47': 2, '52': 2, '115': 2, '116': 2, '117': 2, 
             '120': 2, '202': 2, '207': 2, '212': 2,
             
             # Recibos/Remitos (R.) → Código Xubio 3
-            '003': 3, '004': 3, '008': 3, '009': 3, '013': 3, '015': 3, 
-            '021': 3, '038': 3, '053': 3, '054': 3, '070': 3, '090': 3, 
+            '3': 3, '4': 3, '8': 3, '9': 3, '13': 3, '15': 3, 
+            '21': 3, '38': 3, '53': 3, '54': 3, '70': 3, '90': 3, 
             '110': 3, '112': 3, '113': 3, '114': 3, '119': 3, '203': 3, 
-            '208': 3, '213': 3,
-            
-            # Tickets (T.) → Código Xubio 3 (o 1 en algunos casos)
-            '090': 3, '110': 3, '111': 1, '112': 3, '113': 3, '114': 3, '119': 3
+            '208': 3, '213': 3
         }
 
     def _construir_xubio_df(self, df: pd.DataFrame, multiline: bool = False) -> pd.DataFrame:
@@ -226,25 +223,40 @@ class ExportadorVentas:
                 base_line["IVA"] = 21
                 
                 # Cliente (usar "Denominación Comprador" del CSV si está disponible)
+                cliente_encontrado = False
                 if "denominacion comprador" in df.columns:
                     base_line["CLIENTE"] = row["denominacion comprador"]
-                elif "cuit" in df.columns:
-                    base_line["CLIENTE"] = row["cuit"]
+                    cliente_encontrado = True
+                    logger.info(f"Cliente mapeado desde 'denominacion comprador': {row['denominacion comprador']}")
+                elif "denominación comprador" in df.columns:  # Con tilde
+                    base_line["CLIENTE"] = row["denominación comprador"]
+                    cliente_encontrado = True
+                    logger.info(f"Cliente mapeado desde 'denominación comprador': {row['denominación comprador']}")
                 elif "cliente" in df.columns:
                     base_line["CLIENTE"] = row["cliente"]
-                else:
+                    cliente_encontrado = True
+                    logger.info(f"Cliente mapeado desde 'cliente': {row['cliente']}")
+                elif "cuit" in df.columns:
+                    base_line["CLIENTE"] = row["cuit"]
+                    cliente_encontrado = True
+                    logger.info(f"Cliente mapeado desde 'cuit': {row['cuit']}")
+                
+                if not cliente_encontrado:
                     base_line["CLIENTE"] = ""
+                    logger.warning("No se encontró campo para mapear al CLIENTE")
                 
                 # Tipo de comprobante (mapear desde CSV usando tabla de equivalencias)
                 if "tipo_comprobante" in df.columns:
                     tipo_afip = str(row["tipo_comprobante"]).strip()
+                    # Quitar ceros a la izquierda para el mapeo
+                    tipo_afip_clean = tipo_afip.lstrip('0') if tipo_afip else '1'
                     # Mapear código AFIP a código Xubio
-                    if tipo_afip in self.TIPO_COMPROBANTE_MAP:
-                        base_line["TIPO"] = self.TIPO_COMPROBANTE_MAP[tipo_afip]
-                        logger.info(f"Mapeado tipo AFIP {tipo_afip} → Xubio {self.TIPO_COMPROBANTE_MAP[tipo_afip]}")
+                    if tipo_afip_clean in self.TIPO_COMPROBANTE_MAP:
+                        base_line["TIPO"] = self.TIPO_COMPROBANTE_MAP[tipo_afip_clean]
+                        logger.info(f"Mapeado tipo AFIP {tipo_afip} → {tipo_afip_clean} → Xubio {self.TIPO_COMPROBANTE_MAP[tipo_afip_clean]}")
                     else:
                         base_line["TIPO"] = 1  # Default a Factura si no se encuentra
-                        logger.warning(f"Tipo AFIP {tipo_afip} no encontrado en tabla de equivalencias, usando default 1")
+                        logger.warning(f"Tipo AFIP {tipo_afip} ({tipo_afip_clean}) no encontrado en tabla de equivalencias, usando default 1")
                 else:
                     base_line["TIPO"] = 1  # Default a Factura si no hay campo tipo_comprobante
                 

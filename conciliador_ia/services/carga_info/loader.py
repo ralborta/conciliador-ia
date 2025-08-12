@@ -48,6 +48,7 @@ class CargaArchivos:
             try:
                 model_df = pd.read_excel(modelo_importacion_path)
                 data["modelo_import_cols"] = model_df.columns.tolist()
+                data["modelo_import_path"] = str(Path(modelo_importacion_path).resolve())
             except Exception as e:
                 logger.warning(f"No se pudieron leer columnas del modelo de importación: {e}")
         return data

@@ -98,6 +98,11 @@ async def procesar(
                 resultados["modelo_import_cols"] = data["modelo_import_cols"]  # type: ignore
             except Exception:
                 pass
+        if "modelo_import_path" in data:
+            try:
+                resultados["modelo_import_path"] = data["modelo_import_path"]  # type: ignore
+            except Exception:
+                pass
 
         reporte_portal = None
         if "portal_iva" in data:

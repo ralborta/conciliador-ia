@@ -42,18 +42,45 @@ class ExportadorVentas:
 
         # Exportar con engine explícito para evitar sorpresas del writer
         if not validos.empty:
-            # Construir DataFrame con cabecera oficial de Xubio
             try:
-                # Si se detectaron columnas del modelo, usarlas para ordenar/sincronizar cabecera
+                # 1) Construir multilínea con equivalencias
                 model_cols = resultados.get("modelo_import_cols")  # type: ignore
-                # Construir en formato multilínea (una fila por componente impositivo)
+                model_path = resultados.get("modelo_import_path")  # type: ignore
                 xubio_df = self._construir_xubio_df(validos, model_cols if isinstance(model_cols, list) else None, multiline=True)
                 logger.info(f"XUBIO DF shape: {xubio_df.shape}")
+
+                # 2) Si hay plantilla, escribir sobre ella con openpyxl respetando el formato visual
+                if isinstance(model_path, str) and Path(model_path).exists():
+                    try:
+                        from openpyxl import load_workbook
+                        wb = load_workbook(model_path)
+                        ws = wb.active
+                        # Cabecera tomada literalmente de la fila 1 de la plantilla
+                        header = [cell.value for cell in ws[1]]
+                        # Limpiar filas (dejar cabecera)
+                        if ws.max_row > 1:
+                            ws.delete_rows(2, ws.max_row - 1)
+                        # Asegurar que todas las columnas del header existan en el DF (rellenar si faltan)
+                        for col in header:
+                            if col not in xubio_df.columns:
+                                xubio_df[col] = "" if col in [
+                                    "Fecha","Tipo Comprobante","Punto de Venta","Número de Comprobante",
+                                    "CUIT Cliente","Razón Social Cliente","Condición IVA Cliente"
+                                ] else 0
+                        # Escribir filas
+                        for r in range(len(xubio_df)):
+                            ws.append([xubio_df[col].iloc[r] if col in xubio_df.columns else "" for col in header])
+                        wb.save(ventas_path)
+                    except Exception as e:
+                        logger.warning(f"Fallo escribiendo plantilla con openpyxl: {e}; exportando por DataFrame")
+                        xubio_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
+                else:
+                    xubio_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
+                paths["ventas"] = str(ventas_path)
             except Exception as e:
                 logger.warning(f"Fallo construyendo DF Xubio, exportando 'validos' crudo: {e}")
-                xubio_df = validos
-            xubio_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
-            paths["ventas"] = str(ventas_path)
+                validos.to_excel(ventas_path, index=False, engine="xlsxwriter")
+                paths["ventas"] = str(ventas_path)
         if not errores.empty:
             errores.to_excel(errores_path, index=False, engine="xlsxwriter")
             paths["errores"] = str(errores_path)
@@ -234,6 +261,12 @@ class ExportadorVentas:
                     rows.append({**base_row, "Total": v})
 
             out = pd.DataFrame(rows) if rows else pd.DataFrame([build_base_line(i) for i in range(len(df))])
+
+        # Asegurar que existan todas las columnas esperadas
+        text_cols = {"Fecha","Tipo Comprobante","Punto de Venta","Número de Comprobante","CUIT Cliente","Razón Social Cliente","Condición IVA Cliente"}
+        for col in expected_cols:
+            if col not in out.columns:
+                out[col] = "" if col in text_cols else 0
 
         # Asegurar orden exacto; si el modelo trae un orden, respetarlo
         if model_cols:

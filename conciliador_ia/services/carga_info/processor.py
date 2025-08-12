@@ -94,14 +94,34 @@ def map_afip_portal_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def detect_doble_alicuota(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    # Heurística: columnas que contengan '10.5' y '21' positivas simultáneamente
-    posibles = [c for c in df.columns if any(x in str(c).lower() for x in ["iva", "alicuota", "10", "21", "27"])]
-    doble_mask = pd.Series(False, index=df.index)
-    for c in posibles:
-        if re.search(r"10|10\.5", str(c)):
-            for d in posibles:
-                if re.search(r"21|27", str(d)):
-                    doble_mask = doble_mask | ((pd.to_numeric(df[c], errors='coerce').fillna(0) != 0) & (pd.to_numeric(df[d], errors='coerce').fillna(0) != 0))
+    """Detecta doble alícuota usando coerción numérica robusta y valores absolutos > 0."""
+    posibles = [c for c in df.columns if any(x in str(c).lower() for x in ["iva", "alicuota", "neto gravado", "10", "21", "27"])]
+    if not posibles:
+        return df.copy(), df.iloc[0:0].copy()
+
+    cols_10 = [c for c in posibles if re.search(r"10(\.5)?", str(c).lower())]
+    cols_21 = [c for c in posibles if re.search(r"21|27", str(c).lower())]
+
+    if not cols_10 or not cols_21:
+        return df.copy(), df.iloc[0:0].copy()
+
+    def _coerce(s: pd.Series) -> pd.Series:
+        s = s.astype(str).str.strip()
+        s = s.str.replace(r"\s", "", regex=True)
+        has_comma = s.str.contains(',', regex=False)
+        s = s.where(~has_comma, s.str.replace('.', '', regex=False))
+        s = s.where(~has_comma, s.str.replace(',', '.', regex=False))
+        s = s.str.replace(r"[^0-9\.-]", "", regex=True)
+        return pd.to_numeric(s, errors='coerce')
+
+    tmp = df.copy()
+    for c in set(cols_10 + cols_21):
+        tmp[c] = _coerce(tmp[c])
+
+    mask_10 = tmp[cols_10].abs().fillna(0).sum(axis=1) > 0
+    mask_21 = tmp[cols_21].abs().fillna(0).sum(axis=1) > 0
+    doble_mask = mask_10 & mask_21
+
     doble = df[doble_mask].copy()
     resto = df[~doble_mask].copy()
     return resto, doble
@@ -119,6 +139,31 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
         if df[col].dtype == object:
             df[col] = df[col].apply(clean_text)
 
+    # Coerción numérica robusta para monto y columnas IVA
+    if 'monto' in df.columns:
+        df['monto'] = pd.to_numeric(
+            df['monto'].astype(str)
+            .str.replace('\u00A0', '', regex=False)
+            .str.replace(' ', '', regex=False)
+            .str.replace('.', '', regex=False)
+            .str.replace(',', '.', regex=False),
+            errors='coerce'
+        )
+    for c in df.columns:
+        cl = str(c).lower()
+        if any(x in cl for x in ['iva', 'alicuota', 'neto gravado', '10', '21', '27']):
+            try:
+                df[c] = pd.to_numeric(
+                    df[c].astype(str)
+                    .str.replace('\u00A0', '', regex=False)
+                    .str.replace(' ', '', regex=False)
+                    .str.replace('.', '', regex=False)
+                    .str.replace(',', '.', regex=False),
+                    errors='coerce'
+                )
+            except Exception:
+                pass
+
     # Normalizar CUIT
     for c in df.columns:
         if str(c).lower() in ["cuit", "dni", "documento", "cuil"] or re.search(r"cuit", str(c), re.I):
@@ -134,15 +179,17 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
     # Detectar doble alícuota
     validos, doble = detect_doble_alicuota(df)
 
-    # Basado en reglas simples para demo: errores si faltan campos clave
-    columnas_clave = [c for c in validos.columns if re.search(r"^fecha$|^monto$|importe|cliente|razon", str(c), re.I)]
-    if not columnas_clave:
-        columnas_clave = list(validos.columns[:1])
-    errores_mask = validos[columnas_clave].isna().any(axis=1)
+    # Reglas mínimas: fecha y monto válidos
+    if 'fecha' in validos.columns:
+        validos['fecha'] = pd.to_datetime(validos['fecha'], errors='coerce')
+    req_cols = [c for c in ['fecha', 'monto'] if c in validos.columns]
+    if not req_cols:
+        req_cols = list(validos.columns[:1]) if len(validos.columns) else []
+    errores_mask = validos[req_cols].isna().any(axis=1)
     errores = validos[errores_mask].copy()
     # Motivo de error básico
-    if not errores.empty:
-        faltantes = errores[columnas_clave].isna()
+    if not errores.empty and req_cols:
+        faltantes = errores[req_cols].isna()
         errores["motivo_error"] = faltantes.apply(lambda r: ", ".join([c for c, v in r.items() if v]), axis=1)
     validos = validos[~errores_mask].copy()
 

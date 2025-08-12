@@ -43,6 +43,13 @@ class CargaArchivos:
         data["tabla_comprobantes"] = self._read_any_table(tabla_comprobantes_path)
         if portal_iva_csv_path and Path(portal_iva_csv_path).exists():
             data["portal_iva"] = self._read_any_table(portal_iva_csv_path)
+        # Leer columnas del modelo de importación si se provee
+        if modelo_importacion_path and Path(modelo_importacion_path).exists():
+            try:
+                model_df = pd.read_excel(modelo_importacion_path)
+                data["modelo_import_cols"] = model_df.columns.tolist()
+            except Exception as e:
+                logger.warning(f"No se pudieron leer columnas del modelo de importación: {e}")
         return data
 
     def _read_any_table(self, path: str) -> pd.DataFrame:

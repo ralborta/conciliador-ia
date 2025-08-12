@@ -44,7 +44,9 @@ class ExportadorVentas:
         if not validos.empty:
             # Construir DataFrame con cabecera oficial de Xubio
             try:
-                xubio_df = self._construir_xubio_df(validos)
+                # Si se detectaron columnas del modelo, usarlas para ordenar/sincronizar cabecera
+                model_cols = resultados.get("modelo_import_cols")  # type: ignore
+                xubio_df = self._construir_xubio_df(validos, model_cols if isinstance(model_cols, list) else None)
                 logger.info(f"XUBIO DF shape: {xubio_df.shape}")
             except Exception as e:
                 logger.warning(f"Fallo construyendo DF Xubio, exportando 'validos' crudo: {e}")
@@ -93,7 +95,7 @@ class ExportadorVentas:
 
         return paths
 
-    def _construir_xubio_df(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _construir_xubio_df(self, df: pd.DataFrame, model_cols: Optional[list] = None) -> pd.DataFrame:
         """Mapea 'df' a la cabecera exacta requerida por Xubio para importación de ventas."""
         expected_cols = [
             "Fecha",
@@ -173,8 +175,18 @@ class ExportadorVentas:
                 # faltante: default 0 para numéricos, string vacío para otros
                 out[target] = 0
 
-        # Asegurar orden exacto
-        out = out[expected_cols]
+        # Asegurar orden exacto; si el modelo trae un orden, respetarlo
+        if model_cols:
+            # Filtrar y reordenar según el modelo; si faltan, agregarlas vacías al final
+            for col in model_cols:
+                if col not in out.columns:
+                    out[col] = "" if col not in [
+                        "Neto Gravado IVA 21%","Importe IVA 21%","Neto Gravado IVA 10,5%","Importe IVA 10,5%",
+                        "No Gravado","Exento","Percepciones IVA","Percepciones IIBB","Retenciones IVA","Retenciones IIBB","Retenciones Ganancias","Total"
+                    ] else 0
+            out = out[[c for c in model_cols if c in out.columns]]
+        else:
+            out = out[expected_cols]
         return out
 
 

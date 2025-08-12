@@ -202,6 +202,14 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
     # Detectar doble alícuota
     validos, doble = detect_doble_alicuota(df)
 
+    # AGREGADO: Los registros de doble alícuota también deben ir a 'validos' para el archivo de importación
+    # Mantenemos la separación para el reporte, pero incluimos todos en validos
+    if not doble.empty:
+        logger.info(f"Agregando {len(doble)} registros de doble alícuota a 'validos' para inclusión en archivo de importación")
+        # Concatenar doble alícuota con validos para que aparezcan en el archivo final
+        validos = pd.concat([validos, doble], ignore_index=True)
+        logger.info(f"Total de registros válidos después de incluir doble alícuota: {len(validos)}")
+
     # Reglas mínimas: fecha y monto válidos
     if 'fecha' in validos.columns:
         validos['fecha'] = pd.to_datetime(validos['fecha'], errors='coerce')

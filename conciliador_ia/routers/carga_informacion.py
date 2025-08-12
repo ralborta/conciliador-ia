@@ -89,7 +89,13 @@ async def procesar(
             str(tabla_comprobantes_path),
             portal_iva_csv_path,
         )
-        resultados = process(data["ventas"], data["tabla_comprobantes"])
+        resultados = process(data["ventas"], data["tabla_comprobantes"]) 
+        # Propagar columnas del modelo de importación si están disponibles
+        if "modelo_import_cols" in data:
+            try:
+                resultados["modelo_import_cols"] = data["modelo_import_cols"]  # type: ignore
+            except Exception:
+                pass
 
         reporte_portal = None
         if "portal_iva" in data:

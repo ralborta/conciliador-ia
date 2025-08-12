@@ -337,10 +337,16 @@ class ExportadorVentas:
             for clave_factura, filas_factura in facturas_grupo.items():
                 logger.info(f"Procesando factura: {clave_factura} con {len(filas_factura)} productos")
                 
+                # CORREGIDO: NUMERODECONTROL debe ser por factura, no por producto
+                numero_control_factura = len(rows) + 1
+                
                 # Primera fila: SOLO datos de la factura (SIN productos)
                 if filas_factura:
                     primera_fila = filas_factura[0]
                     base_line = build_base_line(primera_fila)
+                    
+                    # CORREGIDO: Asignar NUMERODECONTROL de la factura
+                    base_line["NUMERODECONTROL"] = numero_control_factura
                     
                     # LIMPIAR campos de producto en la primera fila
                     base_line["PRODUCTOSERVICIO"] = ""
@@ -353,7 +359,7 @@ class ExportadorVentas:
                     base_line["IVA"] = ""
                     
                     rows.append(base_line)
-                    logger.info(f"Fila 1 agregada para factura {clave_factura} - SOLO datos de factura")
+                    logger.info(f"Fila 1 agregada para factura {clave_factura} - SOLO datos de factura - NUMERODECONTROL: {numero_control_factura}")
                 
                 # Filas siguientes: SOLO datos del producto (campos CLIENTE a OBSERVACIONES vacíos)
                 for i, fila_producto in enumerate(filas_factura, 1):
@@ -364,18 +370,18 @@ class ExportadorVentas:
                     logger.info(f"  - Monto: {fila_producto.get('monto', 'N/A')}")
                     logger.info(f"  - Precio: {fila_producto.get('precio', 'N/A')}")
                     
-                    # Crear fila solo con datos del producto
+                    # CORREGIDO: Crear fila solo con datos del producto, datos de factura completamente vacíos
                     fila_producto_data = {
-                        "NUMERODECONTROL": len(rows) + 1,
-                        "CLIENTE": "",  # Vacío - mismo cliente
-                        "TIPO": "",     # Vacío - mismo tipo
-                        "NUMERO": "",   # Vacío - mismo número
-                        "FECHA": "",    # Vacío - misma fecha
-                        "VENCIMIENTODELCOBRO": "",  # Vacío - mismo vencimiento
-                        "COMPROBANTEASOCIADO MONEDA": "",  # Vacío - mismo
-                        "": "",         # Columna vacía
-                        "COTIZACION": "",  # Vacío - misma cotización
-                        "OBSERVACIONES": "",  # Vacío - mismas observaciones
+                        "NUMERODECONTROL": "",  # CORREGIDO: Vacío - mismo número de control de la factura
+                        "CLIENTE": "",          # CORREGIDO: Vacío - mismo cliente
+                        "TIPO": "",             # CORREGIDO: Vacío - mismo tipo
+                        "NUMERO": "",           # CORREGIDO: Vacío - mismo número
+                        "FECHA": "",            # CORREGIDO: Vacía - misma fecha
+                        "VENCIMIENTODELCOBRO": "",  # CORREGIDO: Vacío - mismo vencimiento
+                        "COMPROBANTEASOCIADO MONEDA": "",  # CORREGIDO: Vacío - mismo
+                        "": "",                 # Columna vacía
+                        "COTIZACION": "",       # CORREGIDO: Vacía - misma cotización
+                        "OBSERVACIONES": "",    # CORREGIDO: Vacías - mismas observaciones
                         "PRODUCTOSERVICIO": fila_producto.get("producto_servicio", f"Producto al {fila_producto.get('iva', '21')}%"),
                         "CENTRODECOSTO": "",
                         "PRODUCTOOBSERVACION": "",
@@ -387,7 +393,7 @@ class ExportadorVentas:
                     }
                     
                     rows.append(fila_producto_data)
-                    logger.info(f"Fila {i+1} agregada para factura {clave_factura} - Producto: {fila_producto_data['PRODUCTOSERVICIO']} con IVA: {fila_producto_data['IVA']}")
+                    logger.info(f"Fila {i+1} agregada para factura {clave_factura} - SOLO datos de producto - Producto: {fila_producto_data['PRODUCTOSERVICIO']} con IVA: {fila_producto_data['IVA']}")
             
             out = pd.DataFrame(rows)
 

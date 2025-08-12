@@ -125,7 +125,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <FileText className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">Conciliador IA</h1>
+            <div className="leading-tight">
+              <h1 className="text-xl font-bold text-gray-900">Conciliador IA</h1>
+              <p className="text-xs text-gray-500">Netero</p>
+            </div>
           </div>
           <button
             onClick={onClose}

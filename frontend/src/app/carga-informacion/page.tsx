@@ -17,6 +17,7 @@ export default function CargaInformacionPage() {
   const [savedPaths, setSavedPaths] = useState<Record<string, string>>({});
   const [outputs, setOutputs] = useState<Record<string, string>>({});
   const [periodo, setPeriodo] = useState('06_2025');
+  const [processing, setProcessing] = useState(false);
 
   const handleExtractoUpload = async (file: File) => {
     setExtractoFile(file);
@@ -62,6 +63,7 @@ export default function CargaInformacionPage() {
         modelo_doble_alicuota: modeloDobleFile,
       });
       setSavedPaths(res.saved || {});
+      console.log('Saved paths', res.saved);
       toast.success('Archivos cargados');
     } catch (error: any) {
       toast.error(error.userMessage || 'Error cargando archivos');
@@ -70,11 +72,13 @@ export default function CargaInformacionPage() {
 
   const procesar = async () => {
     try {
-      const ventasPath = Object.values(savedPaths).find(p => p.toLowerCase().includes('.xlsx') || p.toLowerCase().includes('.xls')) || '';
-      const tablaPath = Object.values(savedPaths).find(p => p.toLowerCase().includes('tabla') || p.toLowerCase().includes('comprob')) || '';
-      const portalPath = Object.values(savedPaths).find(p => p.toLowerCase().endsWith('.csv'));
+      setProcessing(true);
+      const ventasPath = savedPaths['ventas_excel_path'] || '';
+      const tablaPath = savedPaths['tabla_comprobantes_path'] || '';
+      const portalPath = savedPaths['portal_iva_csv_path'];
       if (!ventasPath || !tablaPath) {
         toast.error('Faltan rutas guardadas de ventas o TABLACOMPROBANTES');
+        setProcessing(false);
         return;
       }
       const res = await apiService.cargaInfoProcesar({
@@ -87,6 +91,8 @@ export default function CargaInformacionPage() {
       toast.success('Procesamiento completado');
     } catch (error: any) {
       toast.error(error.userMessage || 'Error procesando');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -176,9 +182,10 @@ export default function CargaInformacionPage() {
               />
               <button
                 onClick={procesar}
-                className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-3 rounded-lg shadow-sm"
+                disabled={processing}
+                className={`text-white font-medium px-6 py-3 rounded-lg shadow-sm ${processing ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
               >
-                Procesar
+                {processing ? 'Procesando...' : 'Procesar'}
               </button>
             </div>
 

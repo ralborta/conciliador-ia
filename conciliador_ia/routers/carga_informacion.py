@@ -1,12 +1,12 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from typing import Optional
 import logging
 import shutil
 import os
 from . import __name__ as _router_name  # noqa
 
-from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR
+from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
 from ..services.carga_info.processor import process
 from ..services.carga_info.exporter import ExportadorVentas
 
@@ -28,18 +28,25 @@ async def upload_archivos(
 ):
     try:
         saved = {}
-        for file_obj, subdir in [
-            (ventas_excel, ENTRADA_DIR),
-            (tabla_comprobantes, ENTRADA_DIR),
-            (portal_iva_csv, ENTRADA_DIR),
-            (modelo_importacion, ENTRADA_DIR),
-            (modelo_doble_alicuota, ENTRADA_DIR),
-        ]:
-            if file_obj is None:
-                continue
-            content = await file_obj.read()
-            path = loader.save_uploaded_file(content, file_obj.filename, subdir)
-            saved[file_obj.filename] = path
+        # Guardar con claves tipadas para facilitar el frontend
+        content = await ventas_excel.read()
+        saved["ventas_excel_path"] = loader.save_uploaded_file(content, ventas_excel.filename, ENTRADA_DIR)
+
+        content = await tabla_comprobantes.read()
+        saved["tabla_comprobantes_path"] = loader.save_uploaded_file(content, tabla_comprobantes.filename, ENTRADA_DIR)
+
+        if portal_iva_csv is not None:
+            content = await portal_iva_csv.read()
+            saved["portal_iva_csv_path"] = loader.save_uploaded_file(content, portal_iva_csv.filename, ENTRADA_DIR)
+
+        if modelo_importacion is not None:
+            content = await modelo_importacion.read()
+            saved["modelo_importacion_path"] = loader.save_uploaded_file(content, modelo_importacion.filename, ENTRADA_DIR)
+
+        if modelo_doble_alicuota is not None:
+            content = await modelo_doble_alicuota.read()
+            saved["modelo_doble_alicuota_path"] = loader.save_uploaded_file(content, modelo_doble_alicuota.filename, ENTRADA_DIR)
+
         return {"status": "ok", "saved": saved}
     except Exception as e:
         logger.error(f"Error subiendo archivos: {e}")
@@ -70,6 +77,22 @@ async def procesar(
         return {"status": "ok", "outputs": outputs, "stats": {k: len(v) for k, v in resultados.items()}}
     except Exception as e:
         logger.error(f"Error procesando archivos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/download")
+async def download_output(filename: str):
+    """Descarga segura de archivos dentro de data/salida"""
+    try:
+        safe_name = filename.replace("..", "").replace("/", "_")
+        file_path = SALIDA_DIR / safe_name
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Archivo no encontrado")
+        return FileResponse(str(file_path), filename=safe_name)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error en descarga: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

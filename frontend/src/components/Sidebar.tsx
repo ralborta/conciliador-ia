@@ -130,9 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <p className="text-xs text-gray-500">Netero</p>
             </div>
           </div>
-          <div className="hidden lg:block">
-            <img src="/empleadosnet.svg" alt="Empleados.net" className="h-8 opacity-90" />
-          </div>
+          {/* Ya movimos el logo al banner global (layout) */}
           <button
             onClick={onClose}
             className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"

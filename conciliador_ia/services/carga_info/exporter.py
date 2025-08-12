@@ -56,23 +56,36 @@ class ExportadorVentas:
             m: Dict[str, str] = {}
             for col in df_in.columns:
                 cl = str(col).lower()
-                if ('no' in cl and 'grav' in cl) or ('no_grav' in cl):
+                # No Gravado
+                if ('no' in cl and 'grav' in cl) or ('no_grav' in cl) or ('importe no gravado' in cl):
                     m['no_gravado'] = col
-                elif 'exent' in cl:
+                # Exento
+                elif 'exent' in cl or ('importe exento' in cl):
                     m['exento'] = col
+                # Percepciones IVA
                 elif ('percep' in cl or 'perc' in cl) and 'iva' in cl:
                     m['percepciones_iva'] = col
-                elif ('percep' in cl or 'perc' in cl) and ('iibb' in cl or 'ingresos brutos' in cl):
+                # Percepciones IIBB
+                elif ('percep' in cl or 'perc' in cl) and ('iibb' in cl or 'ingresos brutos' in cl) or ('importe de percepciones de ingresos brutos' in cl):
                     m['percepciones_iibb'] = col
+                # Retenciones IVA
                 elif ('retenc' in cl or 'ret ' in cl) and 'iva' in cl:
                     m['retenciones_iva'] = col
+                # Retenciones IIBB
                 elif ('retenc' in cl or 'ret ' in cl) and ('iibb' in cl or 'ingresos brutos' in cl):
                     m['retenciones_iibb'] = col
+                # Retenciones Ganancias
                 elif ('retenc' in cl or 'ret ' in cl) and ('gcia' in cl or 'ganan' in cl):
                     m['retenciones_ganancias'] = col
             return m
 
         content_map = detectar_columnas_por_contenido(df)
+        
+        # LOGGING DETALLADO PARA DEBUG
+        logger.info(f"=== DEBUG MAPEO DE COLUMNAS ===")
+        logger.info(f"Columnas disponibles en df: {list(df.columns)}")
+        logger.info(f"Content map detectado: {content_map}")
+        logger.info(f"Columnas norm: {norm}")
         
         # Mapeo de columnas fuente usando nombres flexibles + detector de contenido
         srcs = {
@@ -80,15 +93,18 @@ class ExportadorVentas:
             "Importe IVA 21%": get("importe iva 21%", "iva 21%", "iva 21"),
             "Neto Gravado IVA 10,5%": get("neto gravado iva 10,5%", "neto gravado iva 10.5%", "neto 10.5", "neto 105"),
             "Importe IVA 10,5%": get("importe iva 10,5%", "importe iva 10.5%", "iva 10.5", "iva 10,5"),
-            "No Gravado": content_map.get('no_gravado', get("no gravado", "nogravado")),
-            "Exento": content_map.get('exento', get("exento", "exentos")),
+            "No Gravado": content_map.get('no_gravado', get("importe no gravado", "no gravado", "nogravado")),
+            "Exento": content_map.get('exento', get("importe exento", "exento", "exentos")),
             "Percepciones IVA": content_map.get('percepciones_iva', get("percepciones iva", "perc iva")),
-            "Percepciones IIBB": content_map.get('percepciones_iibb', get("percepciones iibb", "perc iibb")),
+            "Percepciones IIBB": content_map.get('percepciones_iibb', get("importe de percepciones de ingresos brutos", "percepciones iibb", "perc iibb")),
             "Retenciones IVA": content_map.get('retenciones_iva', get("retenciones iva", "ret iva")),
             "Retenciones IIBB": content_map.get('retenciones_iibb', get("retenciones iibb", "ret iibb")),
             "Retenciones Ganancias": content_map.get('retenciones_ganancias', get("retenciones ganancias", "ret ganancias")),
-            "Total": get("total", "importe total", "monto"),
+            "Total": get("monto", "total", "importe total"),
         }
+        
+        logger.info(f"Columnas fuente mapeadas: {srcs}")
+        logger.info(f"=== FIN DEBUG MAPEO ===")
 
         # Construir línea base con datos del comprobante
         def build_base_line(row: pd.Series) -> Dict[str, Any]:

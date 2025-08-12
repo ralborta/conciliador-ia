@@ -42,7 +42,14 @@ class ExportadorVentas:
 
         # Exportar con engine explícito para evitar sorpresas del writer
         if not validos.empty:
-            validos.to_excel(ventas_path, index=False, engine="xlsxwriter")
+            # Construir DataFrame con cabecera oficial de Xubio
+            try:
+                xubio_df = self._construir_xubio_df(validos)
+                logger.info(f"XUBIO DF shape: {xubio_df.shape}")
+            except Exception as e:
+                logger.warning(f"Fallo construyendo DF Xubio, exportando 'validos' crudo: {e}")
+                xubio_df = validos
+            xubio_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
             paths["ventas"] = str(ventas_path)
         if not errores.empty:
             errores.to_excel(errores_path, index=False, engine="xlsxwriter")
@@ -85,5 +92,89 @@ class ExportadorVentas:
             logger.warning(f"No se pudo generar log de clasificación: {e}")
 
         return paths
+
+    def _construir_xubio_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Mapea 'df' a la cabecera exacta requerida por Xubio para importación de ventas."""
+        expected_cols = [
+            "Fecha",
+            "Tipo Comprobante",
+            "Punto de Venta",
+            "Número de Comprobante",
+            "CUIT Cliente",
+            "Razón Social Cliente",
+            "Condición IVA Cliente",
+            "Neto Gravado IVA 21%",
+            "Importe IVA 21%",
+            "Neto Gravado IVA 10,5%",
+            "Importe IVA 10,5%",
+            "No Gravado",
+            "Exento",
+            "Percepciones IVA",
+            "Percepciones IIBB",
+            "Retenciones IVA",
+            "Retenciones IIBB",
+            "Retenciones Ganancias",
+            "Total",
+        ]
+
+        # Normalizar nombres disponibles en df para búsqueda flexible
+        norm = {str(c).strip().lower(): c for c in df.columns}
+        def get(*names: str) -> Optional[str]:
+            for n in names:
+                if n in norm:
+                    return norm[n]
+            return None
+
+        out = pd.DataFrame()
+        # Fecha
+        col_fecha = get("fecha", "fecha de emisión", "fecha de emision")
+        if col_fecha:
+            out["Fecha"] = pd.to_datetime(df[col_fecha], errors="coerce").dt.strftime("%d/%m/%Y")
+        else:
+            out["Fecha"] = ""
+
+        # Tipo, PV, Número
+        col_tipo = get("tipo_comprobante", "tipo comprobante", "código de comprobante", "codigo de comprobante")
+        out["Tipo Comprobante"] = df[col_tipo] if col_tipo else ""
+        col_pv = get("punto de venta", "pv")
+        out["Punto de Venta"] = df[col_pv] if col_pv else ""
+        col_num = get("numero_comprobante", "número de comprobante", "nro comprobante", "número de comprobante hasta", "numero de comprobante hasta")
+        out["Número de Comprobante"] = df[col_num] if col_num else ""
+
+        # Cliente y CUIT
+        col_cuit = get("cuit", "cuit cliente", "nro. doc. comprador")
+        out["CUIT Cliente"] = df[col_cuit] if col_cuit else ""
+        col_cliente = get("cliente", "razón social", "razon social", "razón social cliente", "denominación comprador", "denominacion comprador")
+        out["Razón Social Cliente"] = df[col_cliente] if col_cliente else ""
+        col_cond = get("condición iva cliente", "condicion iva cliente", "condicion iva")
+        out["Condición IVA Cliente"] = df[col_cond] if col_cond else ""
+
+        # IVA/Netos
+        map_pairs = [
+            ("Neto Gravado IVA 21%", ["neto gravado iva 21%", "neto 21", "neto iva 21"]),
+            ("Importe IVA 21%", ["importe iva 21%", "iva 21%", "iva 21"]),
+            ("Neto Gravado IVA 10,5%", ["neto gravado iva 10,5%", "neto gravado iva 10.5%", "neto 10.5", "neto 105"]),
+            ("Importe IVA 10,5%", ["importe iva 10,5%", "importe iva 10.5%", "iva 10.5", "iva 10,5"]),
+            ("No Gravado", ["no gravado", "nogravado"]),
+            ("Exento", ["exento", "exentos"]),
+            ("Percepciones IVA", ["percepciones iva", "perc iva"]),
+            ("Percepciones IIBB", ["percepciones iibb", "perc iibb"]),
+            ("Retenciones IVA", ["retenciones iva", "ret iva"]),
+            ("Retenciones IIBB", ["retenciones iibb", "ret iibb"]),
+            ("Retenciones Ganancias", ["retenciones ganancias", "ret ganancias"]),
+            ("Total", ["total", "importe total", "monto"]),
+        ]
+
+        for target, candidates in map_pairs:
+            src = get(*candidates)
+            if src:
+                out[target] = df[src]
+            else:
+                # faltante: default 0 para numéricos, string vacío para otros
+                out[target] = 0
+
+        # Asegurar orden exacto
+        out = out[expected_cols]
+        return out
 
 

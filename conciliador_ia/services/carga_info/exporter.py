@@ -376,7 +376,7 @@ class ExportadorVentas:
                         "": "",         # Columna vacía
                         "COTIZACION": "",  # Vacío - misma cotización
                         "OBSERVACIONES": "",  # Vacío - mismas observaciones
-                        "PRODUCTOSERVICIO": fila_producto.get("producto_servicio", "Producto al 21%"),
+                        "PRODUCTOSERVICIO": fila_producto.get("producto_servicio", f"Producto al {fila_producto.get('iva', '21')}%"),
                         "CENTRODECOSTO": "",
                         "PRODUCTOOBSERVACION": "",
                         "CANTIDAD": fila_producto.get("cantidad", 1),

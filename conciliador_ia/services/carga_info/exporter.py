@@ -18,12 +18,12 @@ logger = logging.getLogger(__name__)
 
 class ExportadorVentas:
     def __init__(self):
-        # ESTRUCTURA COMPLETA DEL MODELO REAL - TODAS LAS COLUMNAS
+        # ESTRUCTURA EXACTA DEL MODELO REAL - ORDEN CORRECTO
         self.MODELO_HEADER = [
-            "NUMERO", "FECHA", "VENCIMIENTODELCOBRO", "COMPROBANTEASOCIADO", 
-            "MONEDA", "COTIZACION", "OBSERVACIONES", "PRODUCTOSERVICIO",
-            "CENTRODECOSTO", "PRODUCTOOBSERVACION", "CANTIDAD", "PRECIO", 
-            "DESCUENTO", "IMPORTE", "TIPO_DOC_COMPRADOR", "CUIT", "CLIENTE"
+            "NUMERODECONTROL", "CLIENTE", "TIPO", "NUMERO", "FECHA", 
+            "VENCIMIENTODELCOBRO", "COMPROBANTEASOCIADO MONEDA", "", "COTIZACION", 
+            "OBSERVACIONES", "PRODUCTOSERVICIO", "CENTRODECOSTO", "PRODUCTOOBSERVACION", 
+            "CANTIDAD", "PRECIO", "DESCUENTO", "IMPORTE", "IVA"
         ]
         
         # Mapeo de columnas estándar internas al modelo real
@@ -31,8 +31,8 @@ class ExportadorVentas:
             "numero_comprobante": "NUMERO",
             "fecha": "FECHA", 
             "fecha_vencimiento": "VENCIMIENTODELCOBRO",
-            "comprobante_asociado": "COMPROBANTEASOCIADO",
-            "moneda": "MONEDA",
+            "comprobante_asociado": "COMPROBANTEASOCIADO MONEDA",
+            "moneda": "COMPROBANTEASOCIADO MONEDA",
             "cotizacion": "COTIZACION",
             "observaciones": "OBSERVACIONES",
             "producto_servicio": "PRODUCTOSERVICIO",
@@ -42,8 +42,7 @@ class ExportadorVentas:
             "precio": "PRECIO",
             "descuento": "DESCUENTO",
             "monto": "IMPORTE",
-            "tipo_doc_comprador": "TIPO_DOC_COMPRADOR",
-            "cuit": "CUIT",
+            "iva": "IVA",
             "cliente": "CLIENTE"
         }
 
@@ -166,11 +165,8 @@ class ExportadorVentas:
                 else:
                     base_line["VENCIMIENTODELCOBRO"] = row.get("fecha", "")
                 
-                # Comprobante asociado (vacío por defecto)
-                base_line["COMPROBANTEASOCIADO"] = ""
-                
-                # Moneda (Pesos Argentinos por defecto)
-                base_line["MONEDA"] = "Pesos Argentinos"
+                # Comprobante asociado + Moneda (Pesos Argentinos por defecto)
+                base_line["COMPROBANTEASOCIADO MONEDA"] = "Pesos Argentinos"
                 
                 # Cotización (1,00 por defecto)
                 base_line["COTIZACION"] = "1,00"
@@ -204,20 +200,22 @@ class ExportadorVentas:
                 if "monto" in df.columns:
                     base_line["IMPORTE"] = row["monto"]
                 
-                # Tipo documento comprador (80 por defecto - CUIT)
-                base_line["TIPO_DOC_COMPRADOR"] = 80
+                # IVA (21 por defecto)
+                base_line["IVA"] = 21
                 
-                # CUIT del cliente
+                # Cliente (usar CUIT si está disponible)
                 if "cuit" in df.columns:
-                    base_line["CUIT"] = row["cuit"]
-                else:
-                    base_line["CUIT"] = ""
-                
-                # Nombre del cliente
-                if "cliente" in df.columns:
+                    base_line["CLIENTE"] = row["cuit"]
+                elif "cliente" in df.columns:
                     base_line["CLIENTE"] = row["cliente"]
                 else:
                     base_line["CLIENTE"] = ""
+                
+                # Tipo de comprobante (vacío por defecto)
+                base_line["TIPO"] = ""
+                
+                # Número de control (vacío por defecto)
+                base_line["NUMERODECONTROL"] = ""
                 
                 rows.append(base_line)
             

@@ -18,25 +18,30 @@ logger = logging.getLogger(__name__)
 
 class ExportadorVentas:
     def __init__(self):
-        # ESTRUCTURA XUBIO HARCODEADA - NO DEPENDER DE ARCHIVOS EXTERNOS
-        self.XUBIO_HEADER = [
-            "Fecha", "Tipo Comprobante", "Punto de Venta", "Número de Comprobante", 
-            "CUIT", "Cliente", "Razón Social Cliente", "Condición IVA Cliente",
-            "Neto Gravado IVA 21%", "Importe IVA 21%", "Neto Gravado IVA 10,5%", 
-            "Importe IVA 10,5%", "No Gravado", "Exento", "Percepciones IVA", 
-            "Percepciones IIBB", "Retenciones IVA", "Retenciones IIBB", "Retenciones Ganancias", "Total"
+        # ESTRUCTURA DEL MODELO REAL - NO XUBIO HARCODEADO
+        self.MODELO_HEADER = [
+            "NUMERO", "FECHA", "VENCIMIENTODELCOBRO", "COMPROBANTEASOCIADO", 
+            "MONEDA", "COTIZACION", "OBSERVACIONES", "PRODUCTOSERVICIO",
+            "CENTRODECOSTO", "PRODUCTOOBSERVACION", "CANTIDAD", "PRECIO", 
+            "DESCUENTO", "IMPORTE"
         ]
         
-        # Mapeo de columnas estándar internas a Xubio
+        # Mapeo de columnas estándar internas al modelo real
         self.COLUMN_MAPPING = {
-            "fecha": "Fecha",
-            "tipo_comprobante": "Tipo Comprobante", 
-            "punto_venta": "Punto de Venta",
-            "numero_comprobante": "Número de Comprobante",
-            "cuit": "CUIT",
-            "cliente": "Cliente",
-            "razon_social": "Razón Social Cliente",
-            "condicion_iva": "Condición IVA Cliente"
+            "numero_comprobante": "NUMERO",
+            "fecha": "FECHA", 
+            "fecha_vencimiento": "VENCIMIENTODELCOBRO",
+            "comprobante_asociado": "COMPROBANTEASOCIADO",
+            "moneda": "MONEDA",
+            "cotizacion": "COTIZACION",
+            "observaciones": "OBSERVACIONES",
+            "producto_servicio": "PRODUCTOSERVICIO",
+            "centro_costo": "CENTRODECOSTO",
+            "producto_observacion": "PRODUCTOOBSERVACION",
+            "cantidad": "CANTIDAD",
+            "precio": "PRECIO",
+            "descuento": "DESCUENTO",
+            "monto": "IMPORTE"
         }
 
     def _construir_xubio_df(self, df: pd.DataFrame, multiline: bool = False) -> pd.DataFrame:
@@ -117,7 +122,7 @@ class ExportadorVentas:
                     base[xubio_col] = ""  # Valor por defecto
             
             # Llenar columnas numéricas con 0 por defecto
-            for col in self.XUBIO_HEADER:
+            for col in self.MODELO_HEADER:
                 if col not in base:
                     if any(keyword in col.lower() for keyword in ["neto", "importe", "iva", "percepcion", "retencion", "total"]):
                         base[col] = 0.0
@@ -131,7 +136,7 @@ class ExportadorVentas:
             rows = []
             for _, row in df.iterrows():
                 line = build_base_line(row)
-                # Llenar valores de IVA y otros campos desde srcs
+                # Llenar valores específicos del modelo
                 for xubio_col, src_col in srcs.items():
                     if src_col and src_col in df.columns:
                         line[xubio_col] = row[src_col]
@@ -139,64 +144,69 @@ class ExportadorVentas:
             
             out = pd.DataFrame(rows)
         else:
-            # Modo multilínea: expandir cada comprobante en múltiples filas por componente
+            # Modo modelo: una fila por comprobante con estructura del modelo real
             rows = []
             for _, row in df.iterrows():
+                # Construir línea base con datos del comprobante
                 base_line = build_base_line(row)
                 
-                # Fila 1: Datos del comprobante + Neto 21%
-                if srcs["Neto Gravado IVA 21%"] and pd.notna(row[srcs["Neto Gravado IVA 21%"]]) and row[srcs["Neto Gravado IVA 21%"]] != 0:
-                    line1 = base_line.copy()
-                    line1["Neto Gravado IVA 21%"] = row[srcs["Neto Gravado IVA 21%"]]
-                    line1["Importe IVA 21%"] = row[srcs["Importe IVA 21%"]] if srcs["Importe IVA 21%"] else 0
-                    rows.append(line1)
+                # Mapear datos específicos del CSV al modelo
+                if "numero_comprobante" in df.columns:
+                    base_line["NUMERO"] = row["numero_comprobante"]
                 
-                # Fila 2: Neto 10.5%
-                if srcs["Neto Gravado IVA 10,5%"] and pd.notna(row[srcs["Neto Gravado IVA 10,5%"]]) and row[srcs["Neto Gravado IVA 10,5%"]] != 0:
-                    line2 = base_line.copy()
-                    line2["Neto Gravado IVA 10,5%"] = row[srcs["Neto Gravado IVA 10,5%"]]
-                    line2["Importe IVA 10,5%"] = row[srcs["Importe IVA 10,5%"]] if srcs["Importe IVA 10,5%"] else 0
-                    rows.append(line2)
+                if "fecha" in df.columns:
+                    base_line["FECHA"] = row["fecha"]
                 
-                # Fila 3: No Gravado
-                if srcs["No Gravado"] and pd.notna(row[srcs["No Gravado"]]) and row[srcs["No Gravado"]] != 0:
-                    line3 = base_line.copy()
-                    line3["No Gravado"] = row[srcs["No Gravado"]]
-                    rows.append(line3)
+                # Fecha de vencimiento (usar fecha si no hay vencimiento específico)
+                if "fecha_vencimiento" in df.columns:
+                    base_line["VENCIMIENTODELCOBRO"] = row["fecha_vencimiento"]
+                else:
+                    base_line["VENCIMIENTODELCOBRO"] = row.get("fecha", "")
                 
-                # Fila 4: Exento
-                if srcs["Exento"] and pd.notna(row[srcs["Exento"]]) and row[srcs["Exento"]] != 0:
-                    line4 = base_line.copy()
-                    line4["Exento"] = row[srcs["Exento"]]
-                    rows.append(line4)
+                # Comprobante asociado (vacío por defecto)
+                base_line["COMPROBANTEASOCIADO"] = ""
                 
-                # Fila 5: Percepciones
-                if (srcs["Percepciones IVA"] and pd.notna(row[srcs["Percepciones IVA"]]) and row[srcs["Percepciones IVA"]] != 0) or \
-                   (srcs["Percepciones IIBB"] and pd.notna(row[srcs["Percepciones IIBB"]]) and row[srcs["Percepciones IIBB"]] != 0):
-                    line5 = base_line.copy()
-                    line5["Percepciones IVA"] = row[srcs["Percepciones IVA"]] if srcs["Percepciones IVA"] else 0
-                    line5["Percepciones IIBB"] = row[srcs["Percepciones IIBB"]] if srcs["Percepciones IIBB"] else 0
-                    rows.append(line5)
+                # Moneda (Pesos Argentinos por defecto)
+                base_line["MONEDA"] = "Pesos Argentinos"
                 
-                # Fila 6: Retenciones
-                if (srcs["Retenciones IVA"] and pd.notna(row[srcs["Retenciones IVA"]]) and row[srcs["Retenciones IVA"]] != 0) or \
-                   (srcs["Retenciones IIBB"] and pd.notna(row[srcs["Retenciones IIBB"]]) and row[srcs["Retenciones IIBB"]] != 0) or \
-                   (srcs["Retenciones Ganancias"] and pd.notna(row[srcs["Retenciones Ganancias"]]) and row[srcs["Retenciones Ganancias"]] != 0):
-                    line6 = base_line.copy()
-                    line6["Retenciones IVA"] = row[srcs["Retenciones IVA"]] if srcs["Retenciones IVA"] else 0
-                    line6["Retenciones IIBB"] = row[srcs["Retenciones IIBB"]] if srcs["Retenciones IIBB"] else 0
-                    line6["Retenciones Ganancias"] = row[srcs["Retenciones Ganancias"]] if srcs["Retenciones Ganancias"] else 0
-                    rows.append(line6)
+                # Cotización (1,00 por defecto)
+                base_line["COTIZACION"] = "1,00"
                 
-                # Fila 7: Total (siempre presente)
-                line7 = base_line.copy()
-                line7["Total"] = row[srcs["Total"]] if srcs["Total"] else 0
-                rows.append(line7)
+                # Observaciones
+                base_line["OBSERVACIONES"] = "Descripción de la factura"
+                
+                # Producto/Servicio (detectar IVA del CSV)
+                if "tipo_comprobante" in df.columns:
+                    base_line["PRODUCTOSERVICIO"] = f"Producto al {row.get('tipo_comprobante', '21%')}"
+                else:
+                    base_line["PRODUCTOSERVICIO"] = "Producto al 21%"
+                
+                # Centro de costo (vacío por defecto)
+                base_line["CENTRODECOSTO"] = ""
+                
+                # Producto observación (vacío por defecto)
+                base_line["PRODUCTOOBSERVACION"] = ""
+                
+                # Cantidad (1 por defecto)
+                base_line["CANTIDAD"] = 1
+                
+                # Precio (usar monto del CSV)
+                if "monto" in df.columns:
+                    base_line["PRECIO"] = row["monto"]
+                
+                # Descuento (0 por defecto)
+                base_line["DESCUENTO"] = 0
+                
+                # Importe (usar monto del CSV)
+                if "monto" in df.columns:
+                    base_line["IMPORTE"] = row["monto"]
+                
+                rows.append(base_line)
             
             out = pd.DataFrame(rows)
 
         # Asegurar que todas las columnas Xubio estén presentes y en el orden correcto
-        for col in self.XUBIO_HEADER:
+        for col in self.MODELO_HEADER:
             if col not in out.columns:
                 if any(keyword in col.lower() for keyword in ["neto", "importe", "iva", "percepcion", "retencion", "total"]):
                     out[col] = 0.0
@@ -204,7 +214,7 @@ class ExportadorVentas:
                     out[col] = ""
         
         # Reordenar exactamente como XUBIO_HEADER
-        out = out[self.XUBIO_HEADER]
+        out = out[self.MODELO_HEADER]
         
         logger.info(f"DataFrame Xubio construido: {out.shape} filas, {len(out.columns)} columnas")
         return out
@@ -238,42 +248,42 @@ class ExportadorVentas:
             for i, row in validos.head(3).iterrows():
                 logger.info(f"  Fila {i}: {dict(row)}")
         
-        # 1. Exportar ventas para Xubio (ESTRUCTURA HARCODEADA)
+        # 1. Exportar ventas para el modelo (ESTRUCTURA DEL MODELO REAL)
         if not validos.empty:
             try:
-                # Usar estructura hardcodeada - NO depende de archivos externos
-                xubio_df = self._construir_xubio_df(validos, multiline=True)
-                logger.info(f"XUBIO DF construido exitosamente: {xubio_df.shape}")
+                # Usar estructura del modelo real - NO depende de archivos externos
+                modelo_df = self._construir_xubio_df(validos, multiline=True)
+                logger.info(f"MODELO DF construido exitosamente: {modelo_df.shape}")
                 
-                # Generar Excel directamente con estructura hardcodeada
-                ventas_path = SALIDA_DIR / f"ventas_importacion_xubio_{periodo}.xlsx"
-                xubio_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
-                logger.info(f"Excel Xubio exportado con estructura hardcodeada: {ventas_path}")
+                # Generar Excel directamente con estructura del modelo
+                ventas_path = SALIDA_DIR / f"ventas_importacion_modelo_{periodo}.xlsx"
+                modelo_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
+                logger.info(f"Excel del modelo exportado con estructura correcta: {ventas_path}")
                 paths["ventas"] = str(ventas_path)
                 
             except Exception as e:
-                logger.error(f"Error construyendo DF Xubio: {e}")
-                # Fallback: exportar 'validos' pero con estructura Xubio
+                logger.error(f"Error construyendo DF del modelo: {e}")
+                # Fallback: exportar 'validos' pero con estructura del modelo
                 try:
                     fallback_df = self._construir_xubio_df(validos, multiline=False)
-                    ventas_path = SALIDA_DIR / f"ventas_importacion_xubio_{periodo}.xlsx"
+                    ventas_path = SALIDA_DIR / f"ventas_importacion_modelo_{periodo}.xlsx"
                     fallback_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
-                    logger.info(f"Fallback: Excel Xubio exportado en modo simple: {ventas_path}")
+                    logger.info(f"Fallback: Excel del modelo exportado en modo simple: {ventas_path}")
                     paths["ventas"] = str(ventas_path)
                 except Exception as fallback_error:
                     logger.error(f"Fallback también falló: {fallback_error}")
                     # Último recurso: exportar crudo
-                    ventas_path = SALIDA_DIR / f"ventas_importacion_xubio_{periodo}.xlsx"
+                    ventas_path = SALIDA_DIR / f"ventas_importacion_modelo_{periodo}.xlsx"
                     validos.to_excel(ventas_path, index=False, engine="xlsxwriter")
                     logger.warning(f"Exportando 'validos' crudo como último recurso: {ventas_path}")
                     paths["ventas"] = str(ventas_path)
         else:
-            logger.warning("No hay datos válidos para exportar a Xubio")
-            # Crear Excel vacío con estructura Xubio
-            ventas_path = SALIDA_DIR / f"ventas_importacion_xubio_{periodo}.xlsx"
-            empty_df = pd.DataFrame(columns=self.XUBIO_HEADER)
+            logger.warning("No hay datos válidos para exportar al modelo")
+            # Crear Excel vacío con estructura del modelo
+            ventas_path = SALIDA_DIR / f"ventas_importacion_modelo_{periodo}.xlsx"
+            empty_df = pd.DataFrame(columns=self.MODELO_HEADER)
             empty_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
-            logger.info(f"Excel Xubio vacío creado con estructura: {ventas_path}")
+            logger.info(f"Excel del modelo vacío creado con estructura: {ventas_path}")
             paths["ventas"] = str(ventas_path)
 
         # 2. Exportar errores detectados

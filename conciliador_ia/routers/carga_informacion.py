@@ -1,0 +1,75 @@
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi.responses import JSONResponse
+from typing import Optional
+import logging
+import shutil
+import os
+from . import __name__ as _router_name  # noqa
+
+from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR
+from ..services.carga_info.processor import process
+from ..services.carga_info.exporter import ExportadorVentas
+
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/carga-informacion", tags=["carga-informacion"])
+
+loader = CargaArchivos()
+exporter = ExportadorVentas()
+
+
+@router.post("/upload")
+async def upload_archivos(
+    ventas_excel: UploadFile = File(...),
+    tabla_comprobantes: UploadFile = File(...),
+    portal_iva_csv: Optional[UploadFile] = File(None),
+    modelo_importacion: Optional[UploadFile] = File(None),
+    modelo_doble_alicuota: Optional[UploadFile] = File(None),
+):
+    try:
+        saved = {}
+        for file_obj, subdir in [
+            (ventas_excel, ENTRADA_DIR),
+            (tabla_comprobantes, ENTRADA_DIR),
+            (portal_iva_csv, ENTRADA_DIR),
+            (modelo_importacion, ENTRADA_DIR),
+            (modelo_doble_alicuota, ENTRADA_DIR),
+        ]:
+            if file_obj is None:
+                continue
+            content = await file_obj.read()
+            path = loader.save_uploaded_file(content, file_obj.filename, subdir)
+            saved[file_obj.filename] = path
+        return {"status": "ok", "saved": saved}
+    except Exception as e:
+        logger.error(f"Error subiendo archivos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/procesar")
+async def procesar(
+    ventas_excel_path: str = Form(...),
+    tabla_comprobantes_path: str = Form(...),
+    periodo: str = Form(...),
+    portal_iva_csv_path: Optional[str] = Form(None),
+):
+    try:
+        data = loader.load_inputs(
+            ventas_excel_path,
+            tabla_comprobantes_path,
+            portal_iva_csv_path,
+        )
+        resultados = process(data["ventas"], data["tabla_comprobantes"])
+
+        reporte_portal = None
+        if "portal_iva" in data:
+            # En una versión posterior, se comparará con reglas más ricas
+            reporte_portal = data["portal_iva"].head(100)
+
+        outputs = exporter.exportar(resultados, periodo, reporte_portal)
+        return {"status": "ok", "outputs": outputs, "stats": {k: len(v) for k, v in resultados.items()}}
+    except Exception as e:
+        logger.error(f"Error procesando archivos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+

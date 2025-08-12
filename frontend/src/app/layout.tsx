@@ -23,7 +23,7 @@ export default function RootLayout({
           <img
             src="/empleadosnet.svg"
             alt="Empleados.net"
-            className="h-10 md:h-12 drop-shadow-sm opacity-95"
+            className="h-7 md:h-9 drop-shadow-sm opacity-95"
           />
         </div>
 

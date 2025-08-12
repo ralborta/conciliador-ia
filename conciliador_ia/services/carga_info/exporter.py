@@ -135,6 +135,10 @@ class ExportadorVentas:
         # Construir línea base con datos del comprobante
         def build_base_line(row: pd.Series) -> Dict[str, Any]:
             base = {}
+            
+            # Número de control (correlativo empezando desde 1)
+            base["NUMERODECONTROL"] = len(rows) + 1
+            
             # Mapear columnas estándar
             for internal_col, xubio_col in self.COLUMN_MAPPING.items():
                 if internal_col in df.columns:
@@ -149,6 +153,142 @@ class ExportadorVentas:
                         base[col] = 0.0
                     else:
                         base[col] = ""
+            
+            # Construir campo NUMERO con formato: [LETRA]-[TIPO_5_DIGITOS]-[NUMERO_8_DIGITOS]
+            if "tipo_comprobante" in df.columns and "numero_comprobante" in df.columns:
+                tipo_afip = str(row["tipo_comprobante"]).strip()
+                numero_comp = str(row["numero_comprobante"]).strip()
+                
+                # 1. Obtener letra basada en el tipo de comprobante
+                letra_map = {
+                    1: "A",  # Facturas
+                    2: "B",  # Notas de Crédito/Débito
+                    3: "C",  # Recibos/Remitos
+                    6: "M"   # Otros tipos
+                }
+                
+                # Limpiar tipo y mapear a Xubio
+                tipo_afip_clean = tipo_afip.lstrip('0') if tipo_afip else '1'
+                tipo_xubio = self.TIPO_COMPROBANTE_MAP.get(tipo_afip_clean, 1)
+                letra = letra_map.get(tipo_xubio, "A")
+                
+                # 2. Formatear tipo a 5 dígitos con ceros
+                tipo_formateado = f"{tipo_afip:0>5}"
+                
+                # 3. Formatear número de comprobante a 8 dígitos con ceros
+                numero_formateado = f"{numero_comp:0>8}"
+                
+                # 4. Construir campo NUMERO completo
+                base["NUMERO"] = f"{letra}-{tipo_formateado}-{numero_formateado}"
+                
+                logger.info(f"NUMERO construido: {tipo_afip} → {tipo_xubio} → {letra}, {numero_comp} → {base['NUMERO']}")
+            else:
+                base["NUMERO"] = ""
+                logger.warning("No se pudo construir NUMERO: faltan campos tipo_comprobante o numero_comprobante")
+            
+            # Tipo de comprobante (mapear desde CSV usando tabla de equivalencias)
+            if "tipo_comprobante" in df.columns:
+                tipo_afip = str(row["tipo_comprobante"]).strip()
+                # Quitar ceros a la izquierda para el mapeo
+                tipo_afip_clean = tipo_afip.lstrip('0') if tipo_afip else '1'
+                # Mapear código AFIP a código Xubio
+                if tipo_afip_clean in self.TIPO_COMPROBANTE_MAP:
+                    base["TIPO"] = self.TIPO_COMPROBANTE_MAP[tipo_afip_clean]
+                    logger.info(f"Mapeado tipo AFIP {tipo_afip} → {tipo_afip_clean} → Xubio {self.TIPO_COMPROBANTE_MAP[tipo_afip_clean]}")
+                else:
+                    base["TIPO"] = 1  # Default a Factura si no se encuentra
+                    logger.warning(f"Tipo AFIP {tipo_afip} ({tipo_afip_clean}) no encontrado en tabla de equivalencias, usando default 1")
+            else:
+                base["TIPO"] = 1  # Default a Factura si no hay campo tipo_comprobante
+            
+            # Fecha (convertir a formato dd/mm/yyyy sin hora)
+            if "fecha" in df.columns:
+                try:
+                    fecha_obj = pd.to_datetime(row["fecha"])
+                    base["FECHA"] = fecha_obj.strftime("%d/%m/%Y")
+                    logger.info(f"Fecha formateada: {row['fecha']} → {fecha_obj.strftime('%d/%m/%Y')}")
+                except:
+                    base["FECHA"] = str(row["fecha"])  # Fallback si no se puede parsear
+                    logger.warning(f"No se pudo formatear fecha: {row['fecha']}")
+            
+            # Fecha de vencimiento (usar fecha si no hay vencimiento específico)
+            if "fecha_vencimiento" in df.columns:
+                try:
+                    fecha_venc = pd.to_datetime(row["fecha_vencimiento"])
+                    base["VENCIMIENTODELCOBRO"] = fecha_venc.strftime("%d/%m/%Y")
+                except:
+                    base["VENCIMIENTODELCOBRO"] = str(row["fecha_vencimiento"])
+            else:
+                # Usar la fecha principal formateada
+                if "fecha" in df.columns:
+                    try:
+                        fecha_obj = pd.to_datetime(row["fecha"])
+                        base["VENCIMIENTODELCOBRO"] = fecha_obj.strftime("%d/%m/%Y")
+                    except:
+                        base["VENCIMIENTODELCOBRO"] = str(row.get("fecha", ""))
+                else:
+                    base["VENCIMIENTODELCOBRO"] = ""
+            
+            # Comprobante asociado + Moneda (Pesos Argentinos por defecto)
+            base["COMPROBANTEASOCIADO MONEDA"] = "Pesos Argentinos"
+            
+            # Cotización (1,00 por defecto)
+            base["COTIZACION"] = "1,00"
+            
+            # Observaciones
+            base["OBSERVACIONES"] = "Descripción de la factura"
+            
+            # Producto/Servicio (detectar IVA del CSV)
+            if "tipo_comprobante" in df.columns:
+                base["PRODUCTOSERVICIO"] = f"Producto al {row.get('tipo_comprobante', '21%')}"
+            else:
+                base["PRODUCTOSERVICIO"] = "Producto al 21%"
+            
+            # Centro de costo (vacío por defecto)
+            base["CENTRODECOSTO"] = ""
+            
+            # Producto observación (vacío por defecto)
+            base["PRODUCTOOBSERVACION"] = ""
+            
+            # Cantidad (1 por defecto)
+            base["CANTIDAD"] = 1
+            
+            # Precio (usar monto del CSV)
+            if "monto" in df.columns:
+                base["PRECIO"] = row["monto"]
+            
+            # Descuento (0 por defecto)
+            base["DESCUENTO"] = 0
+            
+            # Importe (usar monto del CSV)
+            if "monto" in df.columns:
+                base["IMPORTE"] = row["monto"]
+            
+            # IVA (21 por defecto)
+            base["IVA"] = 21
+            
+            # Cliente (usar "Denominación Comprador" del CSV si está disponible)
+            cliente_encontrado = False
+            if "denominacion comprador" in df.columns:
+                base["CLIENTE"] = row["denominacion comprador"]
+                cliente_encontrado = True
+                logger.info(f"Cliente mapeado desde 'denominacion comprador': {row['denominacion comprador']}")
+            elif "denominación comprador" in df.columns:  # Con tilde
+                base["CLIENTE"] = row["denominación comprador"]
+                cliente_encontrado = True
+                logger.info(f"Cliente mapeado desde 'denominación comprador': {row['denominación comprador']}")
+            elif "cliente" in df.columns:
+                base["CLIENTE"] = row["cliente"]
+                cliente_encontrado = True
+                logger.info(f"Cliente mapeado desde 'cliente': {row['cliente']}")
+            elif "cuit" in df.columns:
+                base["CLIENTE"] = row["cuit"]
+                cliente_encontrado = True
+                logger.info(f"Cliente mapeado desde 'cuit': {row['cuit']}")
+            
+            if not cliente_encontrado:
+                base["CLIENTE"] = ""
+                logger.warning("No se encontró campo para mapear al CLIENTE")
             
             return base
 
@@ -165,156 +305,72 @@ class ExportadorVentas:
             
             out = pd.DataFrame(rows)
         else:
-            # Modo modelo: una fila por comprobante con estructura del modelo real
+            # Modo modelo: generar múltiples filas por factura
             rows = []
-            for _, row in df.iterrows():
-                # Construir línea base con datos del comprobante
-                base_line = build_base_line(row)
+            
+            # Agrupar filas por factura (usando número + fecha como identificador único)
+            facturas_grupo = {}
+            for idx, row in df.iterrows():
+                # Crear clave única para agrupar facturas
+                clave_factura = f"{row.get('numero_comprobante', '')}_{row.get('fecha', '')}"
+                if clave_factura not in facturas_grupo:
+                    facturas_grupo[clave_factura] = []
+                facturas_grupo[clave_factura].append(row)
+            
+            logger.info(f"Se detectaron {len(facturas_grupo)} facturas únicas")
+            
+            # Procesar cada factura
+            for clave_factura, filas_factura in facturas_grupo.items():
+                logger.info(f"Procesando factura: {clave_factura} con {len(filas_factura)} productos")
                 
-                # Mapear datos específicos del CSV al modelo
-                if "numero_comprobante" in df.columns:
-                    base_line["NUMERO"] = row["numero_comprobante"]
-                
-                if "fecha" in df.columns:
-                    # Convertir fecha a formato dd/mm/yyyy sin hora
-                    try:
-                        fecha_obj = pd.to_datetime(row["fecha"])
-                        base_line["FECHA"] = fecha_obj.strftime("%d/%m/%Y")
-                        logger.info(f"Fecha formateada: {row['fecha']} → {fecha_obj.strftime('%d/%m/%Y')}")
-                    except:
-                        base_line["FECHA"] = str(row["fecha"])  # Fallback si no se puede parsear
-                        logger.warning(f"No se pudo formatear fecha: {row['fecha']}")
-                
-                # Fecha de vencimiento (usar fecha si no hay vencimiento específico)
-                if "fecha_vencimiento" in df.columns:
-                    try:
-                        fecha_venc = pd.to_datetime(row["fecha_vencimiento"])
-                        base_line["VENCIMIENTODELCOBRO"] = fecha_venc.strftime("%d/%m/%Y")
-                    except:
-                        base_line["VENCIMIENTODELCOBRO"] = str(row["fecha_vencimiento"])
-                else:
-                    # Usar la fecha principal formateada
-                    if "fecha" in df.columns:
-                        try:
-                            fecha_obj = pd.to_datetime(row["fecha"])
-                            base_line["VENCIMIENTODELCOBRO"] = fecha_obj.strftime("%d/%m/%Y")
-                        except:
-                            base_line["VENCIMIENTODELCOBRO"] = str(row.get("fecha", ""))
-                    else:
-                        base_line["VENCIMIENTODELCOBRO"] = ""
-                
-                # Comprobante asociado + Moneda (Pesos Argentinos por defecto)
-                base_line["COMPROBANTEASOCIADO MONEDA"] = "Pesos Argentinos"
-                
-                # Cotización (1,00 por defecto)
-                base_line["COTIZACION"] = "1,00"
-                
-                # Observaciones
-                base_line["OBSERVACIONES"] = "Descripción de la factura"
-                
-                # Producto/Servicio (detectar IVA del CSV)
-                if "tipo_comprobante" in df.columns:
-                    base_line["PRODUCTOSERVICIO"] = f"Producto al {row.get('tipo_comprobante', '21%')}"
-                else:
-                    base_line["PRODUCTOSERVICIO"] = "Producto al 21%"
-                
-                # Centro de costo (vacío por defecto)
-                base_line["CENTRODECOSTO"] = ""
-                
-                # Producto observación (vacío por defecto)
-                base_line["PRODUCTOOBSERVACION"] = ""
-                
-                # Cantidad (1 por defecto)
-                base_line["CANTIDAD"] = 1
-                
-                # Precio (usar monto del CSV)
-                if "monto" in df.columns:
-                    base_line["PRECIO"] = row["monto"]
-                
-                # Descuento (0 por defecto)
-                base_line["DESCUENTO"] = 0
-                
-                # Importe (usar monto del CSV)
-                if "monto" in df.columns:
-                    base_line["IMPORTE"] = row["monto"]
-                
-                # IVA (21 por defecto)
-                base_line["IVA"] = 21
-                
-                # Cliente (usar "Denominación Comprador" del CSV si está disponible)
-                cliente_encontrado = False
-                if "denominacion comprador" in df.columns:
-                    base_line["CLIENTE"] = row["denominacion comprador"]
-                    cliente_encontrado = True
-                    logger.info(f"Cliente mapeado desde 'denominacion comprador': {row['denominacion comprador']}")
-                elif "denominación comprador" in df.columns:  # Con tilde
-                    base_line["CLIENTE"] = row["denominación comprador"]
-                    cliente_encontrado = True
-                    logger.info(f"Cliente mapeado desde 'denominación comprador': {row['denominación comprador']}")
-                elif "cliente" in df.columns:
-                    base_line["CLIENTE"] = row["cliente"]
-                    cliente_encontrado = True
-                    logger.info(f"Cliente mapeado desde 'cliente': {row['cliente']}")
-                elif "cuit" in df.columns:
-                    base_line["CLIENTE"] = row["cuit"]
-                    cliente_encontrado = True
-                    logger.info(f"Cliente mapeado desde 'cuit': {row['cuit']}")
-                
-                if not cliente_encontrado:
-                    base_line["CLIENTE"] = ""
-                    logger.warning("No se encontró campo para mapear al CLIENTE")
-                
-                # Construir campo NUMERO con formato: [LETRA]-[TIPO_5_DIGITOS]-[NUMERO_8_DIGITOS]
-                if "tipo_comprobante" in df.columns and "numero_comprobante" in df.columns:
-                    tipo_afip = str(row["tipo_comprobante"]).strip()
-                    numero_comp = str(row["numero_comprobante"]).strip()
+                # Primera fila: datos completos de la factura + primer producto
+                if filas_factura:
+                    primera_fila = filas_factura[0]
+                    base_line = build_base_line(primera_fila)
                     
-                    # 1. Obtener letra basada en el tipo de comprobante
-                    letra_map = {
-                        1: "A",  # Facturas
-                        2: "B",  # Notas de Crédito/Débito
-                        3: "C",  # Recibos/Remitos
-                        6: "M"   # Otros tipos
+                    # Llenar datos específicos del primer producto
+                    if "producto_servicio" in df.columns:
+                        base_line["PRODUCTOSERVICIO"] = primera_fila.get("producto_servicio", "Producto al 21%")
+                    if "cantidad" in df.columns:
+                        base_line["CANTIDAD"] = primera_fila.get("cantidad", 1)
+                    if "precio" in df.columns:
+                        base_line["PRECIO"] = primera_fila.get("precio", primera_fila.get("monto", 0))
+                    if "descuento" in df.columns:
+                        base_line["DESCUENTO"] = primera_fila.get("descuento", 0)
+                    if "monto" in df.columns:
+                        base_line["IMPORTE"] = primera_fila.get("monto", 0)
+                    if "iva" in df.columns:
+                        base_line["IVA"] = primera_fila.get("iva", 21)
+                    
+                    rows.append(base_line)
+                    logger.info(f"Fila 1 agregada para factura {clave_factura}")
+                
+                # Filas adicionales: solo datos del producto (campos CLIENTE a OBSERVACIONES vacíos)
+                for i, fila_producto in enumerate(filas_factura[1:], 2):
+                    # Crear fila solo con datos del producto
+                    fila_producto_data = {
+                        "NUMERODECONTROL": len(rows) + 1,
+                        "CLIENTE": "",  # Vacío - mismo cliente
+                        "TIPO": "",     # Vacío - mismo tipo
+                        "NUMERO": "",   # Vacío - mismo número
+                        "FECHA": "",    # Vacío - misma fecha
+                        "VENCIMIENTODELCOBRO": "",  # Vacío - mismo vencimiento
+                        "COMPROBANTEASOCIADO MONEDA": "",  # Vacío - mismo
+                        "": "",         # Columna vacía
+                        "COTIZACION": "",  # Vacío - misma cotización
+                        "OBSERVACIONES": "",  # Vacío - mismas observaciones
+                        "PRODUCTOSERVICIO": fila_producto.get("producto_servicio", "Producto al 21%"),
+                        "CENTRODECOSTO": "",
+                        "PRODUCTOOBSERVACION": "",
+                        "CANTIDAD": fila_producto.get("cantidad", 1),
+                        "PRECIO": fila_producto.get("precio", fila_producto.get("monto", 0)),
+                        "DESCUENTO": fila_producto.get("descuento", 0),
+                        "IMPORTE": fila_producto.get("monto", 0),
+                        "IVA": fila_producto.get("iva", 21)
                     }
                     
-                    # Limpiar tipo y mapear a Xubio
-                    tipo_afip_clean = tipo_afip.lstrip('0') if tipo_afip else '1'
-                    tipo_xubio = self.TIPO_COMPROBANTE_MAP.get(tipo_afip_clean, 1)
-                    letra = letra_map.get(tipo_xubio, "A")
-                    
-                    # 2. Formatear tipo a 5 dígitos con ceros
-                    tipo_formateado = f"{tipo_afip:0>5}"
-                    
-                    # 3. Formatear número de comprobante a 8 dígitos con ceros
-                    numero_formateado = f"{numero_comp:0>8}"
-                    
-                    # 4. Construir campo NUMERO completo
-                    base_line["NUMERO"] = f"{letra}-{tipo_formateado}-{numero_formateado}"
-                    
-                    logger.info(f"NUMERO construido: {tipo_afip} → {tipo_xubio} → {letra}, {numero_comp} → {base_line['NUMERO']}")
-                else:
-                    base_line["NUMERO"] = ""
-                    logger.warning("No se pudo construir NUMERO: faltan campos tipo_comprobante o numero_comprobante")
-                
-                # Tipo de comprobante (mapear desde CSV usando tabla de equivalencias)
-                if "tipo_comprobante" in df.columns:
-                    tipo_afip = str(row["tipo_comprobante"]).strip()
-                    # Quitar ceros a la izquierda para el mapeo
-                    tipo_afip_clean = tipo_afip.lstrip('0') if tipo_afip else '1'
-                    # Mapear código AFIP a código Xubio
-                    if tipo_afip_clean in self.TIPO_COMPROBANTE_MAP:
-                        base_line["TIPO"] = self.TIPO_COMPROBANTE_MAP[tipo_afip_clean]
-                        logger.info(f"Mapeado tipo AFIP {tipo_afip} → {tipo_afip_clean} → Xubio {self.TIPO_COMPROBANTE_MAP[tipo_afip_clean]}")
-                    else:
-                        base_line["TIPO"] = 1  # Default a Factura si no se encuentra
-                        logger.warning(f"Tipo AFIP {tipo_afip} ({tipo_afip_clean}) no encontrado en tabla de equivalencias, usando default 1")
-                else:
-                    base_line["TIPO"] = 1  # Default a Factura si no hay campo tipo_comprobante
-                
-                # Número de control (correlativo empezando desde 1)
-                base_line["NUMERODECONTROL"] = len(rows) + 1
-                
-                rows.append(base_line)
+                    rows.append(fila_producto_data)
+                    logger.info(f"Fila {i} agregada para factura {clave_factura} - Producto: {fila_producto_data['PRODUCTOSERVICIO']}")
             
             out = pd.DataFrame(rows)
 

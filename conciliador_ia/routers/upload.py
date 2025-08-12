@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, UploadFile, Form
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 import shutil
 from pathlib import Path
 import logging
@@ -6,9 +6,30 @@ import time
 import glob
 import pandas as pd
 
-# Importar procesadores específicos
-from utils.csv_processor import ARCAProcessor
-from utils.validators import ContabilidadValidator
+# Importar procesadores específicos (opcional para no bloquear el arranque)
+try:
+    # Intentar import absoluto
+    from conciliador_ia.utils.csv_processor import ARCAProcessor  # type: ignore
+except Exception:
+    try:
+        # Fallback relativo
+        from utils.csv_processor import ARCAProcessor  # type: ignore
+    except Exception as e:
+        ARCAProcessor = None  # type: ignore
+        logging.getLogger(__name__).warning(
+            f"ARCAProcessor deshabilitado temporalmente: {e}"
+        )
+
+try:
+    from conciliador_ia.utils.validators import ContabilidadValidator  # type: ignore
+except Exception:
+    try:
+        from utils.validators import ContabilidadValidator  # type: ignore
+    except Exception as e:
+        ContabilidadValidator = None  # type: ignore
+        logging.getLogger(__name__).warning(
+            f"ContabilidadValidator deshabilitado temporalmente: {e}"
+        )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/upload", tags=["upload"])
@@ -17,9 +38,9 @@ router = APIRouter(prefix="/upload", tags=["upload"])
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# Inicializar procesadores
-arca_processor = ARCAProcessor()
-validator = ContabilidadValidator()
+# Inicializar procesadores si están disponibles
+arca_processor = ARCAProcessor() if ARCAProcessor else None
+validator = ContabilidadValidator() if ContabilidadValidator else None
 
 @router.post("/extracto")
 async def upload_extracto(file: UploadFile = File(...)):
@@ -75,6 +96,8 @@ async def upload_comprobantes(file: UploadFile = File(...)):
 async def procesar_csv_arca(file: UploadFile = File(...)):
     """Procesa específicamente archivos CSV de ARCA con validaciones argentinas"""
     try:
+        if arca_processor is None:
+            raise HTTPException(status_code=503, detail="Servicio CSV ARCA deshabilitado temporalmente")
         logger.info(f"Procesando CSV de ARCA: {file.filename}")
         
         # Validar que sea CSV
@@ -183,7 +206,7 @@ async def procesar_archivos_inmediato(
         
         try:
             # Procesar CSV si es necesario
-            if comprobantes.filename.lower().endswith('.csv'):
+            if comprobantes.filename.lower().endswith('.csv') and arca_processor is not None:
                 logger.info("Detectado CSV - aplicando procesamiento específico de ARCA")
                 
                 # Procesar CSV con validaciones argentinas
@@ -243,6 +266,8 @@ async def procesar_archivos_inmediato(
 async def test_csv_processing(file: UploadFile = File(...)):
     """Endpoint de test para debuggear procesamiento de CSV"""
     try:
+        if arca_processor is None:
+            raise HTTPException(status_code=503, detail="Servicio CSV ARCA deshabilitado temporalmente")
         logger.info(f"Test de procesamiento CSV iniciado para: {file.filename}")
         
         # Validar que sea CSV

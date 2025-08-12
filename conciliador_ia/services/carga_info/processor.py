@@ -197,9 +197,23 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
     # AGREGADO: Generar campo 'iva' basado en qué columna de IVA tiene valor
     df['iva'] = 21  # Default a 21%
     
-    # Detectar columnas de IVA específicas
-    cols_10_5 = [c for c in df.columns if re.search(r"10[.,]?5?", str(c).lower())]
-    cols_21 = [c for c in df.columns if re.search(r"21|27", str(c).lower())]
+    # CORREGIDO: Usar la MISMA lógica de detección que detect_doble_alicuota()
+    # Detectar columnas de IVA específicas usando la misma lógica
+    posibles_iva = []
+    for c in df.columns:
+        col_lower = str(c).lower()
+        # Buscar columnas que contengan específicamente IVA con porcentajes
+        if any(x in col_lower for x in ["iva 10", "iva 21", "neto gravado iva", "importe iva"]):
+            posibles_iva.append(c)
+        # También incluir columnas que contengan solo "10" o "21" si no se encontraron las específicas
+        elif any(x in col_lower for x in ["10", "21", "27"]) and any(x in col_lower for x in ["iva", "alicuota", "neto gravado", "importe"]):
+            posibles_iva.append(c)
+    
+    # Detectar columnas específicas usando la misma lógica
+    cols_10_5 = [c for c in posibles_iva if re.search(r"10[.,]?5?|10[.,]?5", str(c).lower())]
+    cols_21 = [c for c in posibles_iva if re.search(r"21|27", str(c).lower())]
+    
+    logger.info(f"Generando campo 'iva' - Columnas detectadas: IVA 10,5%: {cols_10_5}, IVA 21%: {cols_21}")
     
     # Asignar IVA basado en qué columna tiene valor
     for idx, row in df.iterrows():

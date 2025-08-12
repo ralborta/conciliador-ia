@@ -264,6 +264,38 @@ class ExportadorVentas:
                     base_line["CLIENTE"] = ""
                     logger.warning("No se encontró campo para mapear al CLIENTE")
                 
+                # Construir campo NUMERO con formato: [LETRA]-[TIPO_5_DIGITOS]-[NUMERO_8_DIGITOS]
+                if "tipo_comprobante" in df.columns and "numero_comprobante" in df.columns:
+                    tipo_afip = str(row["tipo_comprobante"]).strip()
+                    numero_comp = str(row["numero_comprobante"]).strip()
+                    
+                    # 1. Obtener letra basada en el tipo de comprobante
+                    letra_map = {
+                        1: "A",  # Facturas
+                        2: "B",  # Notas de Crédito/Débito
+                        3: "C",  # Recibos/Remitos
+                        6: "M"   # Otros tipos
+                    }
+                    
+                    # Limpiar tipo y mapear a Xubio
+                    tipo_afip_clean = tipo_afip.lstrip('0') if tipo_afip else '1'
+                    tipo_xubio = self.TIPO_COMPROBANTE_MAP.get(tipo_afip_clean, 1)
+                    letra = letra_map.get(tipo_xubio, "A")
+                    
+                    # 2. Formatear tipo a 5 dígitos con ceros
+                    tipo_formateado = f"{tipo_afip:0>5}"
+                    
+                    # 3. Formatear número de comprobante a 8 dígitos con ceros
+                    numero_formateado = f"{numero_comp:0>8}"
+                    
+                    # 4. Construir campo NUMERO completo
+                    base_line["NUMERO"] = f"{letra}-{tipo_formateado}-{numero_formateado}"
+                    
+                    logger.info(f"NUMERO construido: {tipo_afip} → {tipo_xubio} → {letra}, {numero_comp} → {base_line['NUMERO']}")
+                else:
+                    base_line["NUMERO"] = ""
+                    logger.warning("No se pudo construir NUMERO: faltan campos tipo_comprobante o numero_comprobante")
+                
                 # Tipo de comprobante (mapear desde CSV usando tabla de equivalencias)
                 if "tipo_comprobante" in df.columns:
                     tipo_afip = str(row["tipo_comprobante"]).strip()

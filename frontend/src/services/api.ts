@@ -341,12 +341,13 @@ export const apiService = {
     return res.data;
   },
 
-  cargaInfoProcesar: async (params: { ventas_excel_path: string; tabla_comprobantes_path: string; periodo: string; portal_iva_csv_path?: string; }): Promise<any> => {
+  cargaInfoProcesar: async (params: { ventas_excel_path: string; tabla_comprobantes_path: string; periodo: string; portal_iva_csv_path?: string; modelo_importacion_path?: string; }): Promise<any> => {
     const form = new FormData();
     form.append('ventas_excel_path', params.ventas_excel_path);
     form.append('tabla_comprobantes_path', params.tabla_comprobantes_path);
     form.append('periodo', params.periodo);
     if (params.portal_iva_csv_path) form.append('portal_iva_csv_path', params.portal_iva_csv_path);
+    if (params.modelo_importacion_path) form.append('modelo_importacion_path', params.modelo_importacion_path);
     const res = await api.post('/carga-informacion/procesar', form);
     return res.data;
   },

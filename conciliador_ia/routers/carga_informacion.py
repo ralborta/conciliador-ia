@@ -60,6 +60,7 @@ async def procesar(
     tabla_comprobantes_path: Optional[str] = Form(None),
     periodo: Optional[str] = Form(None),
     portal_iva_csv_path: Optional[str] = Form(None),
+    modelo_importacion_path: Optional[str] = Form(None),
 ):
     try:
         # Permitir tanto multipart/form-data como JSON
@@ -88,6 +89,7 @@ async def procesar(
             str(ventas_excel_path),
             str(tabla_comprobantes_path),
             portal_iva_csv_path,
+            modelo_importacion_path,
         )
         resultados = process(data["ventas"], data["tabla_comprobantes"]) 
         # Propagar columnas del modelo de importación si están disponibles

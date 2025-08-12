@@ -244,7 +244,10 @@ class ExportadorVentas:
                         "Neto Gravado IVA 21%","Importe IVA 21%","Neto Gravado IVA 10,5%","Importe IVA 10,5%",
                         "No Gravado","Exento","Percepciones IVA","Percepciones IIBB","Retenciones IVA","Retenciones IIBB","Retenciones Ganancias","Total"
                     ] else 0
-            out = out[[c for c in model_cols if c in out.columns]]
+            # Reordenar exactamente como el modelo, preservando columnas extra al final
+            ordered = [c for c in model_cols if c in out.columns]
+            extras = [c for c in out.columns if c not in ordered]
+            out = out[ordered + extras]
         else:
             out = out[expected_cols]
         return out

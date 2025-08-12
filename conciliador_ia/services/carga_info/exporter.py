@@ -176,13 +176,32 @@ class ExportadorVentas:
                     base_line["NUMERO"] = row["numero_comprobante"]
                 
                 if "fecha" in df.columns:
-                    base_line["FECHA"] = row["fecha"]
+                    # Convertir fecha a formato dd/mm/yyyy sin hora
+                    try:
+                        fecha_obj = pd.to_datetime(row["fecha"])
+                        base_line["FECHA"] = fecha_obj.strftime("%d/%m/%Y")
+                        logger.info(f"Fecha formateada: {row['fecha']} → {fecha_obj.strftime('%d/%m/%Y')}")
+                    except:
+                        base_line["FECHA"] = str(row["fecha"])  # Fallback si no se puede parsear
+                        logger.warning(f"No se pudo formatear fecha: {row['fecha']}")
                 
                 # Fecha de vencimiento (usar fecha si no hay vencimiento específico)
                 if "fecha_vencimiento" in df.columns:
-                    base_line["VENCIMIENTODELCOBRO"] = row["fecha_vencimiento"]
+                    try:
+                        fecha_venc = pd.to_datetime(row["fecha_vencimiento"])
+                        base_line["VENCIMIENTODELCOBRO"] = fecha_venc.strftime("%d/%m/%Y")
+                    except:
+                        base_line["VENCIMIENTODELCOBRO"] = str(row["fecha_vencimiento"])
                 else:
-                    base_line["VENCIMIENTODELCOBRO"] = row.get("fecha", "")
+                    # Usar la fecha principal formateada
+                    if "fecha" in df.columns:
+                        try:
+                            fecha_obj = pd.to_datetime(row["fecha"])
+                            base_line["VENCIMIENTODELCOBRO"] = fecha_obj.strftime("%d/%m/%Y")
+                        except:
+                            base_line["VENCIMIENTODELCOBRO"] = str(row.get("fecha", ""))
+                    else:
+                        base_line["VENCIMIENTODELCOBRO"] = ""
                 
                 # Comprobante asociado + Moneda (Pesos Argentinos por defecto)
                 base_line["COMPROBANTEASOCIADO MONEDA"] = "Pesos Argentinos"

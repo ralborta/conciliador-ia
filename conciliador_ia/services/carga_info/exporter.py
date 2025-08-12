@@ -1,152 +1,48 @@
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any, Tuple
 import pandas as pd
 import logging
+from openpyxl import load_workbook # Added for direct template writing
 
-from .loader import SALIDA_DIR, ensure_dirs
+# Definir directorios
+SALIDA_DIR = Path("data/salida")
+ENTRADA_DIR = Path("data/entrada")
+
+def ensure_dirs():
+    """Asegura que existan los directorios necesarios"""
+    SALIDA_DIR.mkdir(parents=True, exist_ok=True)
+    ENTRADA_DIR.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 
 
 class ExportadorVentas:
-    def __init__(self) -> None:
-        ensure_dirs()
-
-    def exportar(
-        self,
-        resultados: Dict[str, pd.DataFrame],
-        periodo: str,
-        portal_report: Optional[pd.DataFrame] = None,
-    ) -> Dict[str, str]:
-        SALIDA_DIR.mkdir(parents=True, exist_ok=True)
-        paths: Dict[str, str] = {}
-
-        ventas_path = SALIDA_DIR / f"ventas_importacion_xubio_{periodo}.xlsx"
-        errores_path = SALIDA_DIR / f"errores_detectados_{periodo}.xlsx"
-        doble_path = SALIDA_DIR / f"ventas_doble_alicuota_{periodo}.xlsx"
-
-        # Checkpoints/prints útiles
-        validos = resultados.get("validos", pd.DataFrame())
-        errores = resultados.get("errores", pd.DataFrame())
-        doble = resultados.get("doble_alicuota", pd.DataFrame())
-
-        logger.info(f"VALIDOS shape: {validos.shape}")
-        logger.info(f"ERRORES shape: {errores.shape}")
-        logger.info(f"DOBLE ALICUOTA shape: {doble.shape}")
-        if validos.empty:
-            logger.warning("ATENCIÓN: No se generó ningún comprobante válido para Xubio.")
-        else:
-            logger.info(f"{len(validos)} comprobantes válidos")
-        if not doble.empty:
-            logger.info(f"{len(doble)} comprobantes con doble alícuota")
-
-        # Exportar con engine explícito para evitar sorpresas del writer
-        if not validos.empty:
-            try:
-                # 1) Construir multilínea con equivalencias
-                model_cols = resultados.get("modelo_import_cols")  # type: ignore
-                model_path = resultados.get("modelo_import_path")  # type: ignore
-                xubio_df = self._construir_xubio_df(validos, model_cols if isinstance(model_cols, list) else None, multiline=True)
-                logger.info(f"XUBIO DF shape: {xubio_df.shape}")
-
-                # 2) Si hay plantilla, escribir sobre ella con openpyxl respetando el formato visual
-                if isinstance(model_path, str) and Path(model_path).exists():
-                    try:
-                        from openpyxl import load_workbook
-                        wb = load_workbook(model_path)
-                        ws = wb.active
-                        # Cabecera tomada literalmente de la fila 1 de la plantilla
-                        header = [cell.value for cell in ws[1]]
-                        # Limpiar filas (dejar cabecera)
-                        if ws.max_row > 1:
-                            ws.delete_rows(2, ws.max_row - 1)
-                        # Asegurar que todas las columnas del header existan en el DF (rellenar si faltan)
-                        for col in header:
-                            if col not in xubio_df.columns:
-                                xubio_df[col] = "" if col in [
-                                    "Fecha","Tipo Comprobante","Punto de Venta","Número de Comprobante",
-                                    "CUIT Cliente","Razón Social Cliente","Condición IVA Cliente"
-                                ] else 0
-                        # Escribir filas
-                        for r in range(len(xubio_df)):
-                            ws.append([xubio_df[col].iloc[r] if col in xubio_df.columns else "" for col in header])
-                        wb.save(ventas_path)
-                    except Exception as e:
-                        logger.warning(f"Fallo escribiendo plantilla con openpyxl: {e}; exportando por DataFrame")
-                        xubio_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
-                else:
-                    xubio_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
-                paths["ventas"] = str(ventas_path)
-            except Exception as e:
-                logger.warning(f"Fallo construyendo DF Xubio, exportando 'validos' crudo: {e}")
-                validos.to_excel(ventas_path, index=False, engine="xlsxwriter")
-                paths["ventas"] = str(ventas_path)
-        if not errores.empty:
-            errores.to_excel(errores_path, index=False, engine="xlsxwriter")
-            paths["errores"] = str(errores_path)
-        if not doble.empty:
-            doble.to_excel(doble_path, index=False, engine="xlsxwriter")
-            paths["doble_alicuota"] = str(doble_path)
-
-        if portal_report is not None:
-            reporte_path = SALIDA_DIR / f"reporte_validacion_con_portal_iva_{periodo}.xlsx"
-            portal_report.to_excel(reporte_path, index=False, engine="xlsxwriter")
-            paths["reporte_portal_iva"] = str(reporte_path)
-
-        # Guardar un log intermedio de clasificación (CSV) con CUIT, monto y estado
-        try:
-            log_rows = []
-            if not validos.empty:
-                tmp = validos.copy()
-                tmp["estado"] = "valido"
-                log_rows.append(tmp)
-            if not doble.empty:
-                tmp = doble.copy()
-                tmp["estado"] = "doble_alicuota"
-                log_rows.append(tmp)
-            if not errores.empty:
-                tmp = errores.copy()
-                tmp["estado"] = "error"
-                log_rows.append(tmp)
-            if log_rows:
-                import numpy as np
-                full = pd.concat(log_rows, ignore_index=True)
-                cols_pref = [c for c in ["cuit", "monto", "cliente", "tipo_comprobante", "numero_comprobante", "motivo_error", "estado"] if c in full.columns]
-                # ordenar dejando primero columnas de interés
-                other = [c for c in full.columns if c not in cols_pref]
-                full = full[cols_pref + other]
-                log_csv = SALIDA_DIR / f"log_clasificacion_{periodo}.csv"
-                full.to_csv(log_csv, index=False)
-                paths["log_clasificacion"] = str(log_csv)
-        except Exception as e:
-            logger.warning(f"No se pudo generar log de clasificación: {e}")
-
-        return paths
-
-    def _construir_xubio_df(self, df: pd.DataFrame, model_cols: Optional[list] = None, multiline: bool = False) -> pd.DataFrame:
-        """Mapea 'df' a la cabecera exacta requerida por Xubio para importación de ventas."""
-        expected_cols = [
-            "Fecha",
-            "Tipo Comprobante",
-            "Punto de Venta",
-            "Número de Comprobante",
-            "CUIT Cliente",
-            "Razón Social Cliente",
-            "Condición IVA Cliente",
-            "Neto Gravado IVA 21%",
-            "Importe IVA 21%",
-            "Neto Gravado IVA 10,5%",
-            "Importe IVA 10,5%",
-            "No Gravado",
-            "Exento",
-            "Percepciones IVA",
-            "Percepciones IIBB",
-            "Retenciones IVA",
-            "Retenciones IIBB",
-            "Retenciones Ganancias",
-            "Total",
+    def __init__(self):
+        # ESTRUCTURA XUBIO HARCODEADA - NO DEPENDER DE ARCHIVOS EXTERNOS
+        self.XUBIO_HEADER = [
+            "Fecha", "Tipo Comprobante", "Punto de Venta", "Número de Comprobante", 
+            "CUIT", "Cliente", "Razón Social Cliente", "Condición IVA Cliente",
+            "Neto Gravado IVA 21%", "Importe IVA 21%", "Neto Gravado IVA 10,5%", 
+            "Importe IVA 10,5%", "No Gravado", "Exento", "Percepciones IVA", 
+            "Percepciones IIBB", "Retenciones IVA", "Retenciones IIBB", "Retenciones Ganancias", "Total"
         ]
+        
+        # Mapeo de columnas estándar internas a Xubio
+        self.COLUMN_MAPPING = {
+            "fecha": "Fecha",
+            "tipo_comprobante": "Tipo Comprobante", 
+            "punto_venta": "Punto de Venta",
+            "numero_comprobante": "Número de Comprobante",
+            "cuit": "CUIT",
+            "cliente": "Cliente",
+            "razon_social": "Razón Social Cliente",
+            "condicion_iva": "Condición IVA Cliente"
+        }
 
+    def _construir_xubio_df(self, df: pd.DataFrame, multiline: bool = False) -> pd.DataFrame:
+        """Construye DataFrame con estructura Xubio hardcodeada - NO depende de archivos externos"""
+        logger = logging.getLogger(__name__)
+        
         # Normalizar nombres disponibles en df para búsqueda flexible
         norm = {str(c).strip().lower(): c for c in df.columns}
         def get(*names: str) -> Optional[str]:
@@ -177,135 +73,273 @@ class ExportadorVentas:
             return m
 
         content_map = detectar_columnas_por_contenido(df)
+        
+        # Mapeo de columnas fuente usando nombres flexibles + detector de contenido
+        srcs = {
+            "Neto Gravado IVA 21%": get("neto gravado iva 21%", "neto 21", "neto iva 21"),
+            "Importe IVA 21%": get("importe iva 21%", "iva 21%", "iva 21"),
+            "Neto Gravado IVA 10,5%": get("neto gravado iva 10,5%", "neto gravado iva 10.5%", "neto 10.5", "neto 105"),
+            "Importe IVA 10,5%": get("importe iva 10,5%", "importe iva 10.5%", "iva 10.5", "iva 10,5"),
+            "No Gravado": content_map.get('no_gravado', get("no gravado", "nogravado")),
+            "Exento": content_map.get('exento', get("exento", "exentos")),
+            "Percepciones IVA": content_map.get('percepciones_iva', get("percepciones iva", "perc iva")),
+            "Percepciones IIBB": content_map.get('percepciones_iibb', get("percepciones iibb", "perc iibb")),
+            "Retenciones IVA": content_map.get('retenciones_iva', get("retenciones iva", "ret iva")),
+            "Retenciones IIBB": content_map.get('retenciones_iibb', get("retenciones iibb", "ret iibb")),
+            "Retenciones Ganancias": content_map.get('retenciones_ganancias', get("retenciones ganancias", "ret ganancias")),
+            "Total": get("total", "importe total", "monto"),
+        }
 
-        def build_base_line(i: int) -> dict:
-            base: dict = {}
-            # Fecha
-            col_fecha = get("fecha", "fecha de emisión", "fecha de emision")
-            if col_fecha:
-                base["Fecha"] = pd.to_datetime(df[col_fecha].iloc[i], errors="coerce").strftime("%d/%m/%Y") if pd.notna(df[col_fecha].iloc[i]) else ""
-            else:
-                base["Fecha"] = ""
-
-            # Tipo, PV, Número
-            col_tipo = get("tipo_comprobante", "tipo comprobante", "código de comprobante", "codigo de comprobante")
-            base["Tipo Comprobante"] = df[col_tipo].iloc[i] if col_tipo else ""
-            col_pv = get("punto de venta", "pv")
-            base["Punto de Venta"] = df[col_pv].iloc[i] if col_pv else ""
-            col_num = get("numero_comprobante", "número de comprobante", "nro comprobante", "número de comprobante hasta", "numero de comprobante hasta")
-            base["Número de Comprobante"] = df[col_num].iloc[i] if col_num else ""
-
-            # Cliente y CUIT
-            col_cuit = get("cuit", "cuit cliente", "nro. doc. comprador")
-            base["CUIT Cliente"] = df[col_cuit].iloc[i] if col_cuit else ""
-            col_cliente = get("cliente", "razón social", "razon social", "razón social cliente", "denominación comprador", "denominacion comprador")
-            base["Razón Social Cliente"] = df[col_cliente].iloc[i] if col_cliente else ""
-            col_cond = get("condición iva cliente", "condicion iva cliente", "condicion iva")
-            base["Condición IVA Cliente"] = df[col_cond].iloc[i] if col_cond else ""
+        # Construir línea base con datos del comprobante
+        def build_base_line(row: pd.Series) -> Dict[str, Any]:
+            base = {}
+            # Mapear columnas estándar
+            for internal_col, xubio_col in self.COLUMN_MAPPING.items():
+                if internal_col in df.columns:
+                    base[xubio_col] = row[internal_col]
+                else:
+                    base[xubio_col] = ""  # Valor por defecto
+            
+            # Llenar columnas numéricas con 0 por defecto
+            for col in self.XUBIO_HEADER:
+                if col not in base:
+                    if any(keyword in col.lower() for keyword in ["neto", "importe", "iva", "percepcion", "retencion", "total"]):
+                        base[col] = 0.0
+                    else:
+                        base[col] = ""
+            
             return base
 
         if not multiline:
-            # Construcción simple en una sola línea
-            out = pd.DataFrame([build_base_line(i) for i in range(len(df))])
-            map_pairs = [
-                ("Neto Gravado IVA 21%", ["neto gravado iva 21%", "neto 21", "neto iva 21"]),
-                ("Importe IVA 21%", ["importe iva 21%", "iva 21%", "iva 21"]),
-                ("Neto Gravado IVA 10,5%", ["neto gravado iva 10,5%", "neto gravado iva 10.5%", "neto 10.5", "neto 105"]),
-                ("Importe IVA 10,5%", ["importe iva 10,5%", "importe iva 10.5%", "iva 10.5", "iva 10,5"]),
-                ("No Gravado", ["no gravado", "nogravado"]),
-                ("Exento", ["exento", "exentos"]),
-                ("Percepciones IVA", ["percepciones iva", "perc iva"]),
-                ("Percepciones IIBB", ["percepciones iibb", "perc iibb"]),
-                ("Retenciones IVA", ["retenciones iva", "ret iva"]),
-                ("Retenciones IIBB", ["retenciones iibb", "ret iibb"]),
-                ("Retenciones Ganancias", ["retenciones ganancias", "ret ganancias"]),
-                ("Total", ["total", "importe total", "monto"]),
-            ]
-            for target, candidates in map_pairs:
-                src = get(*candidates)
-                out[target] = df[src] if src else 0
+            # Modo simple: una fila por comprobante
+            rows = []
+            for _, row in df.iterrows():
+                line = build_base_line(row)
+                # Llenar valores de IVA y otros campos desde srcs
+                for xubio_col, src_col in srcs.items():
+                    if src_col and src_col in df.columns:
+                        line[xubio_col] = row[src_col]
+                rows.append(line)
+            
+            out = pd.DataFrame(rows)
         else:
-            # Construir multilínea (una fila por componente y una por total)
-            rows: list[dict] = []
+            # Modo multilínea: expandir cada comprobante en múltiples filas por componente
+            rows = []
+            for _, row in df.iterrows():
+                base_line = build_base_line(row)
+                
+                # Fila 1: Datos del comprobante + Neto 21%
+                if srcs["Neto Gravado IVA 21%"] and pd.notna(row[srcs["Neto Gravado IVA 21%"]]) and row[srcs["Neto Gravado IVA 21%"]] != 0:
+                    line1 = base_line.copy()
+                    line1["Neto Gravado IVA 21%"] = row[srcs["Neto Gravado IVA 21%"]]
+                    line1["Importe IVA 21%"] = row[srcs["Importe IVA 21%"]] if srcs["Importe IVA 21%"] else 0
+                    rows.append(line1)
+                
+                # Fila 2: Neto 10.5%
+                if srcs["Neto Gravado IVA 10,5%"] and pd.notna(row[srcs["Neto Gravado IVA 10,5%"]]) and row[srcs["Neto Gravado IVA 10,5%"]] != 0:
+                    line2 = base_line.copy()
+                    line2["Neto Gravado IVA 10,5%"] = row[srcs["Neto Gravado IVA 10,5%"]]
+                    line2["Importe IVA 10,5%"] = row[srcs["Importe IVA 10,5%"]] if srcs["Importe IVA 10,5%"] else 0
+                    rows.append(line2)
+                
+                # Fila 3: No Gravado
+                if srcs["No Gravado"] and pd.notna(row[srcs["No Gravado"]]) and row[srcs["No Gravado"]] != 0:
+                    line3 = base_line.copy()
+                    line3["No Gravado"] = row[srcs["No Gravado"]]
+                    rows.append(line3)
+                
+                # Fila 4: Exento
+                if srcs["Exento"] and pd.notna(row[srcs["Exento"]]) and row[srcs["Exento"]] != 0:
+                    line4 = base_line.copy()
+                    line4["Exento"] = row[srcs["Exento"]]
+                    rows.append(line4)
+                
+                # Fila 5: Percepciones
+                if (srcs["Percepciones IVA"] and pd.notna(row[srcs["Percepciones IVA"]]) and row[srcs["Percepciones IVA"]] != 0) or \
+                   (srcs["Percepciones IIBB"] and pd.notna(row[srcs["Percepciones IIBB"]]) and row[srcs["Percepciones IIBB"]] != 0):
+                    line5 = base_line.copy()
+                    line5["Percepciones IVA"] = row[srcs["Percepciones IVA"]] if srcs["Percepciones IVA"] else 0
+                    line5["Percepciones IIBB"] = row[srcs["Percepciones IIBB"]] if srcs["Percepciones IIBB"] else 0
+                    rows.append(line5)
+                
+                # Fila 6: Retenciones
+                if (srcs["Retenciones IVA"] and pd.notna(row[srcs["Retenciones IVA"]]) and row[srcs["Retenciones IVA"]] != 0) or \
+                   (srcs["Retenciones IIBB"] and pd.notna(row[srcs["Retenciones IIBB"]]) and row[srcs["Retenciones IIBB"]] != 0) or \
+                   (srcs["Retenciones Ganancias"] and pd.notna(row[srcs["Retenciones Ganancias"]]) and row[srcs["Retenciones Ganancias"]] != 0):
+                    line6 = base_line.copy()
+                    line6["Retenciones IVA"] = row[srcs["Retenciones IVA"]] if srcs["Retenciones IVA"] else 0
+                    line6["Retenciones IIBB"] = row[srcs["Retenciones IIBB"]] if srcs["Retenciones IIBB"] else 0
+                    line6["Retenciones Ganancias"] = row[srcs["Retenciones Ganancias"]] if srcs["Retenciones Ganancias"] else 0
+                    rows.append(line6)
+                
+                # Fila 7: Total (siempre presente)
+                line7 = base_line.copy()
+                line7["Total"] = row[srcs["Total"]] if srcs["Total"] else 0
+                rows.append(line7)
+            
+            out = pd.DataFrame(rows)
 
-            # Detectar columnas fuente
-            srcs = {
-                "Neto Gravado IVA 21%": get("neto gravado iva 21%", "neto 21", "neto iva 21"),
-                "Importe IVA 21%": get("importe iva 21%", "iva 21%", "iva 21"),
-                "Neto Gravado IVA 10,5%": get("neto gravado iva 10,5%", "neto gravado iva 10.5%", "neto 10.5", "neto 105"),
-                "Importe IVA 10,5%": get("importe iva 10,5%", "importe iva 10.5%", "iva 10.5", "iva 10,5"),
-                "No Gravado": content_map.get('no_gravado', get("no gravado", "nogravado")),
-                "Exento": content_map.get('exento', get("exento", "exentos")),
-                "Percepciones IVA": content_map.get('percepciones_iva', get("percepciones iva", "perc iva")),
-                "Percepciones IIBB": content_map.get('percepciones_iibb', get("percepciones iibb", "perc iibb")),
-                "Retenciones IVA": content_map.get('retenciones_iva', get("retenciones iva", "ret iva")),
-                "Retenciones IIBB": content_map.get('retenciones_iibb', get("retenciones iibb", "ret iibb")),
-                "Retenciones Ganancias": content_map.get('retenciones_ganancias', get("retenciones ganancias", "ret ganancias")),
-                "Total": get("total", "importe total", "monto"),
-            }
-
-            # Por cada fila de df, expandir a N líneas
-            for idx in range(len(df)):
-                base_row = build_base_line(idx)
-                # IVA 21%
-                if srcs["Neto Gravado IVA 21%"] or srcs["Importe IVA 21%"]:
-                    ng = df[srcs["Neto Gravado IVA 21%"]].iloc[idx] if srcs["Neto Gravado IVA 21%"] else 0
-                    iv = df[srcs["Importe IVA 21%"]].iloc[idx] if srcs["Importe IVA 21%"] else 0
-                    if (pd.to_numeric(pd.Series([ng]), errors='coerce').fillna(0).abs() > 0).any() or (pd.to_numeric(pd.Series([iv]), errors='coerce').fillna(0).abs() > 0).any():
-                        row = {**base_row, "Neto Gravado IVA 21%": ng, "Importe IVA 21%": iv}
-                        rows.append(row)
-                # IVA 10,5%
-                if srcs["Neto Gravado IVA 10,5%"] or srcs["Importe IVA 10,5%"]:
-                    ng = df[srcs["Neto Gravado IVA 10,5%"]].iloc[idx] if srcs["Neto Gravado IVA 10,5%"] else 0
-                    iv = df[srcs["Importe IVA 10,5%"]].iloc[idx] if srcs["Importe IVA 10,5%"] else 0
-                    if (pd.to_numeric(pd.Series([ng]), errors='coerce').fillna(0).abs() > 0).any() or (pd.to_numeric(pd.Series([iv]), errors='coerce').fillna(0).abs() > 0).any():
-                        row = {**base_row, "Neto Gravado IVA 10,5%": ng, "Importe IVA 10,5%": iv}
-                        rows.append(row)
-                # No gravado
-                if srcs["No Gravado"]:
-                    v = df[srcs["No Gravado"]].iloc[idx]
-                    if (pd.to_numeric(pd.Series([v]), errors='coerce').fillna(0).abs() > 0).any():
-                        rows.append({**base_row, "No Gravado": v})
-                # Exento
-                if srcs["Exento"]:
-                    v = df[srcs["Exento"]].iloc[idx]
-                    if (pd.to_numeric(pd.Series([v]), errors='coerce').fillna(0).abs() > 0).any():
-                        rows.append({**base_row, "Exento": v})
-                # Percepciones / Retenciones
-                for key in ["Percepciones IVA","Percepciones IIBB","Retenciones IVA","Retenciones IIBB","Retenciones Ganancias"]:
-                    s = srcs[key]
-                    if s:
-                        v = df[s].iloc[idx]
-                        if (pd.to_numeric(pd.Series([v]), errors='coerce').fillna(0).abs() > 0).any():
-                            rows.append({**base_row, key: v})
-                # Total
-                if srcs["Total"]:
-                    v = df[srcs["Total"]].iloc[idx]
-                    rows.append({**base_row, "Total": v})
-
-            out = pd.DataFrame(rows) if rows else pd.DataFrame([build_base_line(i) for i in range(len(df))])
-
-        # Asegurar que existan todas las columnas esperadas
-        text_cols = {"Fecha","Tipo Comprobante","Punto de Venta","Número de Comprobante","CUIT Cliente","Razón Social Cliente","Condición IVA Cliente"}
-        for col in expected_cols:
+        # Asegurar que todas las columnas Xubio estén presentes y en el orden correcto
+        for col in self.XUBIO_HEADER:
             if col not in out.columns:
-                out[col] = "" if col in text_cols else 0
-
-        # Asegurar orden exacto; si el modelo trae un orden, respetarlo
-        if model_cols:
-            # Filtrar y reordenar según el modelo; si faltan, agregarlas vacías al final
-            for col in model_cols:
-                if col not in out.columns:
-                    out[col] = "" if col not in [
-                        "Neto Gravado IVA 21%","Importe IVA 21%","Neto Gravado IVA 10,5%","Importe IVA 10,5%",
-                        "No Gravado","Exento","Percepciones IVA","Percepciones IIBB","Retenciones IVA","Retenciones IIBB","Retenciones Ganancias","Total"
-                    ] else 0
-            # Reordenar exactamente como el modelo, preservando columnas extra al final
-            ordered = [c for c in model_cols if c in out.columns]
-            extras = [c for c in out.columns if c not in ordered]
-            out = out[ordered + extras]
-        else:
-            out = out[expected_cols]
+                if any(keyword in col.lower() for keyword in ["neto", "importe", "iva", "percepcion", "retencion", "total"]):
+                    out[col] = 0.0
+                else:
+                    out[col] = ""
+        
+        # Reordenar exactamente como XUBIO_HEADER
+        out = out[self.XUBIO_HEADER]
+        
+        logger.info(f"DataFrame Xubio construido: {out.shape} filas, {len(out.columns)} columnas")
         return out
+
+    def exportar(
+        self,
+        resultados: Dict[str, pd.DataFrame],
+        periodo: str,
+        portal_report: Optional[pd.DataFrame] = None,
+        modelo_import_path: Optional[str] = None,  # Ya no se usa, pero lo mantengo por compatibilidad
+    ) -> Dict[str, str]:
+        """Exporta resultados a archivos Excel con estructura Xubio hardcodeada"""
+        logger = logging.getLogger(__name__)
+        
+        SALIDA_DIR.mkdir(parents=True, exist_ok=True)
+        paths: Dict[str, str] = {}
+        
+        validos = resultados.get("validos", pd.DataFrame())
+        errores = resultados.get("errores", pd.DataFrame())
+        doble_alicuota = resultados.get("doble_alicuota", pd.DataFrame())
+        
+        # Checkpoint: verificar datos antes de exportar
+        logger.info(f"=== CHECKPOINT EXPORTACIÓN ===")
+        logger.info(f"Válidos: {len(validos)} filas")
+        logger.info(f"Errores: {len(errores)} filas") 
+        logger.info(f"Doble alícuota: {len(doble_alicuota)} filas")
+        
+        if not validos.empty:
+            logger.info(f"Columnas en 'validos': {list(validos.columns)}")
+            logger.info(f"Primeras 3 filas de 'validos':")
+            for i, row in validos.head(3).iterrows():
+                logger.info(f"  Fila {i}: {dict(row)}")
+        
+        # 1. Exportar ventas para Xubio (ESTRUCTURA HARCODEADA)
+        if not validos.empty:
+            try:
+                # Usar estructura hardcodeada - NO depende de archivos externos
+                xubio_df = self._construir_xubio_df(validos, multiline=True)
+                logger.info(f"XUBIO DF construido exitosamente: {xubio_df.shape}")
+                
+                # Generar Excel directamente con estructura hardcodeada
+                ventas_path = SALIDA_DIR / f"ventas_importacion_xubio_{periodo}.xlsx"
+                xubio_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
+                logger.info(f"Excel Xubio exportado con estructura hardcodeada: {ventas_path}")
+                paths["ventas"] = str(ventas_path)
+                
+            except Exception as e:
+                logger.error(f"Error construyendo DF Xubio: {e}")
+                # Fallback: exportar 'validos' pero con estructura Xubio
+                try:
+                    fallback_df = self._construir_xubio_df(validos, multiline=False)
+                    ventas_path = SALIDA_DIR / f"ventas_importacion_xubio_{periodo}.xlsx"
+                    fallback_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
+                    logger.info(f"Fallback: Excel Xubio exportado en modo simple: {ventas_path}")
+                    paths["ventas"] = str(ventas_path)
+                except Exception as fallback_error:
+                    logger.error(f"Fallback también falló: {fallback_error}")
+                    # Último recurso: exportar crudo
+                    ventas_path = SALIDA_DIR / f"ventas_importacion_xubio_{periodo}.xlsx"
+                    validos.to_excel(ventas_path, index=False, engine="xlsxwriter")
+                    logger.warning(f"Exportando 'validos' crudo como último recurso: {ventas_path}")
+                    paths["ventas"] = str(ventas_path)
+        else:
+            logger.warning("No hay datos válidos para exportar a Xubio")
+            # Crear Excel vacío con estructura Xubio
+            ventas_path = SALIDA_DIR / f"ventas_importacion_xubio_{periodo}.xlsx"
+            empty_df = pd.DataFrame(columns=self.XUBIO_HEADER)
+            empty_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
+            logger.info(f"Excel Xubio vacío creado con estructura: {ventas_path}")
+            paths["ventas"] = str(ventas_path)
+
+        # 2. Exportar errores detectados
+        if not errores.empty:
+            errores_path = SALIDA_DIR / f"errores_detectados_{periodo}.xlsx"
+            errores.to_excel(errores_path, index=False, engine="xlsxwriter")
+            paths["errores"] = str(errores_path)
+            logger.info(f"Errores exportados: {errores_path}")
+        else:
+            # Crear archivo de errores vacío
+            errores_path = SALIDA_DIR / f"errores_detectados_{periodo}.xlsx"
+            empty_errores = pd.DataFrame(columns=["motivo_error", "fecha", "cliente", "monto"])
+            empty_errores.to_excel(errores_path, index=False, engine="xlsxwriter")
+            paths["errores"] = str(errores_path)
+            logger.info(f"Archivo de errores vacío creado: {errores_path}")
+
+        # 3. Exportar doble alícuota
+        if not doble_alicuota.empty:
+            doble_path = SALIDA_DIR / f"ventas_doble_alicuota_{periodo}.xlsx"
+            doble_alicuota.to_excel(doble_path, index=False, engine="xlsxwriter")
+            paths["doble_alicuota"] = str(doble_path)
+            logger.info(f"Doble alícuota exportado: {doble_path}")
+        else:
+            # Crear archivo de doble alícuota vacío
+            doble_path = SALIDA_DIR / f"ventas_doble_alicuota_{periodo}.xlsx"
+            empty_doble = pd.DataFrame(columns=["fecha", "cliente", "monto", "iva_21", "iva_10_5"])
+            empty_doble.to_excel(doble_path, index=False, engine="xlsxwriter")
+            paths["doble_alicuota"] = str(doble_path)
+            logger.info(f"Archivo de doble alícuota vacío creado: {doble_path}")
+
+        # 4. Exportar reporte de validación con portal IVA (opcional)
+        if portal_report is not None and not portal_report.empty:
+            portal_path = SALIDA_DIR / f"reporte_validacion_con_portal_iva_{periodo}.xlsx"
+            portal_report.to_excel(portal_path, index=False, engine="xlsxwriter")
+            paths["portal_iva"] = str(portal_path)
+            logger.info(f"Reporte portal IVA exportado: {portal_path}")
+
+        # 5. Log de clasificación para auditoría
+        log_path = SALIDA_DIR / f"log_clasificacion_{periodo}.csv"
+        log_data = []
+        
+        # Agregar registros válidos
+        for _, row in validos.iterrows():
+            log_data.append({
+                "registro": str(row.get("numero_comprobante", row.get("fecha", "N/A"))),
+                "clasificacion": "VALIDO",
+                "motivo": "OK",
+                "cuit": row.get("cuit", ""),
+                "monto": row.get("monto", ""),
+                "fecha": row.get("fecha", "")
+            })
+        
+        # Agregar registros con errores
+        for _, row in errores.iterrows():
+            log_data.append({
+                "registro": str(row.get("numero_comprobante", row.get("fecha", "N/A"))),
+                "clasificacion": "ERROR",
+                "motivo": row.get("motivo_error", "Error desconocido"),
+                "cuit": row.get("cuit", ""),
+                "monto": row.get("monto", ""),
+                "fecha": row.get("fecha", "")
+            })
+        
+        # Agregar registros con doble alícuota
+        for _, row in doble_alicuota.iterrows():
+            log_data.append({
+                "registro": str(row.get("numero_comprobante", row.get("fecha", "N/A"))),
+                "clasificacion": "DOBLE_ALICUOTA",
+                "motivo": "Doble alícuota detectada",
+                "cuit": row.get("cuit", ""),
+                "monto": row.get("monto", ""),
+                "fecha": row.get("fecha", "")
+            })
+        
+        if log_data:
+            log_df = pd.DataFrame(log_data)
+            log_df.to_csv(log_path, index=False, encoding="utf-8")
+            logger.info(f"Log de clasificación exportado: {log_path}")
+
+        logger.info(f"=== EXPORTACIÓN COMPLETADA ===")
+        logger.info(f"Archivos generados: {list(paths.keys())}")
+        
+        return paths
 
 

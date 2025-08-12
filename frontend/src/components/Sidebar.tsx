@@ -74,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     {
       icon: Settings,
       label: 'Configuración de agente',
-      href: '/compras'
+      href: '/configuracion-agente'
     },
     {
       icon: History,

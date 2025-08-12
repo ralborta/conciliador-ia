@@ -18,12 +18,12 @@ logger = logging.getLogger(__name__)
 
 class ExportadorVentas:
     def __init__(self):
-        # ESTRUCTURA DEL MODELO REAL - NO XUBIO HARCODEADO
+        # ESTRUCTURA COMPLETA DEL MODELO REAL - TODAS LAS COLUMNAS
         self.MODELO_HEADER = [
             "NUMERO", "FECHA", "VENCIMIENTODELCOBRO", "COMPROBANTEASOCIADO", 
             "MONEDA", "COTIZACION", "OBSERVACIONES", "PRODUCTOSERVICIO",
             "CENTRODECOSTO", "PRODUCTOOBSERVACION", "CANTIDAD", "PRECIO", 
-            "DESCUENTO", "IMPORTE"
+            "DESCUENTO", "IMPORTE", "TIPO_DOC_COMPRADOR", "CUIT", "CLIENTE"
         ]
         
         # Mapeo de columnas estándar internas al modelo real
@@ -41,7 +41,10 @@ class ExportadorVentas:
             "cantidad": "CANTIDAD",
             "precio": "PRECIO",
             "descuento": "DESCUENTO",
-            "monto": "IMPORTE"
+            "monto": "IMPORTE",
+            "tipo_doc_comprador": "TIPO_DOC_COMPRADOR",
+            "cuit": "CUIT",
+            "cliente": "CLIENTE"
         }
 
     def _construir_xubio_df(self, df: pd.DataFrame, multiline: bool = False) -> pd.DataFrame:
@@ -200,6 +203,21 @@ class ExportadorVentas:
                 # Importe (usar monto del CSV)
                 if "monto" in df.columns:
                     base_line["IMPORTE"] = row["monto"]
+                
+                # Tipo documento comprador (80 por defecto - CUIT)
+                base_line["TIPO_DOC_COMPRADOR"] = 80
+                
+                # CUIT del cliente
+                if "cuit" in df.columns:
+                    base_line["CUIT"] = row["cuit"]
+                else:
+                    base_line["CUIT"] = ""
+                
+                # Nombre del cliente
+                if "cliente" in df.columns:
+                    base_line["CLIENTE"] = row["cliente"]
+                else:
+                    base_line["CLIENTE"] = ""
                 
                 rows.append(base_line)
             

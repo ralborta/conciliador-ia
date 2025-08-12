@@ -95,15 +95,29 @@ def map_afip_portal_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def detect_doble_alicuota(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Detecta doble alícuota usando coerción numérica robusta y valores absolutos > 0."""
-    posibles = [c for c in df.columns if any(x in str(c).lower() for x in ["iva", "alicuota", "neto gravado", "10", "21", "27"])]
+    # CORREGIDO: Detección más específica de columnas de IVA
+    posibles = []
+    for c in df.columns:
+        col_lower = str(c).lower()
+        # Buscar columnas que contengan específicamente IVA con porcentajes
+        if any(x in col_lower for x in ["iva 10", "iva 21", "neto gravado iva", "importe iva"]):
+            posibles.append(c)
+        # También incluir columnas que contengan solo "10" o "21" si no se encontraron las específicas
+        elif any(x in col_lower for x in ["10", "21", "27"]) and any(x in col_lower for x in ["iva", "alicuota", "neto gravado", "importe"]):
+            posibles.append(c)
+    
     if not posibles:
+        logger.warning("No se detectaron columnas de IVA específicas")
         return df.copy(), df.iloc[0:0].copy()
 
-    # CORREGIDO: Ahora detecta tanto "10.5" como "10,5" (punto y coma)
-    cols_10 = [c for c in posibles if re.search(r"10[.,]?5?", str(c).lower())]
+    # CORREGIDO: Detección más robusta de columnas IVA 10,5% y 21%
+    cols_10 = [c for c in posibles if re.search(r"10[.,]?5?|10[.,]?5", str(c).lower())]
     cols_21 = [c for c in posibles if re.search(r"21|27", str(c).lower())]
+    
+    logger.info(f"Columnas detectadas - IVA 10,5%: {cols_10}, IVA 21%: {cols_21}")
 
     if not cols_10 or not cols_21:
+        logger.warning(f"No se detectaron columnas de ambos tipos de IVA. 10,5%: {len(cols_10)}, 21%: {len(cols_21)}")
         return df.copy(), df.iloc[0:0].copy()
 
     def _coerce(s: pd.Series) -> pd.Series:
@@ -125,6 +139,9 @@ def detect_doble_alicuota(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]
 
     doble = df[doble_mask].copy()
     resto = df[~doble_mask].copy()
+    
+    logger.info(f"Detección completada - Doble alícuota: {len(doble)}, Resto: {len(resto)}")
+    
     return resto, doble
 
 

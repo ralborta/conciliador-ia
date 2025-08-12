@@ -4,6 +4,13 @@ from fastapi.responses import JSONResponse
 import logging
 import os
 from dotenv import load_dotenv
+import sys
+from pathlib import Path
+
+# Asegurar que los imports internos funcionen tanto localmente como en contenedor
+current_dir = Path(__file__).resolve().parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
 
 # Cargar variables de entorno
 load_dotenv()

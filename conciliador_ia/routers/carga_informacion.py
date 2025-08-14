@@ -87,9 +87,13 @@ async def procesar(
             raise HTTPException(status_code=422, detail={"error": "Campos requeridos faltantes", "missing": missing})
 
         logger.info(f"Procesar: ventas={ventas_excel_path}, tabla={tabla_comprobantes_path}, periodo={periodo}, portal={portal_iva_csv_path}")
+        
+        # Manejar tabla_comprobantes_path opcional
+        tabla_path = tabla_comprobantes_path if tabla_comprobantes_path and tabla_comprobantes_path.strip() else None
+        
         data = loader.load_inputs(
             str(ventas_excel_path),
-            str(tabla_comprobantes_path),
+            tabla_path,
             portal_iva_csv_path,
             modelo_importacion_path,
         )

@@ -111,24 +111,32 @@ def map_afip_portal_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def detect_doble_alicuota(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Detecta doble alícuota usando coerción numérica robusta y valores absolutos > 0."""
-    # CORREGIDO: Detección más específica de columnas de IVA
+    # CORREGIDO: Detección más flexible y robusta de columnas de IVA
     posibles = []
     for c in df.columns:
         col_lower = str(c).lower()
-        # Buscar columnas que contengan específicamente IVA con porcentajes
+        # Buscar columnas que contengan IVA con porcentajes específicos
         if any(x in col_lower for x in ["iva 10", "iva 21", "neto gravado iva", "importe iva"]):
             posibles.append(c)
-        # También incluir columnas que contengan solo "10" o "21" si no se encontraron las específicas
+        # Buscar columnas que contengan solo números de IVA
         elif any(x in col_lower for x in ["10", "21", "27"]) and any(x in col_lower for x in ["iva", "alicuota", "neto gravado", "importe"]):
             posibles.append(c)
+        # CORREGIDO: Agregar detección más amplia para columnas que solo contengan números
+        elif re.search(r"^10[.,]?5?$|^21$|^27$", col_lower):
+            posibles.append(c)
+        # CORREGIDO: Buscar columnas que contengan solo "10" o "21" sin contexto
+        elif col_lower in ["10", "10.5", "21", "27"]:
+            posibles.append(c)
+    
+    logger.info(f"Columnas potenciales de IVA detectadas: {posibles}")
     
     if not posibles:
         logger.warning("No se detectaron columnas de IVA específicas")
         return df.copy(), df.iloc[0:0].copy()
 
     # CORREGIDO: Detección más robusta de columnas IVA 10,5% y 21%
-    cols_10 = [c for c in posibles if re.search(r"10[.,]?5?|10[.,]?5", str(c).lower())]
-    cols_21 = [c for c in posibles if re.search(r"21|27", str(c).lower())]
+    cols_10 = [c for c in posibles if re.search(r"10[.,]?5?|10[.,]?5", str(c).lower()) or str(c).lower() in ["10", "10.5"]]
+    cols_21 = [c for c in posibles if re.search(r"21|27", str(c).lower()) or str(c).lower() in ["21", "27"]]
     
     logger.info(f"Columnas detectadas - IVA 10,5%: {cols_10}, IVA 21%: {cols_21}")
 

@@ -33,14 +33,21 @@ class CargaArchivos:
     def load_inputs(
         self,
         ventas_excel_path: str,
-        tabla_comprobantes_path: str,
+        tabla_comprobantes_path: Optional[str] = None,
         portal_iva_csv_path: Optional[str] = None,
         modelo_importacion_path: Optional[str] = None,
         modelo_doble_alicuota_path: Optional[str] = None,
     ) -> Dict[str, pd.DataFrame]:
         data: Dict[str, pd.DataFrame] = {}
         data["ventas"] = self._read_any_table(ventas_excel_path)
-        data["tabla_comprobantes"] = self._read_any_table(tabla_comprobantes_path)
+        
+        # Manejar tabla de comprobantes opcional
+        if tabla_comprobantes_path and tabla_comprobantes_path.strip():
+            data["tabla_comprobantes"] = self._read_any_table(tabla_comprobantes_path)
+        else:
+            # Crear tabla de comprobantes vacía si no se proporciona
+            data["tabla_comprobantes"] = pd.DataFrame(columns=["Codigo", "Descripcion"])
+            logger.info("No se proporcionó tabla de comprobantes, usando tabla vacía por defecto")
         if portal_iva_csv_path and Path(portal_iva_csv_path).exists():
             data["portal_iva"] = self._read_any_table(portal_iva_csv_path)
         # Leer columnas del modelo de importación si se provee

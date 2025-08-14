@@ -21,7 +21,7 @@ exporter = ExportadorVentas()
 @router.post("/upload")
 async def upload_archivos(
     ventas_excel: UploadFile = File(...),
-    tabla_comprobantes: UploadFile = File(...),
+    tabla_comprobantes: Optional[UploadFile] = File(None),
     portal_iva_csv: Optional[UploadFile] = File(None),
     modelo_importacion: Optional[UploadFile] = File(None),
     modelo_doble_alicuota: Optional[UploadFile] = File(None),
@@ -32,8 +32,11 @@ async def upload_archivos(
         content = await ventas_excel.read()
         saved["ventas_excel_path"] = loader.save_uploaded_file(content, ventas_excel.filename, ENTRADA_DIR)
 
-        content = await tabla_comprobantes.read()
-        saved["tabla_comprobantes_path"] = loader.save_uploaded_file(content, tabla_comprobantes.filename, ENTRADA_DIR)
+        if tabla_comprobantes is not None:
+            content = await tabla_comprobantes.read()
+            saved["tabla_comprobantes_path"] = loader.save_uploaded_file(content, tabla_comprobantes.filename, ENTRADA_DIR)
+        else:
+            saved["tabla_comprobantes_path"] = ""
 
         if portal_iva_csv is not None:
             content = await portal_iva_csv.read()
@@ -77,7 +80,6 @@ async def procesar(
         missing = [
             name for name, val in [
                 ("ventas_excel_path", ventas_excel_path),
-                ("tabla_comprobantes_path", tabla_comprobantes_path),
                 ("periodo", periodo),
             ] if not val
         ]

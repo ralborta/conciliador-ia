@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, File, X, CheckCircle } from 'lucide-react';
+import { Upload, File, X, CheckCircle, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface FileUploadProps {
@@ -32,7 +32,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
     try {
       await onFileUpload(file);
-      toast.success(`${title} subido exitosamente`);
+      toast.success(`${title || 'Archivo'} subido exitosamente`);
     } catch (error) {
       console.error('Error uploading file:', error);
       toast.error('Error al subir el archivo');
@@ -54,6 +54,77 @@ const FileUpload: React.FC<FileUploadProps> = ({
     return acceptedTypes.map(type => type.split('/')[1]).join(', ');
   };
 
+  // Si no hay título ni descripción, mostrar solo el área de upload
+  if (!title && !description) {
+    return (
+      <div className="w-full">
+        {uploadedFile ? (
+          <div className="flex items-center justify-between p-6 bg-green-50 border-2 border-green-200 rounded-xl">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-green-800">Archivo cargado exitosamente</p>
+                <p className="text-sm text-green-600 flex items-center mt-1">
+                  <FileText className="w-4 h-4 mr-2" />
+                  {typeof uploadedFile === 'string' ? uploadedFile : uploadedFile.name}
+                </p>
+              </div>
+            </div>
+            {onRemoveFile && (
+              <button
+                onClick={onRemoveFile}
+                className="p-2 hover:bg-green-100 rounded-lg transition-colors duration-200"
+                title="Eliminar archivo"
+              >
+                <X className="h-5 w-5 text-green-600" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div
+            {...getRootProps()}
+            className={`
+              w-full border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all duration-200
+              ${isDragActive 
+                ? 'border-blue-400 bg-blue-50 scale-105' 
+                : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+              }
+              ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+          >
+            <input {...getInputProps()} />
+            
+            <div className="flex flex-col items-center space-y-4">
+              {isUploading ? (
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full">
+                    <Upload className="w-10 h-10 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xl font-semibold text-gray-900 mb-2">
+                      {isDragActive ? 'Suelta el archivo aquí' : 'Arrastra y suelta tu archivo'}
+                    </p>
+                    <p className="text-gray-600 mb-4">
+                      o haz clic para seleccionar
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Formatos soportados: {getAcceptedExtensions()}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Versión original con título y descripción
   return (
     <div className="card">
       <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
@@ -99,17 +170,18 @@ const FileUpload: React.FC<FileUploadProps> = ({
             {isUploading ? (
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             ) : (
-              <Upload className="h-8 w-8 text-gray-400" />
+              <>
+                <Upload className="h-8 w-8 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {isDragActive ? 'Suelta el archivo aquí' : 'Arrastra y suelta tu archivo'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    o haz clic para seleccionar
+                  </p>
+                </div>
+              </>
             )}
-            
-            <div>
-              <p className="text-sm font-medium text-gray-900">
-                {isDragActive ? 'Suelta el archivo aquí' : 'Seleccionar archivo'}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {isUploading ? 'Subiendo...' : `Formatos aceptados: ${getAcceptedExtensions()}`}
-              </p>
-            </div>
           </div>
         </div>
       )}

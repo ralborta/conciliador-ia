@@ -470,10 +470,13 @@ class ExportadorVentas:
                 logger.info(f"  Fila {i}: {dict(row)}")
         
         # 1. Exportar ventas para el modelo (ESTRUCTURA DEL MODELO REAL)
-        if not validos.empty:
+        # CORREGIDO: Incluir tanto validos como doble_alicuota en el archivo principal
+        ventas_completas = pd.concat([validos, doble_alicuota], ignore_index=True) if not doble_alicuota.empty else validos
+        
+        if not ventas_completas.empty:
             try:
                 # Usar estructura del modelo real - NO depende de archivos externos
-                modelo_df = self._construir_xubio_df(validos, multiline=True)
+                modelo_df = self._construir_xubio_df(ventas_completas, multiline=True)
                 logger.info(f"MODELO DF construido exitosamente: {modelo_df.shape}")
                 
                 # Generar Excel directamente con estructura del modelo
@@ -484,9 +487,9 @@ class ExportadorVentas:
                 
             except Exception as e:
                 logger.error(f"Error construyendo DF del modelo: {e}")
-                # Fallback: exportar 'validos' pero con estructura del modelo
+                # Fallback: exportar 'ventas_completas' pero con estructura del modelo
                 try:
-                    fallback_df = self._construir_xubio_df(validos, multiline=False)
+                    fallback_df = self._construir_xubio_df(ventas_completas, multiline=False)
                     ventas_path = SALIDA_DIR / f"ventas_importacion_modelo_{periodo}.xlsx"
                     fallback_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
                     logger.info(f"Fallback: Excel del modelo exportado en modo simple: {ventas_path}")
@@ -495,8 +498,8 @@ class ExportadorVentas:
                     logger.error(f"Fallback también falló: {fallback_error}")
                     # Último recurso: exportar crudo
                     ventas_path = SALIDA_DIR / f"ventas_importacion_modelo_{periodo}.xlsx"
-                    validos.to_excel(ventas_path, index=False, engine="xlsxwriter")
-                    logger.warning(f"Exportando 'validos' crudo como último recurso: {ventas_path}")
+                    ventas_completas.to_excel(ventas_path, index=False, engine="xlsxwriter")
+                    logger.warning(f"Exportando 'ventas_completas' crudo como último recurso: {ventas_path}")
                     paths["ventas"] = str(ventas_path)
         else:
             logger.warning("No hay datos válidos para exportar al modelo")
@@ -552,6 +555,17 @@ class ExportadorVentas:
                 "registro": str(row.get("numero_comprobante", row.get("fecha", "N/A"))),
                 "clasificacion": "VALIDO",
                 "motivo": "OK",
+                "cuit": row.get("cuit", ""),
+                "monto": row.get("monto", ""),
+                "fecha": row.get("fecha", "")
+            })
+        
+        # Agregar registros de doble alícuota (que ahora también van en el archivo principal)
+        for _, row in doble_alicuota.iterrows():
+            log_data.append({
+                "registro": str(row.get("numero_comprobante", row.get("fecha", "N/A"))),
+                "clasificacion": "VALIDO_DOBLE_ALICUOTA",
+                "motivo": "Incluido en archivo principal",
                 "cuit": row.get("cuit", ""),
                 "monto": row.get("monto", ""),
                 "fecha": row.get("fecha", "")

@@ -30,15 +30,26 @@ def normalize_cuit(value: Any) -> str:
 
 
 def map_tipo_comprobante(df: pd.DataFrame, tabla: pd.DataFrame) -> pd.DataFrame:
+    # Manejar caso cuando no hay tabla de comprobantes
+    if tabla.empty or len(tabla.columns) == 0:
+        logger.info("No hay tabla de comprobantes, saltando mapeo de tipos")
+        return df
+    
     # Espera que tabla tenga columnas: Codigo / Descripcion o similares
-    tabla_local = tabla.copy()
-    cols = {c.lower(): c for c in tabla_local.columns}
-    codigo_col = cols.get("codigo") or cols.get("code") or list(tabla_local.columns)[0]
-    desc_col = cols.get("descripcion") or cols.get("description") or list(tabla_local.columns)[1]
-    tabla_local = tabla_local[[codigo_col, desc_col]].rename(columns={codigo_col: "tipo_code", desc_col: "tipo_desc"})
-    df = df.copy()
-    if "Tipo_Comprobante" in df.columns:
-        df = df.merge(tabla_local, left_on="Tipo_Comprobante", right_on="tipo_code", how="left")
+    try:
+        tabla_local = tabla.copy()
+        cols = {c.lower(): c for c in tabla_local.columns}
+        codigo_col = cols.get("codigo") or cols.get("code") or list(tabla_local.columns)[0]
+        desc_col = cols.get("descripcion") or cols.get("description") or list(tabla_local.columns)[1]
+        tabla_local = tabla_local[[codigo_col, desc_col]].rename(columns={codigo_col: "tipo_code", desc_col: "tipo_desc"})
+        df = df.copy()
+        if "Tipo_Comprobante" in df.columns:
+            df = df.merge(tabla_local, left_on="Tipo_Comprobante", right_on="tipo_code", how="left")
+    except Exception as e:
+        logger.warning(f"Error en mapeo de tipos de comprobante: {e}")
+        # Retornar DataFrame original si hay error
+        return df
+    
     return df
 
 

@@ -13,37 +13,47 @@ export default function CargaInformacionPage() {
   const [periodo, setPeriodo] = useState('06_2025');
   const [processing, setProcessing] = useState(false);
   const [outputs, setOutputs] = useState<Record<string, string>>({});
+  const [savedPaths, setSavedPaths] = useState<Record<string, string>>({});
 
   const handleComprobantesUpload = async (file: File) => {
     setComprobantesFile(file);
     toast.success('Comprobantes cargados exitosamente');
   };
 
-  const procesar = async () => {
+  const subirArchivos = async () => {
     if (!comprobantesFile) {
       toast.error('Debes cargar un archivo de comprobantes primero');
       return;
     }
 
     try {
-      setProcessing(true);
-      
-      // Subir archivo
-      const uploadRes = await apiService.cargaInfoUpload({
+      const res = await apiService.cargaInfoUpload({
         ventas_excel: comprobantesFile,
         tabla_comprobantes: undefined,
         portal_iva_csv: undefined,
         modelo_importacion: undefined,
         modelo_doble_alicuota: undefined,
       });
+      setSavedPaths(res.saved || {});
+      console.log('Saved paths', res.saved);
+      toast.success('Archivo subido exitosamente');
+    } catch (error: any) {
+      toast.error(error.userMessage || 'Error subiendo archivo');
+    }
+  };
 
-      if (!uploadRes.saved?.ventas_excel_path) {
-        throw new Error('Error al subir el archivo');
-      }
+  const procesar = async () => {
+    if (!savedPaths['ventas_excel_path']) {
+      toast.error('Debes subir el archivo primero');
+      return;
+    }
 
+    try {
+      setProcessing(true);
+      
       // Procesar archivo
       const res = await apiService.cargaInfoProcesar({
-        ventas_excel_path: uploadRes.saved.ventas_excel_path,
+        ventas_excel_path: savedPaths['ventas_excel_path'],
         tabla_comprobantes_path: '',
         periodo,
         portal_iva_csv_path: '',
@@ -119,33 +129,62 @@ export default function CargaInformacionPage() {
                 </div>
               </div>
 
-              {/* Process Button */}
-              <div className="mt-8 text-center">
+              {/* Action Buttons */}
+              <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+                {/* Subir Archivo Button */}
+                <button
+                  onClick={subirArchivos}
+                  disabled={!comprobantesFile}
+                  className={`
+                    inline-flex items-center px-6 py-3 rounded-xl font-semibold transition-all duration-200
+                    ${!comprobantesFile
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                    }
+                  `}
+                >
+                  <Upload className="w-5 h-5 mr-2" />
+                  Subir Archivo
+                </button>
+
+                {/* Procesar Button */}
                 <button
                   onClick={procesar}
-                  disabled={processing || !comprobantesFile}
+                  disabled={processing || !savedPaths['ventas_excel_path']}
                   className={`
-                    inline-flex items-center px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200
-                    ${processing || !comprobantesFile
+                    inline-flex items-center px-6 py-3 rounded-xl font-semibold transition-all duration-200
+                    ${processing || !savedPaths['ventas_excel_path']
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                      : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
                     }
                   `}
                 >
                   {processing ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       Procesando...
                     </>
                   ) : (
                     <>
-                      <FileText className="w-5 h-5 mr-3" />
+                      <FileText className="w-5 h-5 mr-2" />
                       Procesar Comprobantes
-                      <ArrowRight className="w-5 h-5 ml-3" />
+                      <ArrowRight className="w-5 h-5 ml-2" />
                     </>
                   )}
                 </button>
               </div>
+
+              {/* Status Messages */}
+              {savedPaths['ventas_excel_path'] && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center">
+                    <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                    <span className="text-green-800 font-medium">
+                      Archivo subido correctamente. Ahora puedes procesar.
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Results Section */}

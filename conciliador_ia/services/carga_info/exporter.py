@@ -396,9 +396,9 @@ class ExportadorVentas:
                     logger.info(f"  - Monto: {fila_producto.get('monto', 'N/A')}")
                     logger.info(f"  - Precio: {fila_producto.get('precio', 'N/A')}")
                     
-                    # CORREGIDO: Crear fila solo con datos del producto, datos de factura completamente vacíos
+                    # CORREGIDO: Crear fila solo con datos del producto, pero REPETIR NUMERODECONTROL
                     fila_producto_data = {
-                        "NUMERODECONTROL": "",  # CORREGIDO: Vacío - mismo número de control de la factura
+                        "NUMERODECONTROL": numero_control_factura,  # CORREGIDO: REPETIR número de control de la factura
                         "CLIENTE": "",          # CORREGIDO: Vacío - mismo cliente
                         "TIPO": "",             # CORREGIDO: Vacío - mismo tipo
                         "NUMERO": "",           # CORREGIDO: Vacío - mismo número

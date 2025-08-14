@@ -324,14 +324,14 @@ export const apiService = {
   // ===== MÉTODOS PARA CARGA DE INFORMACIÓN =====
   cargaInfoUpload: async (files: {
     ventas_excel: File;
-    tabla_comprobantes: File;
+    tabla_comprobantes?: File;
     portal_iva_csv?: File;
     modelo_importacion?: File;
     modelo_doble_alicuota?: File;
   }): Promise<any> => {
     const form = new FormData();
     form.append('ventas_excel', files.ventas_excel);
-    form.append('tabla_comprobantes', files.tabla_comprobantes);
+    if (files.tabla_comprobantes) form.append('tabla_comprobantes', files.tabla_comprobantes);
     if (files.portal_iva_csv) form.append('portal_iva_csv', files.portal_iva_csv);
     if (files.modelo_importacion) form.append('modelo_importacion', files.modelo_importacion);
     if (files.modelo_doble_alicuota) form.append('modelo_doble_alicuota', files.modelo_doble_alicuota);
@@ -341,10 +341,10 @@ export const apiService = {
     return res.data;
   },
 
-  cargaInfoProcesar: async (params: { ventas_excel_path: string; tabla_comprobantes_path: string; periodo: string; portal_iva_csv_path?: string; modelo_importacion_path?: string; }): Promise<any> => {
+  cargaInfoProcesar: async (params: { ventas_excel_path: string; tabla_comprobantes_path?: string; periodo: string; portal_iva_csv_path?: string; modelo_importacion_path?: string; }): Promise<any> => {
     const form = new FormData();
     form.append('ventas_excel_path', params.ventas_excel_path);
-    form.append('tabla_comprobantes_path', params.tabla_comprobantes_path);
+    if (params.tabla_comprobantes_path) form.append('tabla_comprobantes_path', params.tabla_comprobantes_path);
     form.append('periodo', params.periodo);
     if (params.portal_iva_csv_path) form.append('portal_iva_csv_path', params.portal_iva_csv_path);
     if (params.modelo_importacion_path) form.append('modelo_importacion_path', params.modelo_importacion_path);

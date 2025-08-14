@@ -79,6 +79,11 @@ def map_afip_portal_columns(df: pd.DataFrame) -> pd.DataFrame:
     if col_tipo:
         df = df.rename(columns={col_tipo: "tipo_comprobante"})
 
+    # Punto de Venta (CORREGIDO: agregado para el segundo campo del NUMERO)
+    col_punto_venta = pick("punto de venta", "punto venta", "punto_venta", "Punto_Venta")
+    if col_punto_venta:
+        df = df.rename(columns={col_punto_venta: "punto_venta"})
+
     # Número de comprobante (preferimos "Hasta")
     col_nro_hasta = pick("número de comprobante hasta", "numero de comprobante hasta", "nro comprobante hasta")
     col_nro = col_nro_hasta or pick("número de comprobante", "numero de comprobante", "nro comprobante")

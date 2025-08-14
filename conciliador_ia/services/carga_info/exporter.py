@@ -29,6 +29,7 @@ class ExportadorVentas:
         # Mapeo de columnas estándar internas al modelo real
         self.COLUMN_MAPPING = {
             "numero_comprobante": "NUMERO",
+            "punto_venta": "TIPO",  # CORREGIDO: TIPO ahora es punto de venta
             "fecha": "FECHA", 
             "fecha_vencimiento": "VENCIMIENTODELCOBRO",
             "comprobante_asociado": "COMPROBANTEASOCIADO MONEDA",
@@ -47,22 +48,33 @@ class ExportadorVentas:
             "denominacion_comprador": "CLIENTE"
         }
         
-        # TABLA DE EQUIVALENCIAS AFIP → XUBIO (Tipo de Comprobante)
+        # TABLA DE EQUIVALENCIAS AFIP → XUBIO (Tipo de Comprobante) - CORREGIDA
         self.TIPO_COMPROBANTE_MAP = {
-            # Facturas (F.) → Código Xubio 1
+            # Facturas → Código Xubio 1
             '1': 1, '6': 1, '11': 1, '19': 1, '22': 1, '51': 1, 
             '81': 1, '82': 1, '83': 1, '111': 1, '118': 1, '201': 1, '211': 1,
             
-            # Notas de Crédito/Débito (N.) → Código Xubio 2
+            # Notas de Débito → Código Xubio 2
             '2': 2, '7': 2, '12': 2, '20': 2, '37': 2, '45': 2, 
             '46': 2, '47': 2, '52': 2, '115': 2, '116': 2, '117': 2, 
             '120': 2, '202': 2, '207': 2, '212': 2,
             
-            # Recibos/Remitos (R.) → Código Xubio 3
-            '3': 3, '4': 3, '8': 3, '9': 3, '13': 3, '15': 3, 
-            '21': 3, '38': 3, '53': 3, '54': 3, '70': 3, '90': 3, 
-            '110': 3, '112': 3, '113': 3, '114': 3, '119': 3, '203': 3, 
-            '208': 3, '213': 3
+            # Notas de Crédito → Código Xubio 3
+            '3': 3, '21': 3, '38': 3, '90': 3, '110': 3, '112': 3, 
+            '113': 3, '114': 3, '119': 3, '203': 3, '208': 3, '213': 3,
+            
+            # Recibos → Código Xubio 6
+            '4': 6, '8': 6, '9': 6, '13': 6, '15': 6, '53': 6, 
+            '54': 6, '70': 6,
+            
+            # FCE A → Código Xubio 10
+            '201': 10, '206': 10,
+            
+            # FCE Notas de Débito → Código Xubio 11
+            '202': 11, '207': 11,
+            
+            # FCE Notas de Crédito → Código Xubio 12
+            '203': 12, '208': 12
         }
 
     def _limpiar_monto(self, valor):
@@ -168,17 +180,20 @@ class ExportadorVentas:
                     else:
                         base[col] = ""
             
-            # Construir campo NUMERO con formato: [LETRA]-[TIPO_5_DIGITOS]-[NUMERO_8_DIGITOS]
+            # Construir campo NUMERO con formato: [LETRA]-[PUNTO_VENTA_5_DIGITOS]-[NUMERO_8_DIGITOS] (CORREGIDO)
             if "tipo_comprobante" in df.columns and "numero_comprobante" in df.columns:
                 tipo_afip = str(row["tipo_comprobante"]).strip()
                 numero_comp = str(row["numero_comprobante"]).strip()
                 
-                # 1. Obtener letra basada en el tipo de comprobante
+                # 1. Obtener letra basada en el código Xubio (CORREGIDO)
                 letra_map = {
-                    1: "A",  # Facturas
-                    2: "B",  # Notas de Crédito/Débito
-                    3: "C",  # Recibos/Remitos
-                    6: "M"   # Otros tipos
+                    1: "A",   # Facturas (A, B, C, M)
+                    2: "B",   # Notas de Débito
+                    3: "C",   # Notas de Crédito
+                    6: "C",   # Recibos
+                    10: "A",  # FCE A
+                    11: "B",  # FCE Notas de Débito
+                    12: "C"   # FCE Notas de Crédito
                 }
                 
                 # Limpiar tipo y mapear a Xubio
@@ -186,16 +201,25 @@ class ExportadorVentas:
                 tipo_xubio = self.TIPO_COMPROBANTE_MAP.get(tipo_afip_clean, 1)
                 letra = letra_map.get(tipo_xubio, "A")
                 
-                # 2. Formatear tipo a 5 dígitos con ceros
-                tipo_formateado = f"{tipo_afip:0>5}"
+                # 2. Obtener punto de venta (CORREGIDO: usar punto_venta en lugar de tipo)
+                punto_venta = ""
+                if "punto_venta" in df.columns:
+                    punto_venta = str(row["punto_venta"]).strip()
+                elif "Punto_Venta" in df.columns:
+                    punto_venta = str(row["Punto_Venta"]).strip()
+                else:
+                    punto_venta = "00001"  # Default si no hay punto de venta
                 
-                # 3. Formatear número de comprobante a 8 dígitos con ceros
+                # 3. Formatear punto de venta a 5 dígitos con ceros
+                punto_venta_formateado = f"{punto_venta:0>5}"
+                
+                # 4. Formatear número de comprobante a 8 dígitos con ceros
                 numero_formateado = f"{numero_comp:0>8}"
                 
-                # 4. Construir campo NUMERO completo
-                base["NUMERO"] = f"{letra}-{tipo_formateado}-{numero_formateado}"
+                # 5. Construir campo NUMERO completo
+                base["NUMERO"] = f"{letra}-{punto_venta_formateado}-{numero_formateado}"
                 
-                logger.info(f"NUMERO construido: {tipo_afip} → {tipo_xubio} → {letra}, {numero_comp} → {base['NUMERO']}")
+                logger.info(f"NUMERO construido: {tipo_afip} → {tipo_xubio} → {letra}, Punto Venta: {punto_venta}, {numero_comp} → {base['NUMERO']}")
             else:
                 base["NUMERO"] = ""
                 logger.warning("No se pudo construir NUMERO: faltan campos tipo_comprobante o numero_comprobante")

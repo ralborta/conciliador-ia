@@ -346,31 +346,82 @@ class ExportadorVentas:
             # Modo modelo: generar múltiples filas por factura
             rows = []
             
-            # SOLUCIÓN: NO agrupar por factura - cada fila del CSV es una fila en el archivo final
-            # Esto permite que las facturas con doble alícuota aparezcan como filas separadas
-            rows = []
-            numero_control_actual = 1
-            
+            # Agrupar filas por factura (usando número + fecha como identificador único)
+            facturas_grupo = {}
             for idx, row in df.iterrows():
-                # Cada fila del CSV se convierte en una fila del archivo final
-                base_line = build_base_line(row)
+                # Crear clave única para agrupar facturas
+                clave_factura = f"{row.get('numero_comprobante', '')}_{row.get('fecha', '')}"
+                if clave_factura not in facturas_grupo:
+                    facturas_grupo[clave_factura] = []
+                facturas_grupo[clave_factura].append(row)
+            
+            logger.info(f"Se detectaron {len(facturas_grupo)} facturas únicas")
+            
+            # Procesar cada factura
+            numero_control_actual = 1  # CORREGIDO: Numeración correlativa secuencial
+            
+            for clave_factura, filas_factura in facturas_grupo.items():
+                logger.info(f"Procesando factura: {clave_factura} con {len(filas_factura)} productos")
                 
-                # Asignar NUMERODECONTROL secuencial
-                base_line["NUMERODECONTROL"] = numero_control_actual
+                # CORREGIDO: NUMERODECONTROL secuencial por factura
+                numero_control_factura = numero_control_actual
                 
-                # Llenar campos de producto desde la fila actual
-                base_line["PRODUCTOSERVICIO"] = row.get("producto_servicio", f"Producto al {row.get('iva', '21')}%")
-                base_line["CENTRODECOSTO"] = ""
-                base_line["PRODUCTOOBSERVACION"] = ""
-                base_line["CANTIDAD"] = row.get("cantidad", 1)
-                base_line["PRECIO"] = self._limpiar_monto(row.get("precio", row.get("monto", 0)))
-                base_line["DESCUENTO"] = self._limpiar_monto(row.get("descuento", 0))
-                base_line["IMPORTE"] = self._limpiar_monto(row.get("monto", 0))
-                base_line["IVA"] = row.get("iva", 21)
+                # Primera fila: SOLO datos de la factura (SIN productos)
+                if filas_factura:
+                    primera_fila = filas_factura[0]
+                    base_line = build_base_line(primera_fila)
+                    
+                    # CORREGIDO: Asignar NUMERODECONTROL de la factura
+                    base_line["NUMERODECONTROL"] = numero_control_factura
+                    
+                    # LIMPIAR campos de producto en la primera fila
+                    base_line["PRODUCTOSERVICIO"] = ""
+                    base_line["CENTRODECOSTO"] = ""
+                    base_line["PRODUCTOOBSERVACION"] = ""
+                    base_line["CANTIDAD"] = ""
+                    base_line["PRECIO"] = ""
+                    base_line["DESCUENTO"] = ""
+                    base_line["IMPORTE"] = ""
+                    base_line["IVA"] = ""
+                    
+                    rows.append(base_line)
+                    logger.info(f"Fila 1 agregada para factura {clave_factura} - SOLO datos de factura - NUMERODECONTROL: {numero_control_factura}")
                 
-                rows.append(base_line)
-                logger.info(f"Fila {numero_control_actual} agregada - Producto: {base_line['PRODUCTOSERVICIO']} con IVA: {base_line['IVA']} - Monto: {base_line['IMPORTE']}")
+                # Filas siguientes: SOLO datos del producto (campos CLIENTE a OBSERVACIONES vacíos)
+                for i, fila_producto in enumerate(filas_factura, 1):
+                    # Logging detallado para debug
+                    logger.info(f"Procesando producto {i} de factura {clave_factura}:")
+                    logger.info(f"  - Producto: {fila_producto.get('producto_servicio', 'N/A')}")
+                    logger.info(f"  - IVA: {fila_producto.get('iva', 'N/A')}")
+                    logger.info(f"  - Monto: {fila_producto.get('monto', 'N/A')}")
+                    logger.info(f"  - Precio: {fila_producto.get('precio', 'N/A')}")
+                    
+                    # CORREGIDO: Crear fila solo con datos del producto, pero REPETIR NUMERODECONTROL
+                    fila_producto_data = {
+                        "NUMERODECONTROL": numero_control_factura,  # CORREGIDO: REPETIR número de control de la factura
+                        "CLIENTE": "",          # CORREGIDO: Vacío - mismo cliente
+                        "TIPO": "",             # CORREGIDO: Vacío - mismo tipo
+                        "NUMERO": "",           # CORREGIDO: Vacío - mismo número
+                        "FECHA": "",            # CORREGIDO: Vacía - misma fecha
+                        "VENCIMIENTODELCOBRO": "",  # CORREGIDO: Vacío - mismo vencimiento
+                        "COMPROBANTEASOCIADO MONEDA": "",  # CORREGIDO: Vacío - mismo
+                        "": "",                 # Columna vacía
+                        "COTIZACION": "",       # CORREGIDO: Vacía - misma cotización
+                        "OBSERVACIONES": "",    # CORREGIDO: Vacías - mismas observaciones
+                        "PRODUCTOSERVICIO": fila_producto.get("producto_servicio", f"Producto al {fila_producto.get('iva', '21')}%"),
+                        "CENTRODECOSTO": "",
+                        "PRODUCTOOBSERVACION": "",
+                        "CANTIDAD": fila_producto.get("cantidad", 1),
+                        "PRECIO": self._limpiar_monto(fila_producto.get("precio", fila_producto.get("monto", 0))),
+                        "DESCUENTO": self._limpiar_monto(fila_producto.get("descuento", 0)),
+                        "IMPORTE": self._limpiar_monto(fila_producto.get("monto", 0)),
+                        "IVA": fila_producto.get("iva", 21)
+                    }
+                    
+                    rows.append(fila_producto_data)
+                    logger.info(f"Fila {i+1} agregada para factura {clave_factura} - SOLO datos de producto - Producto: {fila_producto_data['PRODUCTOSERVICIO']} con IVA: {fila_producto_data['IVA']}")
                 
+                # CORREGIDO: Incrementar número de control para la siguiente factura
                 numero_control_actual += 1
             
             out = pd.DataFrame(rows)

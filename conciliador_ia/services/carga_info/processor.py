@@ -261,24 +261,44 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
     logger.info(f"Detección de doble alícuota completada - Válidos: {len(validos)}, Doble alícuota: {len(doble)}")
     logger.info(f"TOTAL de facturas a procesar: {len(validos) + len(doble)}")
 
+    # CORREGIDO: Aplicar validación a AMBOS DataFrames (validos y doble)
     # Reglas mínimas: fecha y monto válidos
-    if 'fecha' in validos.columns:
-        validos['fecha'] = pd.to_datetime(validos['fecha'], errors='coerce')
-    req_cols = [c for c in ['fecha', 'monto'] if c in validos.columns]
-    if not req_cols:
-        req_cols = list(validos.columns[:1]) if len(validos.columns) else []
-    errores_mask = validos[req_cols].isna().any(axis=1)
-    errores = validos[errores_mask].copy()
-    # Motivo de error básico
-    if not errores.empty and req_cols:
-        faltantes = errores[req_cols].isna()
-        errores["motivo_error"] = faltantes.apply(lambda r: ", ".join([c for c, v in r.items() if v]), axis=1)
-    validos = validos[~errores_mask].copy()
+    def validar_dataframe(df_to_validate, df_name):
+        if df_to_validate.empty:
+            return df_to_validate, pd.DataFrame()
+        
+        if 'fecha' in df_to_validate.columns:
+            df_to_validate['fecha'] = pd.to_datetime(df_to_validate['fecha'], errors='coerce')
+        
+        req_cols = [c for c in ['fecha', 'monto'] if c in df_to_validate.columns]
+        if not req_cols:
+            req_cols = list(df_to_validate.columns[:1]) if len(df_to_validate.columns) else []
+        
+        errores_mask = df_to_validate[req_cols].isna().any(axis=1)
+        errores = df_to_validate[errores_mask].copy()
+        validos = df_to_validate[~errores_mask].copy()
+        
+        # Motivo de error básico
+        if not errores.empty and req_cols:
+            faltantes = errores[req_cols].isna()
+            errores["motivo_error"] = faltantes.apply(lambda r: ", ".join([c for c, v in r.items() if v]), axis=1)
+        
+        logger.info(f"Validación de {df_name}: {len(df_to_validate)} → {len(validos)} válidos, {len(errores)} errores")
+        return validos, errores
+
+    # Validar ambos DataFrames
+    validos_validados, errores_validos = validar_dataframe(validos, "validos")
+    doble_validado, errores_doble = validar_dataframe(doble, "doble_alicuota")
+    
+    # Combinar todos los errores
+    errores = pd.concat([errores_validos, errores_doble], ignore_index=True) if not errores_validos.empty or not errores_doble.empty else pd.DataFrame()
+    
+    logger.info(f"Validación completada - Válidos: {len(validos_validados)}, Doble alícuota: {len(doble_validado)}, Total errores: {len(errores)}")
 
     return {
-        "validos": validos,
+        "validos": validos_validados,
         "errores": errores,
-        "doble_alicuota": doble,
+        "doble_alicuota": doble_validado,
     }
 
 

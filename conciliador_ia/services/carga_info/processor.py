@@ -235,16 +235,12 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
     
     logger.info(f"Campo 'iva' generado. Valores únicos: {df['iva'].unique()}")
 
-    # Detectar doble alícuota
-    validos, doble = detect_doble_alicuota(df)
-
-    # AGREGADO: Los registros de doble alícuota también deben ir a 'validos' para el archivo de importación
-    # Mantenemos la separación para el reporte, pero incluimos todos en validos
-    if not doble.empty:
-        logger.info(f"Agregando {len(doble)} registros de doble alícuota a 'validos' para inclusión en archivo de importación")
-        # Concatenar doble alícuota con validos para que aparezcan en el archivo final
-        validos = pd.concat([validos, doble], ignore_index=True)
-        logger.info(f"Total de registros válidos después de incluir doble alícuota: {len(validos)}")
+    # CORREGIDO: NO separar facturas con doble alícuota - todas van al archivo final
+    # Todas las facturas se procesan sin filtrado de doble alícuota
+    validos = df.copy()
+    doble = df.iloc[0:0].copy()  # DataFrame vacío para mantener compatibilidad
+    
+    logger.info(f"Procesando todas las facturas sin filtrado de doble alícuota - Total: {len(validos)}")
 
     # Reglas mínimas: fecha y monto válidos
     if 'fecha' in validos.columns:

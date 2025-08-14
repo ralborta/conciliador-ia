@@ -455,13 +455,11 @@ class ExportadorVentas:
         
         validos = resultados.get("validos", pd.DataFrame())
         errores = resultados.get("errores", pd.DataFrame())
-        doble_alicuota = resultados.get("doble_alicuota", pd.DataFrame())
         
         # Checkpoint: verificar datos antes de exportar
         logger.info(f"=== CHECKPOINT EXPORTACIÓN ===")
         logger.info(f"Válidos: {len(validos)} filas")
-        logger.info(f"Errores: {len(errores)} filas") 
-        logger.info(f"Doble alícuota: {len(doble_alicuota)} filas")
+        logger.info(f"Errores: {len(errores)} filas")
         
         if not validos.empty:
             logger.info(f"Columnas en 'validos': {list(validos.columns)}")
@@ -470,13 +468,11 @@ class ExportadorVentas:
                 logger.info(f"  Fila {i}: {dict(row)}")
         
         # 1. Exportar ventas para el modelo (ESTRUCTURA DEL MODELO REAL)
-        # CORREGIDO: Incluir tanto validos como doble_alicuota en el archivo principal
-        ventas_completas = pd.concat([validos, doble_alicuota], ignore_index=True) if not doble_alicuota.empty else validos
-        
-        if not ventas_completas.empty:
+        # SOLUCIÓN SIMPLE: Todas las facturas ya están en 'validos' - no hay separación
+        if not validos.empty:
             try:
                 # Usar estructura del modelo real - NO depende de archivos externos
-                modelo_df = self._construir_xubio_df(ventas_completas, multiline=True)
+                modelo_df = self._construir_xubio_df(validos, multiline=True)
                 logger.info(f"MODELO DF construido exitosamente: {modelo_df.shape}")
                 
                 # Generar Excel directamente con estructura del modelo
@@ -487,9 +483,9 @@ class ExportadorVentas:
                 
             except Exception as e:
                 logger.error(f"Error construyendo DF del modelo: {e}")
-                # Fallback: exportar 'ventas_completas' pero con estructura del modelo
+                # Fallback: exportar 'validos' pero con estructura del modelo
                 try:
-                    fallback_df = self._construir_xubio_df(ventas_completas, multiline=False)
+                    fallback_df = self._construir_xubio_df(validos, multiline=False)
                     ventas_path = SALIDA_DIR / f"ventas_importacion_modelo_{periodo}.xlsx"
                     fallback_df.to_excel(ventas_path, index=False, engine="xlsxwriter")
                     logger.info(f"Fallback: Excel del modelo exportado en modo simple: {ventas_path}")
@@ -498,8 +494,8 @@ class ExportadorVentas:
                     logger.error(f"Fallback también falló: {fallback_error}")
                     # Último recurso: exportar crudo
                     ventas_path = SALIDA_DIR / f"ventas_importacion_modelo_{periodo}.xlsx"
-                    ventas_completas.to_excel(ventas_path, index=False, engine="xlsxwriter")
-                    logger.warning(f"Exportando 'ventas_completas' crudo como último recurso: {ventas_path}")
+                    validos.to_excel(ventas_path, index=False, engine="xlsxwriter")
+                    logger.warning(f"Exportando 'validos' crudo como último recurso: {ventas_path}")
                     paths["ventas"] = str(ventas_path)
         else:
             logger.warning("No hay datos válidos para exportar al modelo")
@@ -524,19 +520,7 @@ class ExportadorVentas:
             paths["errores"] = str(errores_path)
             logger.info(f"Archivo de errores vacío creado: {errores_path}")
 
-        # 3. Exportar doble alícuota
-        if not doble_alicuota.empty:
-            doble_path = SALIDA_DIR / f"ventas_doble_alicuota_{periodo}.xlsx"
-            doble_alicuota.to_excel(doble_path, index=False, engine="xlsxwriter")
-            paths["doble_alicuota"] = str(doble_path)
-            logger.info(f"Doble alícuota exportado: {doble_path}")
-        else:
-            # Crear archivo de doble alícuota vacío
-            doble_path = SALIDA_DIR / f"ventas_doble_alicuota_{periodo}.xlsx"
-            empty_doble = pd.DataFrame(columns=["fecha", "cliente", "monto", "iva_21", "iva_10_5"])
-            empty_doble.to_excel(doble_path, index=False, engine="xlsxwriter")
-            paths["doble_alicuota"] = str(doble_path)
-            logger.info(f"Archivo de doble alícuota vacío creado: {doble_path}")
+        # 3. Exportar doble alícuota - ELIMINADO: No hay separación por alícuotas
 
         # 4. Exportar reporte de validación con portal IVA (opcional)
         if portal_report is not None and not portal_report.empty:
@@ -560,34 +544,12 @@ class ExportadorVentas:
                 "fecha": row.get("fecha", "")
             })
         
-        # Agregar registros de doble alícuota (que ahora también van en el archivo principal)
-        for _, row in doble_alicuota.iterrows():
-            log_data.append({
-                "registro": str(row.get("numero_comprobante", row.get("fecha", "N/A"))),
-                "clasificacion": "VALIDO_DOBLE_ALICUOTA",
-                "motivo": "Incluido en archivo principal",
-                "cuit": row.get("cuit", ""),
-                "monto": row.get("monto", ""),
-                "fecha": row.get("fecha", "")
-            })
-        
         # Agregar registros con errores
         for _, row in errores.iterrows():
             log_data.append({
                 "registro": str(row.get("numero_comprobante", row.get("fecha", "N/A"))),
                 "clasificacion": "ERROR",
                 "motivo": row.get("motivo_error", "Error desconocido"),
-                "cuit": row.get("cuit", ""),
-                "monto": row.get("monto", ""),
-                "fecha": row.get("fecha", "")
-            })
-        
-        # Agregar registros con doble alícuota
-        for _, row in doble_alicuota.iterrows():
-            log_data.append({
-                "registro": str(row.get("numero_comprobante", row.get("fecha", "N/A"))),
-                "clasificacion": "DOBLE_ALICUOTA",
-                "motivo": "Doble alícuota detectada",
                 "cuit": row.get("cuit", ""),
                 "monto": row.get("monto", ""),
                 "fecha": row.get("fecha", "")

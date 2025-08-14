@@ -358,11 +358,13 @@ class ExportadorVentas:
             logger.info(f"Se detectaron {len(facturas_grupo)} facturas únicas")
             
             # Procesar cada factura
+            numero_control_actual = 1  # CORREGIDO: Numeración correlativa secuencial
+            
             for clave_factura, filas_factura in facturas_grupo.items():
                 logger.info(f"Procesando factura: {clave_factura} con {len(filas_factura)} productos")
                 
-                # CORREGIDO: NUMERODECONTROL debe ser por factura, no por producto
-                numero_control_factura = len(rows) + 1
+                # CORREGIDO: NUMERODECONTROL secuencial por factura
+                numero_control_factura = numero_control_actual
                 
                 # Primera fila: SOLO datos de la factura (SIN productos)
                 if filas_factura:
@@ -418,6 +420,9 @@ class ExportadorVentas:
                     
                     rows.append(fila_producto_data)
                     logger.info(f"Fila {i+1} agregada para factura {clave_factura} - SOLO datos de producto - Producto: {fila_producto_data['PRODUCTOSERVICIO']} con IVA: {fila_producto_data['IVA']}")
+                
+                # CORREGIDO: Incrementar número de control para la siguiente factura
+                numero_control_actual += 1
             
             out = pd.DataFrame(rows)
 

@@ -246,12 +246,12 @@ def process(ventas: pd.DataFrame, tabla_comprobantes: pd.DataFrame) -> Dict[str,
     
     logger.info(f"Campo 'iva' generado. Valores únicos: {df['iva'].unique()}")
 
-    # CORREGIDO: NO separar facturas con doble alícuota - todas van al archivo final
-    # Todas las facturas se procesan sin filtrado de doble alícuota
-    validos = df.copy()
-    doble = df.iloc[0:0].copy()  # DataFrame vacío para mantener compatibilidad
+    # CORREGIDO: Detectar doble alícuota pero NO filtrar - ambas van al archivo final
+    # Usar la función detect_doble_alicuota para identificar las facturas
+    validos, doble = detect_doble_alicuota(df)
     
-    logger.info(f"Procesando todas las facturas sin filtrado de doble alícuota - Total: {len(validos)}")
+    logger.info(f"Detección de doble alícuota completada - Válidos: {len(validos)}, Doble alícuota: {len(doble)}")
+    logger.info(f"TOTAL de facturas a procesar: {len(validos) + len(doble)}")
 
     # Reglas mínimas: fecha y monto válidos
     if 'fecha' in validos.columns:

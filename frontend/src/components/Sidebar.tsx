@@ -245,7 +245,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           
           {/* Información adicional */}
           <div className="text-xs text-gray-500 space-y-1">
-            <p>Versión: 1.0.0</p>
+            <p>Versión: 1.5.9</p>
             <p>Último acceso: Hoy</p>
           </div>
         </div>

@@ -51,3 +51,36 @@ class ProcessingResponse(BaseModel):
     }
     generated_files: List[str] = []
     log: List[str] = []
+
+class ClienteImportRequest(BaseModel):
+    empresa_id: str
+    cuenta_contable_default: Optional[str] = "Deudores por ventas"
+
+class ClienteImportResponse(BaseModel):
+    job_id: str
+    resumen: Dict[str, int]
+    descargas: Dict[str, str]
+
+class ClienteImportError(BaseModel):
+    origen_fila: str
+    tipo_error: str
+    detalle: str
+    valor_original: str
+
+class ClienteImportJob(BaseModel):
+    id: str
+    empresa_id: str
+    timestamp: str
+    archivos: List[str]
+    estado: str
+    progreso: Optional[int] = None
+    resultado: Optional[ClienteImportResponse] = None
+    errores: List[ClienteImportError] = []
+
+class ClienteNuevo(BaseModel):
+    nombre: str
+    tipo_documento: str
+    numero_documento: str
+    condicion_iva: str
+    provincia: str
+    cuenta_contable: str

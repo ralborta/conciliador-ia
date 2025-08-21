@@ -68,8 +68,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
     {
       icon: FileInput,
-      label: 'Carga de Información',
-      href: '/carga-informacion'
+      label: 'Carga de Documentos',
+      href: '#',
+      subItems: [
+        {
+          icon: FileCheck,
+          label: 'Carga de Comprobantes',
+          href: '/documentos/comprobantes'
+        },
+        {
+          icon: Users,
+          label: 'Carga de Clientes',
+          href: '/documentos/clientes'
+        }
+      ]
     },
     {
       icon: Settings,

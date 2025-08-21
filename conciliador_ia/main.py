@@ -46,19 +46,19 @@ app.add_middleware(
 )
 
 # Importar routers DESPUÉS de CORS
-from conciliador_ia.routers import upload, conciliacion, compras, arca_xubio
+from routers import upload, conciliacion, compras, arca_xubio
 try:
-    from conciliador_ia.routers import carga_informacion  # type: ignore
+    from routers import carga_documentos  # type: ignore
 except Exception:
-    carga_informacion = None
+    carga_documentos = None
 
 # INCLUIR RUTAS DESPUÉS DE CORS
 app.include_router(upload.router, prefix="/api/v1")
 app.include_router(conciliacion.router, prefix="/api/v1")
 app.include_router(compras.router, prefix="/api/v1")
 app.include_router(arca_xubio.router, prefix="/api/v1")
-if carga_informacion:
-    app.include_router(carga_informacion.router, prefix="/api/v1")
+if carga_documentos:
+    app.include_router(carga_documentos.router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup_event():

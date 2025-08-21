@@ -9,6 +9,9 @@ import ProcessTimeline from '../components/ProcessTimeline';
 import DataInconsistencies from '../components/DataInconsistencies';
 import StatusMessage from '../components/StatusMessage';
 import DataAnalysis from '../components/DataAnalysis';
+import ContabilidadCharts from '../components/ContabilidadCharts';
+import ContabilidadContext from '../components/ContabilidadContext';
+import ResumenEjecutivo from '../components/ResumenEjecutivo';
 import { apiService, ConciliacionItem } from '../services/api';
 import toast from 'react-hot-toast';
 import { ChevronDown, HelpCircle, Menu, X } from 'lucide-react';
@@ -72,6 +75,24 @@ export default function Home() {
           estado: 'pendiente',
           explicacion: 'No se encontró comprobante correspondiente',
           confianza: 0.0,
+        },
+        {
+          fecha_movimiento: '2024-01-15T00:00:00',
+          concepto_movimiento: 'Pago de servicios',
+          monto_movimiento: 45000,
+          tipo_movimiento: 'débito',
+          estado: 'conciliado',
+          explicacion: 'Coincidencia con factura de servicios',
+          confianza: 0.92,
+        },
+        {
+          fecha_movimiento: '2024-01-20T00:00:00',
+          concepto_movimiento: 'Ingreso por ventas',
+          monto_movimiento: 125000,
+          tipo_movimiento: 'crédito',
+          estado: 'conciliado',
+          explicacion: 'Coincidencia con comprobante de venta',
+          confianza: 0.98,
         },
       ],
     });
@@ -360,8 +381,8 @@ export default function Home() {
           <div className="max-w-7xl mx-auto">
             {/* Page Header */}
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-              <p className="text-gray-600">Gestiona la conciliación bancaria con inteligencia artificial</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard Contable</h1>
+              <p className="text-gray-600">Gestiona la conciliación bancaria con inteligencia artificial y análisis contable</p>
             </div>
 
             {/* Empresa Selector */}
@@ -397,32 +418,91 @@ export default function Home() {
               </div>
             </div>
 
-            {/* File Upload Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              <FileUpload
-                title="Extracto Bancario"
-                acceptedTypes={['application/pdf']}
-                onFileUpload={handleExtractoUpload}
-                uploadedFile={extractoFile}
-              />
-              
-              <FileUpload
-                title="Comprobantes de Venta"
-                acceptedTypes={['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv']}
-                onFileUpload={handleComprobantesUpload}
-                uploadedFile={comprobantesFile}
+            {/* Resumen Ejecutivo */}
+            <ResumenEjecutivo
+              empresa={empresas.find(e => e.id === selectedEmpresa)?.name || 'Empresa'}
+              periodo="Enero 2024 - Diciembre 2024"
+              balanceInicial={2500000}
+              balanceFinal={3200000}
+              ingresos={8500000}
+              egresos={7800000}
+              saldoDisponible={1200000}
+              totalMovimientos={conciliacionResult.totalMovimientos || 128}
+              movimientosConciliados={conciliacionResult.movimientosConciliados || 97}
+              movimientosPendientes={conciliacionResult.movimientosPendientes || 24}
+              movimientosParciales={conciliacionResult.movimientosParciales || 7}
+            />
+
+            {/* Contexto Contable Principal */}
+            <div className="mb-8">
+              <ContabilidadContext
+                empresa={empresas.find(e => e.id === selectedEmpresa)?.name || 'Empresa'}
+                periodo="Enero 2024 - Diciembre 2024"
+                balanceInicial={2500000}
+                balanceFinal={3200000}
+                ingresos={8500000}
+                egresos={7800000}
+                saldoDisponible={1200000}
               />
             </div>
 
-            {/* Process Button */}
-            <div className="text-center mb-8">
-              <button
-                onClick={handleProcessConciliacion}
-                disabled={!extractoFile || !comprobantesFile || isProcessing}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-medium py-4 px-8 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-none"
-              >
-                {isProcessing ? 'Procesando...' : 'Procesar Conciliación'}
-              </button>
+            {/* Gráficos Contables */}
+            <div className="mb-8">
+              <ContabilidadCharts
+                totalMovimientos={conciliacionResult.totalMovimientos || 128}
+                movimientosConciliados={conciliacionResult.movimientosConciliados || 97}
+                movimientosPendientes={conciliacionResult.movimientosPendientes || 24}
+                movimientosParciales={conciliacionResult.movimientosParciales || 7}
+                items={conciliacionResult.items || []}
+              />
+            </div>
+
+            {/* Resumen de Conciliación */}
+            {conciliacionResult.totalMovimientos > 0 && (
+              <div className="mb-8">
+                <SummaryCards
+                  totalMovimientos={conciliacionResult.totalMovimientos}
+                  movimientosConciliados={conciliacionResult.movimientosConciliados}
+                  movimientosPendientes={conciliacionResult.movimientosPendientes}
+                  movimientosParciales={conciliacionResult.movimientosParciales}
+                />
+              </div>
+            )}
+
+            {/* Sección de Carga de Archivos */}
+            <div className="card mb-8">
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Procesar Nueva Conciliación</h3>
+                <p className="text-gray-600">Sube los archivos necesarios para realizar la conciliación bancaria</p>
+              </div>
+
+              {/* File Upload Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+                <FileUpload
+                  title="Extracto Bancario"
+                  acceptedTypes={['application/pdf']}
+                  onFileUpload={handleExtractoUpload}
+                  uploadedFile={extractoFile}
+                />
+                
+                <FileUpload
+                  title="Comprobantes de Venta"
+                  acceptedTypes={['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv']}
+                  onFileUpload={handleComprobantesUpload}
+                  uploadedFile={comprobantesFile}
+                />
+              </div>
+
+              {/* Process Button */}
+              <div className="text-center">
+                <button
+                  onClick={handleProcessConciliacion}
+                  disabled={!extractoFile || !comprobantesFile || isProcessing}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-medium py-4 px-8 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-none"
+                >
+                  {isProcessing ? 'Procesando...' : 'Procesar Conciliación'}
+                </button>
+              </div>
             </div>
 
             {/* Status Message */}

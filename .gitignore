@@ -174,3 +174,4 @@ conciliador_ia/data/uploads/*
 # Build artifacts
 *.tgz
 *.tar.gz 
+.vercel

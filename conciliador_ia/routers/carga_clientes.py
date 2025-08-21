@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
+from traceback import format_exc
 
 try:
     from ..services.cliente_processor import ClienteProcessor
@@ -100,12 +101,15 @@ async def importar_clientes(
             if "cliente" in archivos_guardados:
                 df_cliente = loader._read_any_table(archivos_guardados["cliente"])
             
+            # Asegurá que SALIDA_DIR exista (por si el loader no lo creó)
+            SALIDA_DIR.mkdir(parents=True, exist_ok=True)
+
             # Detectar clientes nuevos
             nuevos_clientes, errores = processor.detectar_nuevos_clientes(
                 df_portal, df_xubio, df_cliente
             )
             
-            # Generar archivos de salida
+            # Generar archivos de salida (siempre genera el de importación, aún vacío)
             archivo_modelo = processor.generar_archivo_importacion(
                 nuevos_clientes, SALIDA_DIR, cuenta_contable_default
             )
@@ -143,7 +147,7 @@ async def importar_clientes(
             return job.resultado
             
         except Exception as e:
-            logger.error(f"Error procesando archivos: {e}")
+            logger.error(f"Error procesando archivos: {e}\n{format_exc()}")
             job.estado = "error"
             job.errores.append({
                 'origen_fila': 'Sistema',

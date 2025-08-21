@@ -283,35 +283,38 @@ class ClienteProcessor:
     ) -> str:
         """Genera archivo CSV para importación en Xubio"""
         
-        # Aplicar cuenta contable por defecto
-        for cliente in clientes:
-            cliente['cuenta_contable'] = cuenta_contable_default
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Asegurar columnas mínimas esperadas por Xubio (ajusta a tu mapping real)
+        columnas_xubio = [
+            "Nombre o Razón Social",
+            "Condición frente al IVA",
+            "Tipo de documento",
+            "Número de documento",
+            "Email",
+            "Provincia",
+            "Cuenta contable"
+        ]
         
-        # Crear DataFrame
-        df = pd.DataFrame(clientes)
-        
-        # Debug: Verificar columnas disponibles
-        logger.info(f"Columnas disponibles en DataFrame: {list(df.columns)}")
-        
-        # Asegurar orden de columnas - verificar que existan
-        columnas_orden = ['nombre', 'tipo_documento', 'numero_documento', 'condicion_iva', 'provincia', 'cuenta_contable']
-        columnas_faltantes = [col for col in columnas_orden if col not in df.columns]
-        
-        if columnas_faltantes:
-            logger.error(f"Columnas faltantes en DataFrame: {columnas_faltantes}")
-            raise ValueError(f"Columnas faltantes: {columnas_faltantes}")
-        
-        df = df[columnas_orden]
-        
-        # Generar nombre de archivo con timestamp
-        timestamp = datetime.now().strftime("%Y%m%d")
-        filename = f"importacion_clientes_xubio_{timestamp}.csv"
-        filepath = output_dir / filename
-        
-        # Guardar como CSV con encoding UTF-8 y BOM para Excel
-        df.to_csv(filepath, index=False, encoding='utf-8-sig')
-        
-        return str(filepath)
+        # Crea DF vacío con columnas si df_nuevos viene vacío
+        if not clientes or len(clientes) == 0:
+            df_out = pd.DataFrame(columns=columnas_xubio)
+        else:
+            df_out = self._mapear_a_xubio(clientes, cuenta_contable_default, columnas_xubio)
+
+        # Siempre completar "Cuenta contable" si falta
+        if "Cuenta contable" in df_out.columns:
+            df_out["Cuenta contable"] = df_out["Cuenta contable"].fillna(cuenta_contable_default)
+        else:
+            df_out["Cuenta contable"] = cuenta_contable_default
+
+        nombre = f"clientes_xubio_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.csv"
+        ruta = Path(output_dir) / nombre
+
+        # UTF-8 con BOM p/Excel
+        df_out.to_csv(ruta, index=False, encoding="utf-8-sig")
+        logger.info(f"Archivo de importación generado: {ruta}")
+        return str(ruta)
     
     def generar_reporte_errores(
         self, 
@@ -320,17 +323,60 @@ class ClienteProcessor:
     ) -> str:
         """Genera reporte CSV de errores"""
         
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
         if not errores:
-            return ""
+            # Crear reporte vacío con headers
+            df_err = pd.DataFrame(columns=['origen_fila', 'tipo_error', 'detalle', 'valor_original'])
+        else:
+            df_err = pd.DataFrame(errores)
         
-        df_errores = pd.DataFrame(errores)
+        nombre = f"reporte_errores_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.csv"
+        ruta = Path(output_dir) / nombre
         
-        # Generar nombre de archivo con timestamp
-        timestamp = datetime.now().strftime("%Y%m%d")
-        filename = f"importacion_clientes_xubio_{timestamp}_errores.csv"
-        filepath = output_dir / filename
+        # UTF-8 con BOM p/Excel
+        df_err.to_csv(ruta, index=False, encoding="utf-8-sig")
+        logger.info(f"Reporte de errores generado: {ruta}")
+        return str(ruta)
+
+    def _mapear_a_xubio(self, clientes: List[Dict], cuenta_contable_default: str, columnas_xubio: list) -> pd.DataFrame:
+        """Mapea los datos de clientes al formato esperado por Xubio"""
+        if not clientes:
+            return pd.DataFrame(columns=columnas_xubio)
         
-        # Guardar como CSV
-        df_errores.to_csv(filepath, index=False, encoding='utf-8-sig')
+        out = pd.DataFrame()
         
-        return str(filepath)
+        # nombre
+        for cand in ["nombre", "razon_social", "cliente", "denominacion"]:
+            if cand in clientes[0]:
+                out["Nombre o Razón Social"] = [cliente.get(cand, "") for cliente in clientes]
+                break
+        if "Nombre o Razón Social" not in out:
+            out["Nombre o Razón Social"] = [cliente.get("nombre", "") for cliente in clientes]
+
+        # condicion IVA
+        if "condicion_iva" in clientes[0]:
+            out["Condición frente al IVA"] = [cliente.get("condicion_iva", "Consumidor Final") for cliente in clientes]
+        else:
+            out["Condición frente al IVA"] = ["Consumidor Final"] * len(clientes)
+
+        # tipo/número doc
+        # asumí que ya normalizaste (80/96 → CUIT/DNI) en detectar_nuevos_clientes
+        out["Tipo de documento"] = [cliente.get("tipo_documento", "DNI") for cliente in clientes]
+        out["Número de documento"] = [cliente.get("numero_documento", "") for cliente in clientes]
+
+        # email
+        out["Email"] = [cliente.get("email", "") for cliente in clientes]
+
+        # provincia
+        out["Provincia"] = [cliente.get("provincia", "") for cliente in clientes]
+
+        # cuenta
+        out["Cuenta contable"] = [cuenta_contable_default] * len(clientes)
+
+        # Garantizar columnas y orden
+        for col in columnas_xubio:
+            if col not in out.columns:
+                out[col] = ""
+        
+        return out[columnas_xubio]

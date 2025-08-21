@@ -95,6 +95,12 @@ class ClienteProcessor:
     ) -> Tuple[List[Dict], List[Dict]]:
         """Detecta clientes nuevos comparando portal vs Xubio"""
         
+        # Debug: Log de columnas disponibles
+        logger.info(f"Columnas del Portal: {list(df_portal.columns)}")
+        logger.info(f"Columnas de Xubio: {list(df_xubio.columns)}")
+        if df_cliente is not None:
+            logger.info(f"Columnas del Cliente: {list(df_cliente.columns)}")
+        
         nuevos_clientes = []
         errores = []
         

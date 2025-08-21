@@ -290,8 +290,17 @@ class ClienteProcessor:
         # Crear DataFrame
         df = pd.DataFrame(clientes)
         
-        # Asegurar orden de columnas
+        # Debug: Verificar columnas disponibles
+        logger.info(f"Columnas disponibles en DataFrame: {list(df.columns)}")
+        
+        # Asegurar orden de columnas - verificar que existan
         columnas_orden = ['nombre', 'tipo_documento', 'numero_documento', 'condicion_iva', 'provincia', 'cuenta_contable']
+        columnas_faltantes = [col for col in columnas_orden if col not in df.columns]
+        
+        if columnas_faltantes:
+            logger.error(f"Columnas faltantes en DataFrame: {columnas_faltantes}")
+            raise ValueError(f"Columnas faltantes: {columnas_faltantes}")
+        
         df = df[columnas_orden]
         
         # Generar nombre de archivo con timestamp

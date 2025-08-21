@@ -28,6 +28,45 @@ export default function CargaClientesPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ProcessingResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<any>(null);
+
+  const handleValidation = async () => {
+    if (!archivoPortal || !archivoXubio) {
+      setError('Por favor complete todos los campos requeridos para validar');
+      return;
+    }
+
+    setIsValidating(true);
+    setError(null);
+    setValidationResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('archivo_portal', archivoPortal);
+      formData.append('archivo_xubio', archivoXubio);
+      if (archivoCliente) {
+        formData.append('archivo_cliente', archivoCliente);
+      }
+
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/documentos/clientes/validar', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Error en la validación');
+      }
+
+      const data = await response.json();
+      setValidationResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado en validación');
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,6 +258,25 @@ export default function CargaClientesPage() {
             {/* Botones */}
             <div className="flex items-center space-x-4 pt-4">
               <button
+                type="button"
+                onClick={handleValidation}
+                disabled={isValidating}
+                className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isValidating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Validando...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    <span>Validar Archivos</span>
+                  </>
+                )}
+              </button>
+
+              <button
                 type="submit"
                 disabled={isProcessing}
                 className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -248,6 +306,157 @@ export default function CargaClientesPage() {
             </div>
           </form>
         </div>
+
+        {/* Resultados de Validación */}
+        {validationResult && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex items-center space-x-3 mb-6">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Validación de Archivos</h2>
+            </div>
+
+            {/* Estado General */}
+            <div className="mb-6">
+              <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
+                validationResult.compatibilidad?.estado === 'OK' ? 'bg-green-100 text-green-800' :
+                validationResult.compatibilidad?.estado === 'ADVERTENCIA' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {validationResult.compatibilidad?.mensaje || 'Estado desconocido'}
+              </div>
+            </div>
+
+            {/* Detalles por Archivo */}
+            <div className="space-y-6">
+              {/* Portal */}
+              {validationResult.portal && (
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">📊 Archivo Portal/AFIP</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Estado:</span>
+                      <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                        validationResult.portal.estado === 'OK' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {validationResult.portal.estado}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Filas:</span> {validationResult.portal.filas || 'N/A'}
+                    </div>
+                    <div className="col-span-2">
+                      <span className="font-medium">Columnas detectadas:</span>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {validationResult.portal.columnas?.map((col: string, idx: number) => (
+                          <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                            {col}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {validationResult.portal.muestra && (
+                      <div className="col-span-2">
+                        <span className="font-medium">Muestra de datos:</span>
+                        <div className="mt-2 bg-gray-50 p-3 rounded text-xs font-mono overflow-x-auto">
+                          <pre>{JSON.stringify(validationResult.portal.muestra, null, 2)}</pre>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Xubio */}
+              {validationResult.xubio && (
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">📋 Maestro Xubio</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Estado:</span>
+                      <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                        validationResult.xubio.estado === 'OK' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {validationResult.xubio.estado}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Filas:</span> {validationResult.xubio.filas || 'N/A'}
+                    </div>
+                    <div className="col-span-2">
+                      <span className="font-medium">Columnas detectadas:</span>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {validationResult.xubio.columnas?.map((col: string, idx: number) => (
+                          <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                            {col}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Cliente */}
+              {validationResult.cliente && (
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">👤 Excel del Cliente</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Estado:</span>
+                      <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                        validationResult.cliente.estado === 'OK' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {validationResult.cliente.estado}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Filas:</span> {validationResult.cliente.filas || 'N/A'}
+                    </div>
+                    <div className="col-span-2">
+                      <span className="font-medium">Columnas detectadas:</span>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {validationResult.cliente.columnas?.map((col: string, idx: number) => (
+                          <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                            {col}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Compatibilidad */}
+              {validationResult.compatibilidad && (
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">🔍 Análisis de Compatibilidad</h3>
+                  
+                  {validationResult.compatibilidad.problemas.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-medium text-red-700 mb-2">❌ Problemas detectados:</h4>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                        {validationResult.compatibilidad.problemas.map((problema: string, idx: number) => (
+                          <li key={idx}>{problema}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {validationResult.compatibilidad.recomendaciones.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-yellow-700 mb-2">💡 Recomendaciones:</h4>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
+                        {validationResult.compatibilidad.recomendaciones.map((rec: string, idx: number) => (
+                          <li key={idx}>{rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Resultados */}
         {result && (

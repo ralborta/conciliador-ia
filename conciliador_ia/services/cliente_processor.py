@@ -380,3 +380,76 @@ class ClienteProcessor:
                 out[col] = ""
         
         return out[columnas_xubio]
+
+    def verificar_compatibilidad_columnas(self, resultado_validacion: dict) -> dict:
+        """Verifica la compatibilidad de columnas entre archivos"""
+        compatibilidad = {
+            "estado": "OK",
+            "problemas": [],
+            "recomendaciones": []
+        }
+        
+        # Verificar archivo portal
+        if "portal" in resultado_validacion and resultado_validacion["portal"]["estado"] == "OK":
+            columnas_portal = resultado_validacion["portal"]["columnas"]
+            
+            # Verificar columnas críticas
+            tipo_doc_encontrado = self._encontrar_columna(columnas_portal, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f', 'TIPO_DOC'])
+            numero_doc_encontrado = self._encontrar_columna(columnas_portal, ['numero_documento', 'documento', 'dni', 'cuit', 'CUIT', 'NUMERO_DOC'])
+            nombre_encontrado = self._encontrar_columna(columnas_portal, ['nombre', 'razon_social', 'cliente', 'NOMBRE'])
+            
+            if not tipo_doc_encontrado:
+                compatibilidad["estado"] = "ADVERTENCIA"
+                compatibilidad["problemas"].append("Portal: No se encontró columna de tipo de documento")
+                compatibilidad["recomendaciones"].append("Agregar columna 'TIPO_DOC' o 'tipo_documento'")
+            
+            if not numero_doc_encontrado:
+                compatibilidad["estado"] = "ADVERTENCIA"
+                compatibilidad["problemas"].append("Portal: No se encontró columna de número de documento")
+                compatibilidad["recomendaciones"].append("Agregar columna 'NUMERO_DOC' o 'numero_documento'")
+            
+            if not nombre_encontrado:
+                compatibilidad["estado"] = "ADVERTENCIA"
+                compatibilidad["problemas"].append("Portal: No se encontró columna de nombre")
+                compatibilidad["recomendaciones"].append("Agregar columna 'NOMBRE' o 'nombre'")
+            
+            # Verificar formato de tipo de documento
+            if tipo_doc_encontrado:
+                muestra_tipo_doc = resultado_validacion["portal"]["muestra"][0].get(tipo_doc_encontrado, "")
+                if str(muestra_tipo_doc) not in ['80', '96']:
+                    compatibilidad["recomendaciones"].append(f"Portal: El valor '{muestra_tipo_doc}' en columna '{tipo_doc_encontrado}' no es un código válido (80=CUIT, 96=DNI)")
+        
+        # Verificar archivo Xubio
+        if "xubio" in resultado_validacion and resultado_validacion["xubio"]["estado"] == "OK":
+            columnas_xubio = resultado_validacion["xubio"]["columnas"]
+            
+            id_encontrado = self._encontrar_columna(columnas_xubio, ['cuit', 'dni', 'documento', 'identificador', 'numeroidentificacion', 'NUMEROIDENTIFICACION'])
+            nombre_encontrado = self._encontrar_columna(columnas_xubio, ['nombre', 'razon', 'cliente', 'NOMBRE'])
+            
+            if not id_encontrado:
+                compatibilidad["estado"] = "ADVERTENCIA"
+                compatibilidad["problemas"].append("Xubio: No se encontró columna de identificador")
+                compatibilidad["recomendaciones"].append("Agregar columna 'NUMEROIDENTIFICACION' o 'identificador'")
+            
+            if not nombre_encontrado:
+                compatibilidad["estado"] = "ADVERTENCIA"
+                compatibilidad["problemas"].append("Xubio: No se encontró columna de nombre")
+                compatibilidad["recomendaciones"].append("Agregar columna 'NOMBRE' o 'nombre'")
+        
+        # Verificar archivo cliente (opcional)
+        if "cliente" in resultado_validacion and resultado_validacion["cliente"]["estado"] == "OK":
+            columnas_cliente = resultado_validacion["cliente"]["columnas"]
+            
+            provincia_encontrada = self._encontrar_columna(columnas_cliente, ['provincia', 'prov', 'Provincia / Estado / Region'])
+            if not provincia_encontrada:
+                compatibilidad["recomendaciones"].append("Cliente: No se encontró columna de provincia (opcional pero recomendado)")
+        
+        # Resumen final
+        if compatibilidad["estado"] == "OK" and not compatibilidad["problemas"]:
+            compatibilidad["mensaje"] = "✅ Archivos compatibles y listos para procesar"
+        elif compatibilidad["estado"] == "ADVERTENCIA":
+            compatibilidad["mensaje"] = "⚠️ Archivos procesables pero con advertencias"
+        else:
+            compatibilidad["mensaje"] = "❌ Archivos con problemas críticos"
+        
+        return compatibilidad

@@ -171,6 +171,104 @@ async def importar_clientes(
         logger.error(f"Error inesperado en importar_clientes: {e}")
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
+@router.post("/validar")
+async def validar_archivos(
+    archivo_portal: UploadFile = File(...),
+    archivo_xubio: UploadFile = File(...),
+    archivo_cliente: Optional[UploadFile] = File(None)
+):
+    """
+    Valida archivos antes de procesarlos para verificar formato y estructura
+    """
+    try:
+        # Guardar archivos temporalmente
+        archivos_guardados = {}
+        
+        # Guardar archivo portal
+        content = await archivo_portal.read()
+        archivos_guardados["portal"] = loader.save_uploaded_file(content, archivo_portal.filename, ENTRADA_DIR)
+        
+        # Guardar archivo Xubio
+        content = await archivo_xubio.read()
+        archivos_guardados["xubio"] = loader.save_uploaded_file(content, archivo_xubio.filename, ENTRADA_DIR)
+        
+        # Guardar archivo cliente si existe
+        if archivo_cliente:
+            content = await archivo_cliente.read()
+            archivos_guardados["cliente"] = loader.save_uploaded_file(content, archivo_cliente.filename, ENTRADA_DIR)
+        
+        # Validar archivos
+        resultado_validacion = {}
+        
+        try:
+            # Validar archivo portal
+            df_portal = loader._read_any_table(archivos_guardados["portal"])
+            resultado_validacion["portal"] = {
+                "estado": "OK",
+                "filas": len(df_portal),
+                "columnas": list(df_portal.columns),
+                "muestra": df_portal.head(3).to_dict(orient="records"),
+                "detectado": loader.inspect_file(archivos_guardados["portal"])
+            }
+        except Exception as e:
+            resultado_validacion["portal"] = {
+                "estado": "ERROR",
+                "error": str(e),
+                "detectado": loader.inspect_file(archivos_guardados["portal"])
+            }
+        
+        try:
+            # Validar archivo Xubio
+            df_xubio = loader._read_any_table(archivos_guardados["xubio"])
+            resultado_validacion["xubio"] = {
+                "estado": "OK",
+                "filas": len(df_xubio),
+                "columnas": list(df_xubio.columns),
+                "muestra": df_xubio.head(3).to_dict(orient="records"),
+                "detectado": loader.inspect_file(archivos_guardados["xubio"])
+            }
+        except Exception as e:
+            resultado_validacion["xubio"] = {
+                "estado": "ERROR",
+                "error": str(e),
+                "detectado": loader.inspect_file(archivos_guardados["xubio"])
+            }
+        
+        if "cliente" in archivos_guardados:
+            try:
+                # Validar archivo cliente
+                df_cliente = loader._read_any_table(archivos_guardados["cliente"])
+                resultado_validacion["cliente"] = {
+                    "estado": "OK",
+                    "filas": len(df_cliente),
+                    "columnas": list(df_cliente.columns),
+                    "muestra": df_cliente.head(3).to_dict(orient="records"),
+                    "detectado": loader.inspect_file(archivos_guardados["cliente"])
+                }
+            except Exception as e:
+                resultado_validacion["cliente"] = {
+                    "estado": "ERROR",
+                    "error": str(e),
+                    "detectado": loader.inspect_file(archivos_guardados["cliente"])
+                }
+        
+        # Verificar compatibilidad de columnas
+        compatibilidad = processor.verificar_compatibilidad_columnas(resultado_validacion)
+        resultado_validacion["compatibilidad"] = compatibilidad
+        
+        # Limpiar archivos temporales
+        for archivo_path in archivos_guardados.values():
+            try:
+                os.remove(archivo_path)
+            except:
+                pass
+        
+        return resultado_validacion
+        
+    except Exception as e:
+        logger.error(f"Error validando archivos: {e}")
+        raise HTTPException(status_code=500, detail=f"Error validando archivos: {str(e)}")
+
 @router.get("/job/{job_id}")
 async def obtener_estado_job(job_id: str):
     """

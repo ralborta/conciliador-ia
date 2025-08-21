@@ -19,7 +19,7 @@ except ImportError:
     from models.schemas import ClienteImportResponse, ClienteImportJob
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/documentos/clientes", tags=["carga-clientes"])
+router = APIRouter(tags=["carga-clientes"])
 
 # Inicializar servicios
 processor = ClienteProcessor()

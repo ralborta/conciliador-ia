@@ -130,9 +130,9 @@ class ClienteProcessor:
         # Procesar cada fila del portal
         for idx, row in df_portal.iterrows():
             try:
-                # Buscar columnas relevantes - Mapeo específico para archivos del portal
-                tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f'])
-                numero_doc_col = self._encontrar_columna(df_portal.columns, ['numero_documento', 'documento', 'dni', 'cuit', 'CUIT'])
+                # Buscar columnas relevantes - Mapeo más flexible para archivos del portal
+                tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f', 'TIPO_DOC'])
+                numero_doc_col = self._encontrar_columna(df_portal.columns, ['numero_documento', 'documento', 'dni', 'cuit', 'CUIT', 'NUMERO_DOC'])
                 nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE'])
                 
                 if not all([tipo_doc_col, numero_doc_col, nombre_col]):

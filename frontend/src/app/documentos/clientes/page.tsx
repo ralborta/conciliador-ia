@@ -33,7 +33,13 @@ export default function CargaClientesPage() {
 
   const handleValidation = async () => {
     if (!archivoPortal || !archivoXubio) {
-      setError('Por favor complete todos los campos requeridos para validar');
+      setError('Por favor seleccione los archivos Portal y Xubio para validar');
+      return;
+    }
+
+    // Verificar que los archivos tengan contenido
+    if (archivoPortal.size === 0 || archivoXubio.size === 0) {
+      setError('Los archivos seleccionados están vacíos. Por favor seleccione archivos válidos.');
       return;
     }
 
@@ -193,6 +199,14 @@ export default function CargaClientesPage() {
                 />
                 <FileText className="w-5 h-5 text-gray-400" />
               </div>
+              {archivoPortal && (
+                <div className="mt-2 flex items-center space-x-2 text-sm">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700">
+                    {archivoPortal.name} ({(archivoPortal.size / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+              )}
               <p className="mt-1 text-sm text-gray-500">
                 CSV o Excel con ventas del período (debe incluir tipo de documento y número)
               </p>
@@ -214,6 +228,14 @@ export default function CargaClientesPage() {
                 />
                 <FileText className="w-5 h-5 text-gray-400" />
               </div>
+              {archivoXubio && (
+                <div className="mt-2 flex items-center space-x-2 text-sm">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700">
+                    {archivoXubio.name} ({(archivoXubio.size / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+              )}
               <p className="mt-1 text-sm text-gray-500">
                 Export actual de clientes desde Xubio
               </p>
@@ -260,7 +282,7 @@ export default function CargaClientesPage() {
               <button
                 type="button"
                 onClick={handleValidation}
-                disabled={isValidating}
+                disabled={isValidating || !archivoPortal || !archivoXubio}
                 className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isValidating ? (
@@ -278,7 +300,7 @@ export default function CargaClientesPage() {
 
               <button
                 type="submit"
-                disabled={isProcessing}
+                disabled={isProcessing || !archivoPortal || !archivoXubio}
                 className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (

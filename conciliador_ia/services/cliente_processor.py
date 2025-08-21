@@ -415,9 +415,11 @@ class ClienteProcessor:
             
             # Verificar formato de tipo de documento
             if tipo_doc_encontrado:
-                muestra_tipo_doc = resultado_validacion["portal"]["muestra"][0].get(tipo_doc_encontrado, "")
-                if str(muestra_tipo_doc) not in ['80', '96']:
-                    compatibilidad["recomendaciones"].append(f"Portal: El valor '{muestra_tipo_doc}' en columna '{tipo_doc_encontrado}' no es un código válido (80=CUIT, 96=DNI)")
+                muestra_portal = resultado_validacion["portal"].get("muestra", [])
+                if muestra_portal:
+                    muestra_tipo_doc = muestra_portal[0].get(tipo_doc_encontrado, "")
+                    if str(muestra_tipo_doc) not in ['80', '96']:
+                        compatibilidad["recomendaciones"].append(f"Portal: El valor '{muestra_tipo_doc}' en columna '{tipo_doc_encontrado}' no es un código válido (80=CUIT, 96=DNI)")
         
         # Verificar archivo Xubio
         if "xubio" in resultado_validacion and resultado_validacion["xubio"]["estado"] == "OK":

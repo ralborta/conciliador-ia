@@ -40,8 +40,8 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",  # Desarrollo local
     "http://localhost:3001",  # Puerto alternativo
-    "https://frontend-mmns4bulr-nivel-41.vercel.app",  # Frontend Vercel actual
-    "https://conciliador-3t4uk8b47-nivel-41.vercel.app",  # Frontend Vercel alternativo
+    "https://conciliador-hvc8t1fvy-nivel-41.vercel.app",  # Tu dominio exacto de Vercel
+    "https://conciliador-ia-production.up.railway.app",    # Self
     "https://*.vercel.app",  # Cualquier subdominio de Vercel
     "https://*.railway.app",  # Cualquier subdominio de Railway
 ]

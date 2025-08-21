@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi.encoders import jsonable_encoder
 from typing import Optional, Dict
 import logging
 import os
@@ -13,11 +14,13 @@ try:
     from ..services.cliente_processor import ClienteProcessor
     from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
     from ..models.schemas import ClienteImportResponse, ClienteImportJob
+    from ..utils.sanitize import df_preview
 except ImportError:
     # Fallback para imports directos
     from services.cliente_processor import ClienteProcessor
     from services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
     from models.schemas import ClienteImportResponse, ClienteImportJob
+    from utils.sanitize import df_preview
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["carga-clientes"])
@@ -205,9 +208,9 @@ async def validar_archivos(
             df_portal = loader._read_any_table(archivos_guardados["portal"])
             resultado_validacion["portal"] = {
                 "estado": "OK",
-                "filas": len(df_portal),
-                "columnas": list(df_portal.columns),
-                "muestra": df_portal.head(3).to_dict(orient="records"),
+                "filas": int(len(df_portal)),
+                "columnas": [str(c) for c in df_portal.columns],
+                "muestra": df_preview(df_portal, 3),
                 "detectado": loader.inspect_file(archivos_guardados["portal"])
             }
         except Exception as e:
@@ -222,9 +225,9 @@ async def validar_archivos(
             df_xubio = loader._read_any_table(archivos_guardados["xubio"])
             resultado_validacion["xubio"] = {
                 "estado": "OK",
-                "filas": len(df_xubio),
-                "columnas": list(df_xubio.columns),
-                "muestra": df_xubio.head(3).to_dict(orient="records"),
+                "filas": int(len(df_xubio)),
+                "columnas": [str(c) for c in df_xubio.columns],
+                "muestra": df_preview(df_xubio, 3),
                 "detectado": loader.inspect_file(archivos_guardados["xubio"])
             }
         except Exception as e:
@@ -240,9 +243,9 @@ async def validar_archivos(
                 df_cliente = loader._read_any_table(archivos_guardados["cliente"])
                 resultado_validacion["cliente"] = {
                     "estado": "OK",
-                    "filas": len(df_cliente),
-                    "columnas": list(df_cliente.columns),
-                    "muestra": df_cliente.head(3).to_dict(orient="records"),
+                    "filas": int(len(df_cliente)),
+                    "columnas": [str(c) for c in df_cliente.columns],
+                    "muestra": df_preview(df_cliente, 3),
                     "detectado": loader.inspect_file(archivos_guardados["cliente"])
                 }
             except Exception as e:
@@ -263,7 +266,8 @@ async def validar_archivos(
             except:
                 pass
         
-        return resultado_validacion
+        # Antes de retornar, conviértelo con jsonable_encoder (evita tipos raros)
+        return jsonable_encoder(resultado_validacion, exclude_none=False)
         
     except Exception as e:
         logger.error(f"Error validando archivos: {e}")

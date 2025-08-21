@@ -14,13 +14,19 @@ try:
     from ..services.cliente_processor import ClienteProcessor
     from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
     from ..models.schemas import ClienteImportResponse, ClienteImportJob
-    from ..utils.sanitize import df_preview
+    from ..utils.validation_helpers import (
+        save_temp_file, procesar_archivo_seguro, verificar_compatibilidad_mejorada,
+        sanitizar_resultado_completo, limpiar_archivos_temporales
+    )
 except ImportError:
     # Fallback para imports directos
     from services.cliente_processor import ClienteProcessor
     from services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
     from models.schemas import ClienteImportResponse, ClienteImportJob
-    from utils.sanitize import df_preview
+    from utils.validation_helpers import (
+        save_temp_file, procesar_archivo_seguro, verificar_compatibilidad_mejorada,
+        sanitizar_resultado_completo, limpiar_archivos_temporales
+    )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["carga-clientes"])
@@ -180,98 +186,100 @@ async def validar_archivos(
     archivo_xubio: UploadFile = File(...),
     archivo_cliente: Optional[UploadFile] = File(None)
 ):
-    """
-    Valida archivos antes de procesarlos para verificar formato y estructura
-    """
+    """Valida archivos con manejo robusto de errores"""
+    
+    archivos_guardados = {}
+    
     try:
-        # Guardar archivos temporalmente
-        archivos_guardados = {}
+        # 1. VALIDACIÓN INICIAL DE ARCHIVOS
+        if not archivo_portal.filename or not archivo_xubio.filename:
+            raise HTTPException(status_code=400, detail="Nombres de archivo inválidos")
         
-        # Guardar archivo portal
-        content = await archivo_portal.read()
-        archivos_guardados["portal"] = loader.save_uploaded_file(content, archivo_portal.filename, ENTRADA_DIR)
+        # Verificar tamaño
+        portal_content = await archivo_portal.read()
+        xubio_content = await archivo_xubio.read()
         
-        # Guardar archivo Xubio
-        content = await archivo_xubio.read()
-        archivos_guardados["xubio"] = loader.save_uploaded_file(content, archivo_xubio.filename, ENTRADA_DIR)
+        if len(portal_content) == 0 or len(xubio_content) == 0:
+            raise HTTPException(status_code=400, detail="Archivos vacíos detectados")
         
-        # Guardar archivo cliente si existe
+        # 2. GUARDAR ARCHIVOS TEMPORALMENTE
+        archivos_guardados["portal"] = save_temp_file(portal_content, archivo_portal.filename)
+        archivos_guardados["xubio"] = save_temp_file(xubio_content, archivo_xubio.filename)
+        
         if archivo_cliente:
-            content = await archivo_cliente.read()
-            archivos_guardados["cliente"] = loader.save_uploaded_file(content, archivo_cliente.filename, ENTRADA_DIR)
+            cliente_content = await archivo_cliente.read()
+            if len(cliente_content) > 0:
+                archivos_guardados["cliente"] = save_temp_file(cliente_content, archivo_cliente.filename)
         
-        # Validar archivos
+        # 3. PROCESAR CADA ARCHIVO CON MANEJO DE ERRORES
         resultado_validacion = {}
         
-        try:
-            # Validar archivo portal
-            df_portal = loader._read_any_table(archivos_guardados["portal"])
-            resultado_validacion["portal"] = {
-                "estado": "OK",
-                "filas": int(len(df_portal)),
-                "columnas": [str(c) for c in df_portal.columns],
-                "muestra": df_preview(df_portal, 3),
-                "detectado": loader.inspect_file(archivos_guardados["portal"])
-            }
-        except Exception as e:
-            resultado_validacion["portal"] = {
-                "estado": "ERROR",
-                "error": str(e),
-                "detectado": loader.inspect_file(archivos_guardados["portal"])
-            }
+        # Procesar Portal
+        resultado_validacion["portal"] = procesar_archivo_seguro(
+            archivos_guardados["portal"], 
+            "Portal"
+        )
         
-        try:
-            # Validar archivo Xubio
-            df_xubio = loader._read_any_table(archivos_guardados["xubio"])
-            resultado_validacion["xubio"] = {
-                "estado": "OK",
-                "filas": int(len(df_xubio)),
-                "columnas": [str(c) for c in df_xubio.columns],
-                "muestra": df_preview(df_xubio, 3),
-                "detectado": loader.inspect_file(archivos_guardados["xubio"])
-            }
-        except Exception as e:
-            resultado_validacion["xubio"] = {
-                "estado": "ERROR",
-                "error": str(e),
-                "detectado": loader.inspect_file(archivos_guardados["xubio"])
-            }
+        # Procesar Xubio
+        resultado_validacion["xubio"] = procesar_archivo_seguro(
+            archivos_guardados["xubio"], 
+            "Xubio"
+        )
         
+        # Procesar Cliente (opcional)
         if "cliente" in archivos_guardados:
-            try:
-                # Validar archivo cliente
-                df_cliente = loader._read_any_table(archivos_guardados["cliente"])
-                resultado_validacion["cliente"] = {
-                    "estado": "OK",
-                    "filas": int(len(df_cliente)),
-                    "columnas": [str(c) for c in df_cliente.columns],
-                    "muestra": df_preview(df_cliente, 3),
-                    "detectado": loader.inspect_file(archivos_guardados["cliente"])
-                }
-            except Exception as e:
-                resultado_validacion["cliente"] = {
-                    "estado": "ERROR",
-                    "error": str(e),
-                    "detectado": loader.inspect_file(archivos_guardados["cliente"])
-                }
+            resultado_validacion["cliente"] = procesar_archivo_seguro(
+                archivos_guardados["cliente"], 
+                "Cliente"
+            )
         
-        # Verificar compatibilidad de columnas
-        compatibilidad = processor.verificar_compatibilidad_columnas(resultado_validacion)
+        # 4. VERIFICAR COMPATIBILIDAD
+        compatibilidad = verificar_compatibilidad_mejorada(resultado_validacion)
         resultado_validacion["compatibilidad"] = compatibilidad
         
-        # Limpiar archivos temporales
-        for archivo_path in archivos_guardados.values():
-            try:
-                os.remove(archivo_path)
-            except:
-                pass
+        # 5. SANITIZAR RESULTADO FINAL
+        resultado_limpio = sanitizar_resultado_completo(resultado_validacion)
         
-        # Antes de retornar, conviértelo con jsonable_encoder (evita tipos raros)
-        return jsonable_encoder(resultado_validacion, exclude_none=False)
+        return resultado_limpio
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error validando archivos: {e}")
-        raise HTTPException(status_code=500, detail=f"Error validando archivos: {str(e)}")
+        logger.error(f"Error inesperado: {e}")
+        logger.error(f"Traceback: {format_exc()}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error procesando archivos: {str(e)}"
+        )
+    finally:
+        # Limpiar archivos temporales
+        limpiar_archivos_temporales(archivos_guardados)
+
+
+@router.post("/validar-simple")
+async def validar_simple(
+    archivo_portal: UploadFile = File(...),
+    archivo_xubio: UploadFile = File(...)
+):
+    """Versión simplificada para debugging"""
+    try:
+        # Solo verificar que los archivos lleguen
+        portal_content = await archivo_portal.read()
+        xubio_content = await archivo_xubio.read()
+        
+        return {
+            "estado": "OK",
+            "portal": {
+                "nombre": archivo_portal.filename,
+                "tamaño": len(portal_content)
+            },
+            "xubio": {
+                "nombre": archivo_xubio.filename, 
+                "tamaño": len(xubio_content)
+            }
+        }
+    except Exception as e:
+        return {"estado": "ERROR", "error": str(e)}
 
 @router.get("/job/{job_id}")
 async def obtener_estado_job(job_id: str):

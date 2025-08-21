@@ -51,7 +51,7 @@ export default function CargaClientesPage() {
       }
       formData.append('cuenta_contable_default', cuentaContableDefault);
 
-      const response = await fetch('/api/v1/documentos/clientes/importar', {
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/documentos/clientes/importar', {
         method: 'POST',
         body: formData,
       });
@@ -72,7 +72,9 @@ export default function CargaClientesPage() {
 
   const downloadFile = async (url: string, filename: string) => {
     try {
-      const response = await fetch(url);
+      // Convertir URL relativa a absoluta si es necesario
+      const fullUrl = url.startsWith('http') ? url : `https://conciliador-ia-production.up.railway.app${url}`;
+      const response = await fetch(fullUrl);
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');

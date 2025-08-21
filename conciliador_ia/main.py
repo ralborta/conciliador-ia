@@ -36,13 +36,23 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CONFIGURAR CORS ANTES DE CARGAR NADA - SOLUCIÓN RÁPIDA
+# CONFIGURAR CORS ANTES DE CARGAR NADA
+origins = [
+    "http://localhost:3000",  # Desarrollo local
+    "http://localhost:3001",  # Puerto alternativo
+    "https://frontend-mmns4bulr-nivel-41.vercel.app",  # Frontend Vercel actual
+    "https://conciliador-3t4uk8b47-nivel-41.vercel.app",  # Frontend Vercel alternativo
+    "https://*.vercel.app",  # Cualquier subdominio de Vercel
+    "https://*.railway.app",  # Cualquier subdominio de Railway
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # LIBERAR CORS COMPLETAMENTE
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Importar routers DESPUÉS de CORS

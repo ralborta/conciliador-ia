@@ -3,8 +3,12 @@ from typing import List, Optional
 import tempfile
 import os
 import shutil
-from ..services.arca_xubio_service import ARCAXubioService
-from ..models.schemas import ProcessingResponse, ConversionResponse
+try:
+    from ..services.arca_xubio_service import ARCAXubioService
+    from ..models.schemas import ProcessingResponse, ConversionResponse
+except ImportError:
+    from services.arca_xubio_service import ARCAXubioService
+    from models.schemas import ProcessingResponse, ConversionResponse
 
 router = APIRouter(
     prefix="/arca-xubio",

@@ -6,9 +6,14 @@ import shutil
 import os
 from . import __name__ as _router_name  # noqa
 
-from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
-from ..services.carga_info.processor import process
-from ..services.carga_info.exporter import ExportadorVentas
+try:
+    from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
+    from ..services.carga_info.processor import process
+    from ..services.carga_info.exporter import ExportadorVentas
+except ImportError:
+    from services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
+    from services.carga_info.processor import process
+    from services.carga_info.exporter import ExportadorVentas
 
 
 logger = logging.getLogger(__name__)

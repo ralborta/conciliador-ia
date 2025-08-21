@@ -130,10 +130,24 @@ class ClienteProcessor:
         # Procesar cada fila del portal
         for idx, row in df_portal.iterrows():
             try:
-                # Buscar columnas relevantes - Mapeo más flexible para archivos del portal
-                tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f', 'TIPO_DOC'])
-                numero_doc_col = self._encontrar_columna(df_portal.columns, ['numero_documento', 'documento', 'dni', 'cuit', 'CUIT', 'NUMERO_DOC'])
-                nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE'])
+                # MAPEO HÍBRIDO: Primero específico, luego genérico
+                # =================================================
+                
+                # 1. Intentar mapeo específico para archivos Portal/AFIP
+                tipo_doc_col = self._encontrar_columna_especifica(df_portal.columns, 'tipo_documento')
+                numero_doc_col = self._encontrar_columna_especifica(df_portal.columns, 'numero_documento')
+                nombre_col = self._encontrar_columna_especifica(df_portal.columns, 'nombre')
+                
+                # 2. Si no se encontraron, usar mapeo genérico como fallback
+                if not tipo_doc_col:
+                    tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f', 'TIPO_DOC'])
+                if not numero_doc_col:
+                    numero_doc_col = self._encontrar_columna(df_portal.columns, ['numero_documento', 'documento', 'dni', 'cuit', 'CUIT', 'NUMERO_DOC'])
+                if not nombre_col:
+                    nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE'])
+                
+                # Log del mapeo encontrado para debugging
+                logger.info(f"🔍 Mapeo encontrado - Tipo: {tipo_doc_col}, Número: {numero_doc_col}, Nombre: {nombre_col}")
                 
                 if not all([tipo_doc_col, numero_doc_col, nombre_col]):
                     errores.append({
@@ -149,28 +163,46 @@ class ClienteProcessor:
                 numero_doc = str(row[numero_doc_col]).strip()
                 nombre = str(row[nombre_col]).strip()
                 
-                # Mapear tipo de documento
-                tipo_documento = self.mapear_tipo_documento(tipo_doc_codigo)
+                # MAPEO INTELIGENTE DE TIPO DE DOCUMENTO
+                # ======================================
+                
+                # 1. Intentar mapeo específico para archivos Portal/AFIP
+                if tipo_doc_codigo == 'A':
+                    tipo_documento = 'CUIT'
+                    logger.info(f"✅ Mapeo específico: 'A' → CUIT")
+                else:
+                    # 2. Usar mapeo genérico como fallback
+                    tipo_documento = self.mapear_tipo_documento(tipo_doc_codigo)
+                
                 if not tipo_documento:
                     errores.append({
                         'origen_fila': f"Portal fila {idx + 1}",
                         'tipo_error': 'Tipo de documento no reconocido',
-                        'detalle': f'Código {tipo_doc_codigo} no mapeable',
+                        'detalle': f'Código {tipo_doc_codigo} no mapeable (esperaba 80, 96, o A)',
                         'valor_original': tipo_doc_codigo
                     })
                     continue
                 
-                # Validar y formatear documento
+                # VALIDACIÓN INTELIGENTE DE DOCUMENTOS
+                # ===================================
+                
                 if tipo_documento == "DNI":
                     valido, numero_formateado = self.validar_y_formatear_dni(numero_doc)
                 else:  # CUIT
-                    valido, numero_formateado = self.validar_y_formatear_cuit(numero_doc)
+                    # Para archivos Portal/AFIP, el CUIT ya puede venir formateado
+                    if self._es_cuit_formateado(numero_doc):
+                        numero_formateado = numero_doc
+                        valido = True
+                        logger.info(f"✅ CUIT ya formateado: {numero_formateado}")
+                    else:
+                        # Intentar formatear si no está formateado
+                        valido, numero_formateado = self.validar_y_formatear_cuit(numero_doc)
                 
                 if not valido:
                     errores.append({
                         'origen_fila': f"Portal fila {idx + 1}",
                         'tipo_error': f'{tipo_documento} inválido',
-                        'detalle': f'Longitud o formato incorrecto',
+                        'detalle': f'Longitud o formato incorrecto: {numero_doc}',
                         'valor_original': numero_doc
                     })
                     continue
@@ -229,6 +261,24 @@ class ClienteProcessor:
                 return col
         return None
     
+    def _encontrar_columna_especifica(self, columnas: List[str], campo_buscado: str) -> Optional[str]:
+        """Mapeo específico para archivos Portal/AFIP con nombres de columnas conocidos"""
+        
+        # Mapeo específico para tus archivos
+        mapeo_especifico = {
+            'tipo_documento': ['ct_kind0f'],
+            'numero_documento': ['CUIT'],
+            'nombre': ['NOMBRE'],
+            'provincia': ['Columna8', 'PROVINCIA', 'Provincia / Estado / Region']
+        }
+        
+        if campo_buscado in mapeo_especifico:
+            for col_especial in mapeo_especifico[campo_buscado]:
+                if col_especial in columnas:
+                    return col_especial
+        
+        return None
+    
     def _buscar_provincia(
         self, 
         row: pd.Series, 
@@ -237,10 +287,20 @@ class ClienteProcessor:
     ) -> Optional[str]:
         """Busca provincia en el orden: Portal -> Excel Cliente"""
         
-        # Buscar en portal
-        provincia_col = self._encontrar_columna(columnas_portal, ['provincia', 'prov'])
+        # 1. Buscar en portal usando mapeo específico primero
+        provincia_col = self._encontrar_columna_especifica(columnas_portal, 'provincia')
+        if not provincia_col:
+            # 2. Fallback a búsqueda genérica
+            provincia_col = self._encontrar_columna(columnas_portal, ['provincia', 'prov'])
+        
         if provincia_col and pd.notna(row[provincia_col]):
-            return str(row[provincia_col]).strip()
+            provincia = str(row[provincia_col]).strip()
+            # Limpiar nombres específicos de provincia
+            if provincia == 'Ciudad Autónoma de Buenos Aires':
+                provincia = 'CABA'
+            elif provincia == 'Buenos Aires':
+                provincia = 'BA'
+            return provincia
         
         # Buscar en excel del cliente si está disponible
         if df_cliente is not None:
@@ -261,6 +321,17 @@ class ClienteProcessor:
                                 return provincia
         
         return None
+    
+    def _es_cuit_formateado(self, cuit: str) -> bool:
+        """Verifica si un CUIT ya está formateado correctamente (XX-XXXXXXXX-X)"""
+        if not cuit or pd.isna(cuit):
+            return False
+        
+        cuit_str = str(cuit).strip()
+        # Patrón: XX-XXXXXXXX-X (13 caracteres con guiones)
+        import re
+        patron_cuit = r'^\d{2}-\d{8}-\d$'
+        return bool(re.match(patron_cuit, cuit_str))
     
     def _eliminar_duplicados(self, clientes: List[Dict]) -> List[Dict]:
         """Elimina duplicados basándose en número de documento"""

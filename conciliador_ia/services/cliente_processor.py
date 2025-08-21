@@ -109,18 +109,18 @@ class ClienteProcessor:
         xubio_nombres = set()
         
         for _, row in df_xubio.iterrows():
-            # Buscar columnas de identificador
+            # Buscar columnas de identificador - Mapeo específico para Xubio
             id_cols = [col for col in df_xubio.columns if any(keyword in col.lower() 
-                        for keyword in ['cuit', 'dni', 'documento', 'identificador'])]
+                        for keyword in ['cuit', 'dni', 'documento', 'identificador', 'numeroidentificacion'])]
             
             if id_cols:
                 identificador = self.normalizar_identificador(str(row[id_cols[0]]))
                 if identificador:
                     xubio_identificadores.add(identificador)
             
-            # Buscar columnas de nombre
+            # Buscar columnas de nombre - Mapeo específico para Xubio
             nombre_cols = [col for col in df_xubio.columns if any(keyword in col.lower() 
-                          for keyword in ['nombre', 'razon', 'cliente'])]
+                          for keyword in ['nombre', 'razon', 'cliente', 'NOMBRE'])]
             
             if nombre_cols:
                 nombre = self.normalizar_texto(str(row[nombre_cols[0]]))
@@ -130,10 +130,10 @@ class ClienteProcessor:
         # Procesar cada fila del portal
         for idx, row in df_portal.iterrows():
             try:
-                # Buscar columnas relevantes
-                tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo'])
-                numero_doc_col = self._encontrar_columna(df_portal.columns, ['numero_documento', 'documento', 'dni', 'cuit'])
-                nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente'])
+                # Buscar columnas relevantes - Mapeo específico para archivos del portal
+                tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f'])
+                numero_doc_col = self._encontrar_columna(df_portal.columns, ['numero_documento', 'documento', 'dni', 'cuit', 'CUIT'])
+                nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE'])
                 
                 if not all([tipo_doc_col, numero_doc_col, nombre_col]):
                     errores.append({
@@ -249,9 +249,9 @@ class ClienteProcessor:
             if nombre_col_portal:
                 nombre_cliente = str(row[nombre_col_portal]).strip()
                 
-                # Buscar en excel del cliente
-                nombre_col_cliente = self._encontrar_columna(df_cliente.columns, ['nombre', 'razon_social', 'cliente'])
-                provincia_col_cliente = self._encontrar_columna(df_cliente.columns, ['provincia', 'prov'])
+                # Buscar en excel del cliente - Mapeo específico para archivo del cliente
+                nombre_col_cliente = self._encontrar_columna(df_cliente.columns, ['nombre', 'razon_social', 'cliente', 'RAZON SOCIAL / APELLIDO', 'NOMBRE'])
+                provincia_col_cliente = self._encontrar_columna(df_cliente.columns, ['provincia', 'prov', 'Provincia / Estado / Region'])
                 
                 if nombre_col_cliente and provincia_col_cliente:
                     for _, cliente_row in df_cliente.iterrows():

@@ -160,9 +160,21 @@ class CargaArchivos:
 
         try:
             df = self._read_any_table(path)
-            result["columns"] = list(df.columns)
-            result["rows"] = len(df)
-            result["sample"] = df.head(5).to_dict(orient="records")
+            result["columns"] = [str(c) for c in df.columns]
+            result["rows"] = int(len(df))
+            
+            # Usar sanitización para la muestra
+            try:
+                from ..utils.sanitize import df_preview
+                result["sample"] = df_preview(df, 5)
+            except ImportError:
+                # Fallback para imports directos
+                try:
+                    from utils.sanitize import df_preview
+                    result["sample"] = df_preview(df, 5)
+                except ImportError:
+                    # Fallback final: convertir a string para evitar problemas JSON
+                    result["sample"] = "Muestra no disponible (error de importación)"
             
             # Detectar tipo de archivo
             if p.suffix.lower() == ".csv":

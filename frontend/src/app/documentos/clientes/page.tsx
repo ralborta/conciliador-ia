@@ -120,10 +120,10 @@ export default function CargaClientesPage() {
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Archivos de Entrada</h2>
           
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Empresa ID */}
+            {/* Empresa ID - Opcional */}
             <div>
               <label htmlFor="empresa_id" className="block text-sm font-medium text-gray-700 mb-2">
-                ID de Empresa *
+                ID de Empresa (Opcional)
               </label>
               <input
                 type="text"
@@ -131,9 +131,11 @@ export default function CargaClientesPage() {
                 value={empresaId}
                 onChange={(e) => setEmpresaId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Ingrese el ID de la empresa"
-                required
+                placeholder="Dejar vacío para usar valor por defecto"
               />
+              <p className="mt-1 text-sm text-gray-500">
+                Campo opcional. Si no se especifica, se usará "default"
+              </p>
             </div>
 
             {/* Archivo Portal/AFIP */}

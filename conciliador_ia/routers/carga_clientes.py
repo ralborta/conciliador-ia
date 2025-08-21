@@ -30,7 +30,7 @@ jobs: Dict[str, ClienteImportJob] = {}
 
 @router.post("/importar")
 async def importar_clientes(
-    empresa_id: str = Form(...),
+    empresa_id: Optional[str] = Form("default"),
     archivo_portal: UploadFile = File(...),
     archivo_xubio: UploadFile = File(...),
     archivo_cliente: Optional[UploadFile] = File(None),
@@ -40,9 +40,9 @@ async def importar_clientes(
     Importa clientes nuevos desde archivos del portal y Xubio
     """
     try:
-        # Validar empresa_id
+        # Validar empresa_id (ahora opcional)
         if not empresa_id or empresa_id.strip() == "":
-            raise HTTPException(status_code=400, detail="empresa_id es requerido")
+            empresa_id = "default"
         
         # Validar archivos requeridos
         if not archivo_portal or not archivo_xubio:

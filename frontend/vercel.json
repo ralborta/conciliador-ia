@@ -1,32 +1,12 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
   "framework": "nextjs",
+  "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "functions": {
     "app/**/*.tsx": {
       "maxDuration": 30
-    },
-    "app/**/*.ts": {
-      "maxDuration": 30
     }
   },
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@api_url"
-  },
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_API_URL": "@api_url"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "$NEXT_PUBLIC_API_URL/api/v1/$1"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -37,11 +17,7 @@
         },
         {
           "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
+          "value": "SAMEORIGIN"
         }
       ]
     }

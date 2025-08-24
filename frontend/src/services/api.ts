@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-// RAILWAY BACKEND: Using Railway URL (replace with your actual Railway URL)
-const API_BASE_URL = 'https://conciliador-ia-production.up.railway.app/api/v1';
+// Configuración dinámica de API URL para dev/prod
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-console.log('API URL:', API_BASE_URL); // Debug log - FORCE VERCEL DEPLOY V4 - IMPROVED LOGGING
+console.log('API URL:', API_BASE_URL); // Debug log
+console.log('Environment:', process.env.NODE_ENV);
 
 const api = axios.create({
   baseURL: API_BASE_URL,

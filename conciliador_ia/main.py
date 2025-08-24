@@ -46,14 +46,25 @@ app = FastAPI(
 )
 
 # CONFIGURAR CORS ANTES DE CARGAR NADA
+# Obtener orígenes permitidos desde variables de entorno
+allowed_origins_env = os.getenv('ALLOWED_ORIGINS', '')
 origins = [
     "http://localhost:3000",  # Desarrollo local
     "http://localhost:3001",  # Puerto alternativo
-    "https://conciliador-hvc8t1fvy-nivel-41.vercel.app",  # Tu dominio exacto de Vercel
-    "https://conciliador-ia-production.up.railway.app",    # Self
-    "https://*.vercel.app",  # Cualquier subdominio de Vercel
-    "https://*.railway.app",  # Cualquier subdominio de Railway
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
 ]
+
+# Agregar orígenes de producción si están configurados
+if allowed_origins_env:
+    production_origins = [origin.strip() for origin in allowed_origins_env.split(',')]
+    origins.extend(production_origins)
+    logger.info(f"Orígenes de producción agregados: {production_origins}")
+
+# Agregar orígenes comunes de Vercel y Railway
+origins.extend([
+    "*",  # Permitir todos los orígenes temporalmente para debug
+])
 
 app.add_middleware(
     CORSMiddleware,
@@ -77,6 +88,12 @@ try:
 except Exception:
     export = None
 
+# Importar router de documentos
+try:
+    from routers import documentos
+except Exception:
+    documentos = None
+
 # INCLUIR RUTAS DESPUÉS DE CORS
 app.include_router(upload.router, prefix="/api/v1")
 app.include_router(conciliacion.router, prefix="/api/v1")
@@ -86,6 +103,35 @@ if carga_documentos:
     app.include_router(carga_documentos.router, prefix="/api/v1")
 if export:
     app.include_router(export.router, prefix="/api/v1")
+if documentos:
+    app.include_router(documentos.router, prefix="/api/v1")
+
+# Rutas principales
+@app.get("/")
+async def root():
+    """Endpoint raíz"""
+    return {
+        "service": "Conciliador IA",
+        "version": "2.0.0",
+        "status": "running",
+        "description": "Sistema de conciliación automática con IA",
+        "endpoints": {
+            "health": "/health",
+            "docs": "/docs" if DEBUG else "Disabled in production",
+            "api": "/api/v1"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    import time
+    return {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "service": "Conciliador IA",
+        "version": "2.0.0"
+    }
 
 @app.on_event("startup")
 async def startup_event():
@@ -99,6 +145,8 @@ async def startup_event():
     
     # Crear directorios necesarios
     os.makedirs("data/uploads", exist_ok=True)
+    os.makedirs("data/cache", exist_ok=True)
+    os.makedirs("data/exports", exist_ok=True)
     
     logger.info("Conciliador IA iniciado correctamente")
 

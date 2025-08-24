@@ -94,7 +94,7 @@ const AdvancedCharts: React.FC<AdvancedChartsProps> = ({ movements, loading = fa
       .filter(mov => mov.confianza !== undefined && mov.estado === 'conciliado')
       .map(mov => ({
         monto: mov.monto,
-        confianza: mov.confianza * 100,
+        confianza: (mov.confianza || 0) * 100,
         estado: mov.estado
       }));
 
@@ -202,12 +202,19 @@ const AdvancedCharts: React.FC<AdvancedChartsProps> = ({ movements, loading = fa
                 fill="#8884d8"
                 dataKey="count"
               >
-                {chartData.estadoData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={COLORS[entry.estado as keyof typeof COLORS] || COLORS.pie[index % COLORS.pie.length]}
-                  />
-                ))}
+                {chartData.estadoData.map((entry, index) => {
+                  const colorKey = entry.estado as keyof typeof COLORS;
+                  const color = typeof COLORS[colorKey] === 'string' 
+                    ? COLORS[colorKey] as string
+                    : COLORS.pie[index % COLORS.pie.length];
+                  
+                  return (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={color}
+                    />
+                  );
+                })}
               </Pie>
               <Tooltip formatter={(value: number) => [value, 'Movimientos']} />
             </PieChart>

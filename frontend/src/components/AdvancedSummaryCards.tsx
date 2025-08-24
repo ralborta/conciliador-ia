@@ -260,7 +260,7 @@ const AdvancedSummaryCards: React.FC<AdvancedSummaryCardsProps> = ({
                 >
                   <div className="flex items-center justify-between mb-3">
                     <IconComponent className={`h-6 w-6 ${card.iconColor}`} />
-                    {card.percentage && (
+                    {'percentage' in card && card.percentage && (
                       <div className="flex items-center">
                         <Percent className="h-4 w-4 mr-1" />
                         <span className="text-sm font-medium">
@@ -278,7 +278,7 @@ const AdvancedSummaryCards: React.FC<AdvancedSummaryCardsProps> = ({
                     )}
                   </div>
                   
-                  {card.percentage && (
+                  {'percentage' in card && card.percentage && (
                     <div className="mt-3">
                       <div className="w-full bg-white bg-opacity-30 rounded-full h-1.5">
                         <div 

@@ -146,8 +146,9 @@ class ClienteProcessor:
                 if not nombre_col:
                     nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE'])
                 
-                # Log del mapeo encontrado para debugging
-                logger.info(f"🔍 Mapeo encontrado - Tipo: {tipo_doc_col}, Número: {numero_doc_col}, Nombre: {nombre_col}")
+                # Log del mapeo encontrado para debugging (solo una vez)
+                if idx == 0:  # Solo log la primera fila para debugging
+                    logger.info(f"🔍 Mapeo encontrado - Tipo: {tipo_doc_col}, Número: {numero_doc_col}, Nombre: {nombre_col}")
                 
                 if not all([tipo_doc_col, numero_doc_col, nombre_col]):
                     errores.append({

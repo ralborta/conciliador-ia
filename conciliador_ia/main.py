@@ -15,14 +15,22 @@ if str(current_dir) not in sys.path:
 # Cargar variables de entorno
 load_dotenv()
 
-# Configurar logging
+# Configuración de entorno
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+HOST = os.getenv('HOST', '0.0.0.0')
+PORT = int(os.getenv('PORT', 8000))
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO' if not DEBUG else 'DEBUG')
+
+# Configurar logging según entorno
+log_handlers = [logging.StreamHandler()]
+if not DEBUG:
+    # En producción, también log a archivo
+    log_handlers.append(logging.FileHandler('conciliador_ia.log'))
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL.upper()),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('conciliador_ia.log')
-    ]
+    handlers=log_handlers
 )
 
 logger = logging.getLogger(__name__)
@@ -31,9 +39,10 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Conciliador IA",
     description="Backend para conciliación automática de extractos bancarios con comprobantes usando IA",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    version="2.0.0",
+    docs_url="/docs" if DEBUG else None,  # Ocultar docs en producción
+    redoc_url="/redoc" if DEBUG else None,
+    openapi_url="/openapi.json" if DEBUG else None
 )
 
 # CONFIGURAR CORS ANTES DE CARGAR NADA
@@ -62,6 +71,12 @@ try:
 except Exception:
     carga_documentos = None
 
+# Importar router de exportación
+try:
+    from routers import export
+except Exception:
+    export = None
+
 # INCLUIR RUTAS DESPUÉS DE CORS
 app.include_router(upload.router, prefix="/api/v1")
 app.include_router(conciliacion.router, prefix="/api/v1")
@@ -69,6 +84,8 @@ app.include_router(compras.router, prefix="/api/v1")
 app.include_router(arca_xubio.router, prefix="/api/v1")
 if carga_documentos:
     app.include_router(carga_documentos.router, prefix="/api/v1")
+if export:
+    app.include_router(export.router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup_event():

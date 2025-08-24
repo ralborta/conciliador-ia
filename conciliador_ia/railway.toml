@@ -1,10 +1,16 @@
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+builder = "NIXPACKS"
 
 [deploy]
-startCommand = "uvicorn conciliador_ia.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "python main.py"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3 
+
+[env]
+# Estas variables se configurarán en Railway Dashboard
+# OPENAI_API_KEY = ""
+# DATABASE_URL = ""
+# DEBUG = "False"
+# HOST = "0.0.0.0"
+# PORT = "8000"

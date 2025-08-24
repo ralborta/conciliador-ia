@@ -272,7 +272,7 @@ class ClienteProcessor:
         mapeo_especifico = {
             'tipo_documento': ['Tipo Doc. Comprador', 'Tipos de Documentos', 'ct_kind0f'],
             'numero_documento': ['Nro. Doc. Comprador', 'Numero de Documento', 'CUIT'],
-            'nombre': ['Denominación Comprador', 'RAZON SOCIAL / APELLIDO', 'NOMBRE'],
+            'nombre': ['DenominaciÃ³n Comprador', 'Denominación Comprador', 'RAZON SOCIAL / APELLIDO', 'NOMBRE'],
             'provincia': ['Columna8', 'PROVINCIA', 'Provincia / Estado / Region']
         }
         

@@ -11,4 +11,8 @@ openpyxl==3.1.2
 xlsxwriter==3.1.9
 xlrd==1.2.0
 odfpy==1.4.1
-httpx==0.25.0 
+httpx==0.25.0
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0 

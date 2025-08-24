@@ -1,258 +1,326 @@
 """
-Funciones auxiliares para validación robusta de archivos
+Utilidades para validación de datos
 """
-import os
-import tempfile
-import uuid
-import logging
+
 import pandas as pd
 import numpy as np
-from typing import Optional, Dict, Any, List
-from pathlib import Path
+from datetime import datetime
+import logging
 
 logger = logging.getLogger(__name__)
 
 
-def save_temp_file(content: bytes, filename: str) -> str:
-    """Guarda archivo temporal de forma segura"""
-    temp_name = f"{uuid.uuid4()}_{filename}"
-    temp_path = os.path.join(tempfile.gettempdir(), temp_name)
+class DataValidator:
+    """Validador de datos para el sistema de conciliación"""
     
-    with open(temp_path, 'wb') as f:
-        f.write(content)
+    def __init__(self):
+        self.required_movimientos_cols = ['fecha', 'concepto', 'monto', 'tipo']
+        self.required_comprobantes_cols = ['fecha', 'cliente', 'monto', 'concepto']
     
-    return temp_path
-
-
-def procesar_archivo_seguro(ruta_archivo: str, nombre_tipo: str) -> Dict[str, Any]:
-    """Procesa un archivo con manejo robusto de errores"""
-    try:
-        df = leer_archivo_robusto(ruta_archivo)
+    def validate_movimientos_df(self, df: pd.DataFrame) -> dict:
+        """
+        Valida DataFrame de movimientos bancarios
         
-        if df is None or df.empty:
-            return {
-                "estado": "ERROR",
-                "error": f"Archivo {nombre_tipo} está vacío o no se pudo leer",
-                "detectado": inspeccionar_archivo(ruta_archivo)
+        Args:
+            df: DataFrame con movimientos
+            
+        Returns:
+            dict: Resultado de validación con is_valid y errores
+        """
+        result = {
+            'is_valid': True,
+            'errores': [],
+            'warnings': [],
+            'stats': {}
+        }
+        
+        try:
+            # Verificar que no esté vacío
+            if df.empty:
+                result['errores'].append("DataFrame de movimientos está vacío")
+                result['is_valid'] = False
+                return result
+            
+            # Verificar columnas requeridas
+            missing_cols = [col for col in self.required_movimientos_cols if col not in df.columns]
+            if missing_cols:
+                result['errores'].append(f"Columnas faltantes: {missing_cols}")
+                result['is_valid'] = False
+            
+            # Validar tipos de datos
+            if 'fecha' in df.columns:
+                invalid_dates = self._validate_dates(df['fecha'])
+                if invalid_dates:
+                    result['errores'].append(f"Fechas inválidas encontradas: {len(invalid_dates)} registros")
+                    result['is_valid'] = False
+            
+            if 'monto' in df.columns:
+                invalid_amounts = self._validate_amounts(df['monto'])
+                if invalid_amounts:
+                    result['errores'].append(f"Montos inválidos encontrados: {len(invalid_amounts)} registros")
+                    result['is_valid'] = False
+            
+            if 'tipo' in df.columns:
+                invalid_tipos = self._validate_tipos(df['tipo'])
+                if invalid_tipos:
+                    result['warnings'].append(f"Tipos de movimiento no estándar: {invalid_tipos}")
+            
+            # Estadísticas
+            result['stats'] = {
+                'total_registros': len(df),
+                'columnas': list(df.columns),
+                'tipos_movimiento': df['tipo'].value_counts().to_dict() if 'tipo' in df.columns else {},
+                'rango_fechas': self._get_date_range(df['fecha']) if 'fecha' in df.columns else None,
+                'suma_total': df['monto'].sum() if 'monto' in df.columns else 0
             }
+            
+        except Exception as e:
+            logger.error(f"Error validando movimientos: {e}")
+            result['errores'].append(f"Error interno de validación: {str(e)}")
+            result['is_valid'] = False
         
-        return {
-            "estado": "OK",
-            "filas": int(len(df)),
-            "columnas": [limpiar_nombre_columna(c) for c in df.columns],
-            "muestra": crear_muestra_segura(df, 3),
-            "detectado": inspeccionar_archivo(ruta_archivo),
-            "tipos_detectados": obtener_tipos_columnas(df)
-        }
-        
-    except Exception as e:
-        return {
-            "estado": "ERROR",
-            "error": f"Error procesando {nombre_tipo}: {str(e)}",
-            "detectado": inspeccionar_archivo(ruta_archivo)
-        }
-
-
-def leer_archivo_robusto(ruta_archivo: str) -> Optional[pd.DataFrame]:
-    """Lee archivo con múltiples estrategias"""
-    ext = os.path.splitext(ruta_archivo)[1].lower()
+        return result
     
-    try:
-        if ext == '.csv':
-            for encoding in ['utf-8', 'latin-1', 'cp1252']:
-                for sep in [',', ';', '\t']:
-                    try:
-                        df = pd.read_csv(ruta_archivo, encoding=encoding, sep=sep)
-                        if not df.empty and len(df.columns) > 1:
-                            return df
-                    except:
-                        continue
-        elif ext in ['.xlsx', '.xls']:
-            return pd.read_excel(ruta_archivo)
-        elif ext == '.json':
-            return pd.read_json(ruta_archivo)
+    def validate_comprobantes_df(self, df: pd.DataFrame) -> dict:
+        """
+        Valida DataFrame de comprobantes
+        
+        Args:
+            df: DataFrame con comprobantes
+            
+        Returns:
+            dict: Resultado de validación con is_valid y errores
+        """
+        result = {
+            'is_valid': True,
+            'errores': [],
+            'warnings': [],
+            'stats': {}
+        }
+        
+        try:
+            # Verificar que no esté vacío
+            if df.empty:
+                result['errores'].append("DataFrame de comprobantes está vacío")
+                result['is_valid'] = False
+                return result
+            
+            # Verificar columnas requeridas
+            missing_cols = [col for col in self.required_comprobantes_cols if col not in df.columns]
+            if missing_cols:
+                result['errores'].append(f"Columnas faltantes: {missing_cols}")
+                result['is_valid'] = False
+            
+            # Validar tipos de datos
+            if 'fecha' in df.columns:
+                invalid_dates = self._validate_dates(df['fecha'])
+                if invalid_dates:
+                    result['errores'].append(f"Fechas inválidas encontradas: {len(invalid_dates)} registros")
+                    result['is_valid'] = False
+            
+            if 'monto' in df.columns:
+                invalid_amounts = self._validate_amounts(df['monto'])
+                if invalid_amounts:
+                    result['errores'].append(f"Montos inválidos encontrados: {len(invalid_amounts)} registros")
+                    result['is_valid'] = False
+            
+            # Validar clientes
+            if 'cliente' in df.columns:
+                empty_clients = df[df['cliente'].isna() | (df['cliente'].str.strip() == '')].index.tolist()
+                if empty_clients:
+                    result['warnings'].append(f"Clientes vacíos en registros: {len(empty_clients)}")
+            
+            # Estadísticas
+            result['stats'] = {
+                'total_registros': len(df),
+                'columnas': list(df.columns),
+                'clientes_unicos': df['cliente'].nunique() if 'cliente' in df.columns else 0,
+                'rango_fechas': self._get_date_range(df['fecha']) if 'fecha' in df.columns else None,
+                'suma_total': df['monto'].sum() if 'monto' in df.columns else 0
+            }
             
     except Exception as e:
-        logger.error(f"Error leyendo archivo {ruta_archivo}: {e}")
-        return None
+            logger.error(f"Error validando comprobantes: {e}")
+            result['errores'].append(f"Error interno de validación: {str(e)}")
+            result['is_valid'] = False
+        
+        return result
     
-    return None
-
-
-def crear_muestra_segura(df: pd.DataFrame, n: int = 3) -> List[Dict[str, Any]]:
-    """Crea muestra del DataFrame totalmente JSON-safe"""
-    if df.empty:
-        return []
+    def _validate_dates(self, date_series: pd.Series) -> list:
+        """Valida serie de fechas"""
+        invalid_indices = []
+        
+        for idx, date_val in date_series.items():
+            if pd.isna(date_val):
+                invalid_indices.append(idx)
+                continue
+                
+            try:
+                if isinstance(date_val, str):
+                    # Intentar parsear diferentes formatos
+                    pd.to_datetime(date_val, dayfirst=True)
+                elif not isinstance(date_val, (datetime, pd.Timestamp)):
+                    invalid_indices.append(idx)
+            except:
+                invalid_indices.append(idx)
+        
+        return invalid_indices
     
-    try:
-        muestra = df.head(n).copy()
-        muestra = muestra.replace([np.inf, -np.inf], None)
-        muestra = muestra.where(pd.notna(muestra), None)
+    def _validate_amounts(self, amount_series: pd.Series) -> list:
+        """Valida serie de montos"""
+        invalid_indices = []
         
-        registros = []
-        for _, row in muestra.iterrows():
-            registro = {}
-            for col, val in row.items():
-                registro[limpiar_nombre_columna(col)] = convertir_valor_seguro(val)
-            registros.append(registro)
+        for idx, amount in amount_series.items():
+            if pd.isna(amount):
+                invalid_indices.append(idx)
+                continue
+                
+            try:
+                float_amount = float(amount)
+                if not np.isfinite(float_amount):
+                    invalid_indices.append(idx)
+            except (ValueError, TypeError):
+                invalid_indices.append(idx)
         
-        return registros
+        return invalid_indices
+    
+    def _validate_tipos(self, tipo_series: pd.Series) -> list:
+        """Valida tipos de movimiento"""
+        valid_tipos = ['credito', 'debito', 'crédito', 'débito', 'ingreso', 'egreso']
+        invalid_tipos = []
         
-    except Exception as e:
-        logger.error(f"Error creando muestra: {e}")
-        return []
-
-
-def convertir_valor_seguro(valor: Any) -> Any:
-    """Convierte cualquier valor a tipo JSON-safe"""
-    if pd.isna(valor) or valor is None:
+        for tipo in tipo_series.dropna().unique():
+            if str(tipo).lower() not in [t.lower() for t in valid_tipos]:
+                invalid_tipos.append(tipo)
+        
+        return invalid_tipos
+    
+    def _get_date_range(self, date_series: pd.Series) -> dict:
+        """Obtiene rango de fechas"""
+        try:
+            dates = pd.to_datetime(date_series, dayfirst=True, errors='coerce')
+            valid_dates = dates.dropna()
+            
+            if len(valid_dates) == 0:
         return None
-    elif isinstance(valor, (np.integer, int)):
-        return int(valor)
-    elif isinstance(valor, (np.floating, float)):
-        if np.isnan(valor) or np.isinf(valor):
+            
+            return {
+                'fecha_min': valid_dates.min().strftime('%Y-%m-%d'),
+                'fecha_max': valid_dates.max().strftime('%Y-%m-%d'),
+                'dias_span': (valid_dates.max() - valid_dates.min()).days
+            }
+        except:
             return None
-        return float(valor)
-    elif isinstance(valor, (np.bool_, bool)):
-        return bool(valor)
-    elif isinstance(valor, (pd.Timestamp)):
-        return str(valor)
-    else:
-        return str(valor)
-
-
-def limpiar_nombre_columna(nombre: str) -> str:
-    """Limpia nombres de columnas para evitar caracteres problemáticos"""
-    if isinstance(nombre, str):
-        return nombre.strip()
-    return str(nombre)
-
-
-def obtener_tipos_columnas(df: pd.DataFrame) -> Dict[str, str]:
-    """Obtiene tipos de datos de las columnas"""
-    tipos = {}
-    for col in df.columns:
-        tipo = str(df[col].dtype)
-        if 'int' in tipo:
-            tipo = 'entero'
-        elif 'float' in tipo:
-            tipo = 'decimal'
-        elif 'object' in tipo:
-            tipo = 'texto'
-        elif 'datetime' in tipo:
-            tipo = 'fecha'
-        elif 'bool' in tipo:
-            tipo = 'booleano'
-        
-        tipos[limpiar_nombre_columna(col)] = tipo
     
-    return tipos
-
-
-def inspeccionar_archivo(ruta_archivo: str) -> Dict[str, Any]:
-    """Inspecciona archivo y retorna información básica"""
-    try:
-        stat = os.stat(ruta_archivo)
-        ext = os.path.splitext(ruta_archivo)[1].lower()
+    def validate_file_format(self, filepath: str, expected_format: str = None) -> dict:
+        """
+        Valida formato de archivo
         
-        return {
-            "extension": ext,
-            "tamaño_bytes": stat.st_size,
-            "tamaño_mb": round(stat.st_size / 1024 / 1024, 2),
-            "modificado": str(pd.Timestamp.fromtimestamp(stat.st_mtime))
+        Args:
+            filepath: Ruta del archivo
+            expected_format: Formato esperado ('pdf', 'xlsx', 'csv')
+            
+        Returns:
+            dict: Resultado de validación
+        """
+        result = {
+            'is_valid': True,
+            'errores': [],
+            'warnings': [],
+            'format': None
         }
-    except Exception:
-        return {"extension": "desconocido", "tamaño_bytes": 0}
+        
+        try:
+            import os
+            from pathlib import Path
+            
+            if not os.path.exists(filepath):
+                result['errores'].append(f"Archivo no existe: {filepath}")
+                result['is_valid'] = False
+                return result
+            
+            # Detectar formato por extensión
+            file_ext = Path(filepath).suffix.lower()
+            format_map = {
+                '.pdf': 'pdf',
+                '.xlsx': 'xlsx',
+                '.xls': 'xlsx',
+                '.csv': 'csv',
+                '.txt': 'txt'
+            }
+            
+            detected_format = format_map.get(file_ext)
+            result['format'] = detected_format
+            
+            if expected_format and detected_format != expected_format:
+                result['errores'].append(f"Formato esperado: {expected_format}, detectado: {detected_format}")
+                result['is_valid'] = False
+            
+            # Verificar tamaño
+            file_size = os.path.getsize(filepath)
+            if file_size == 0:
+                result['errores'].append("Archivo está vacío")
+                result['is_valid'] = False
+            elif file_size > 50 * 1024 * 1024:  # 50MB
+                result['warnings'].append(f"Archivo muy grande: {file_size / (1024*1024):.1f}MB")
+            
+        except Exception as e:
+            result['errores'].append(f"Error validando archivo: {str(e)}")
+            result['is_valid'] = False
+        
+        return result
 
 
-def verificar_compatibilidad_mejorada(resultado: Dict[str, Any]) -> Dict[str, Any]:
-    """Verifica compatibilidad con mejor lógica"""
-    compatibilidad = {
-        "estado": "OK",
-        "problemas": [],
-        "recomendaciones": [],
-        "criticos": []
+def validate_conciliation_result(result: dict) -> dict:
+    """
+    Valida resultado de conciliación
+    
+    Args:
+        result: Resultado de conciliación
+        
+    Returns:
+        dict: Validación del resultado
+    """
+    validation = {
+        'is_valid': True,
+        'errores': [],
+        'warnings': []
     }
     
-    portal_ok = resultado.get("portal", {}).get("estado") == "OK"
-    xubio_ok = resultado.get("xubio", {}).get("estado") == "OK"
+    required_keys = ['items', 'total_movimientos', 'movimientos_conciliados']
     
-    if not portal_ok:
-        compatibilidad["criticos"].append("Archivo Portal no pudo ser procesado")
-        compatibilidad["estado"] = "ERROR"
+    for key in required_keys:
+        if key not in result:
+            validation['errores'].append(f"Clave faltante en resultado: {key}")
+            validation['is_valid'] = False
     
-    if not xubio_ok:
-        compatibilidad["criticos"].append("Archivo Xubio no pudo ser procesado")
-        compatibilidad["estado"] = "ERROR"
-    
-    if portal_ok and xubio_ok:
-        cols_portal = resultado["portal"].get("columnas", [])
-        verificar_columnas_portal(cols_portal, compatibilidad)
-        
-        cols_xubio = resultado["xubio"].get("columnas", [])
-        verificar_columnas_xubio(cols_xubio, compatibilidad)
-    
-    if compatibilidad["estado"] == "ERROR":
-        compatibilidad["mensaje"] = "❌ Errores críticos - no se puede procesar"
-    elif compatibilidad["problemas"]:
-        compatibilidad["estado"] = "ADVERTENCIA"
-        compatibilidad["mensaje"] = "⚠️ Archivos procesables con advertencias"
-    else:
-        compatibilidad["mensaje"] = "✅ Archivos compatibles y listos"
-    
-    return compatibilidad
-
-
-def verificar_columnas_portal(columnas: List[str], compatibilidad: Dict[str, Any]):
-    """Verifica columnas específicas del Portal"""
-    cols_lower = [c.lower() for c in columnas]
-    
-    if not any(x in cols_lower for x in ['tipo_doc', 'tipo_documento', 'tipo']):
-        compatibilidad["problemas"].append("Portal: Falta columna tipo de documento")
-        compatibilidad["recomendaciones"].append("Agregar columna 'TIPO_DOC'")
-    
-    if not any(x in cols_lower for x in ['numero_documento', 'documento', 'cuit', 'dni']):
-        compatibilidad["problemas"].append("Portal: Falta columna número documento")
-        compatibilidad["recomendaciones"].append("Agregar columna 'NUMERO_DOC'")
-
-
-def verificar_columnas_xubio(columnas: List[str], compatibilidad: Dict[str, Any]):
-    """Verifica columnas específicas de Xubio"""
-    cols_lower = [c.lower() for c in columnas]
-    
-    if not any(x in cols_lower for x in ['numeroidentificacion', 'cuit', 'identificador']):
-        compatibilidad["problemas"].append("Xubio: Falta columna identificador")
-        compatibilidad["recomendaciones"].append("Agregar columna 'NUMEROIDENTIFICACION'")
-
-
-def sanitizar_resultado_completo(resultado: Dict[str, Any]) -> Dict[str, Any]:
-    """Sanitiza completamente el resultado para JSON"""
-    def sanitizar_recursivo(obj):
-        if isinstance(obj, dict):
-            return {k: sanitizar_recursivo(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [sanitizar_recursivo(item) for item in obj]
+    if 'items' in result:
+        if not isinstance(result['items'], list):
+            validation['errores'].append("'items' debe ser una lista")
+            validation['is_valid'] = False
         else:
-            return convertir_valor_seguro(obj)
+            for i, item in enumerate(result['items']):
+                if not isinstance(item, dict):
+                    validation['errores'].append(f"Item {i} debe ser un diccionario")
+                    validation['is_valid'] = False
+                    continue
+                
+                required_item_keys = ['fecha_movimiento', 'concepto_movimiento', 'monto_movimiento', 'estado']
+                for key in required_item_keys:
+                    if key not in item:
+                        validation['errores'].append(f"Item {i} falta clave: {key}")
+                        validation['is_valid'] = False
     
-    return sanitizar_recursivo(resultado)
-
-
-def limpiar_archivos_temporales(archivos: Dict[str, str]):
-    """Limpia archivos temporales de forma segura"""
-    for ruta in archivos.values():
-        try:
-            if os.path.exists(ruta):
-                os.remove(ruta)
-        except Exception as e:
-            logger.warning(f"No se pudo eliminar archivo temporal {ruta}: {e}")
-
-
-def debug_endpoint():
-    """Función para debuggear problemas"""
-    print("🔍 CHECKLIST DE DEBUGGING:")
-    print("1. ¿El endpoint /validar está registrado correctamente?")
-    print("2. ¿Los imports están todos disponibles?")
-    print("3. ¿Las rutas de archivos temporales son válidas?")
-    print("4. ¿Los logs muestran errores específicos?")
-    print("5. ¿El frontend está enviando archivos correctamente?")
+    # Validar coherencia numérica
+    if all(key in result for key in ['total_movimientos', 'movimientos_conciliados']):
+        total = result['total_movimientos']
+        conciliados = result['movimientos_conciliados']
+        
+        if conciliados > total:
+            validation['errores'].append("Movimientos conciliados no puede ser mayor que total")
+            validation['is_valid'] = False
+        
+        if 'items' in result and len(result['items']) != total:
+            validation['warnings'].append("Número de items no coincide con total_movimientos")
+    
+    return validation

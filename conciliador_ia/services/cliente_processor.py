@@ -146,9 +146,8 @@ class ClienteProcessor:
                 if not nombre_col:
                     nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE'])
                 
-                # Log del mapeo encontrado para debugging (solo una vez)
-                if idx == 0:  # Solo log la primera fila para debugging
-                    logger.info(f"🔍 Mapeo encontrado - Tipo: {tipo_doc_col}, Número: {numero_doc_col}, Nombre: {nombre_col}")
+                # Log del mapeo encontrado para debugging
+                logger.info(f"🔍 Mapeo encontrado - Tipo: {tipo_doc_col}, Número: {numero_doc_col}, Nombre: {nombre_col}")
                 
                 if not all([tipo_doc_col, numero_doc_col, nombre_col]):
                     errores.append({
@@ -168,12 +167,9 @@ class ClienteProcessor:
                 # ======================================
                 
                 # 1. Intentar mapeo específico para archivos Portal/AFIP
-                if tipo_doc_codigo == 'A' or tipo_doc_codigo == '80':
+                if tipo_doc_codigo == 'A':
                     tipo_documento = 'CUIT'
-                    logger.info(f"✅ Mapeo específico: '{tipo_doc_codigo}' → CUIT")
-                elif tipo_doc_codigo == '96':
-                    tipo_documento = 'DNI'
-                    logger.info(f"✅ Mapeo específico: '{tipo_doc_codigo}' → DNI")
+                    logger.info(f"✅ Mapeo específico: 'A' → CUIT")
                 else:
                     # 2. Usar mapeo genérico como fallback
                     tipo_documento = self.mapear_tipo_documento(tipo_doc_codigo)
@@ -270,9 +266,9 @@ class ClienteProcessor:
         
         # Mapeo específico para tus archivos
         mapeo_especifico = {
-            'tipo_documento': ['Tipo Doc. Comprador', 'Tipos de Documentos', 'ct_kind0f'],
-            'numero_documento': ['Nro. Doc. Comprador', 'Numero de Documento', 'CUIT'],
-            'nombre': ['DenominaciÃ³n Comprador', 'Denominación Comprador', 'RAZON SOCIAL / APELLIDO', 'NOMBRE'],
+            'tipo_documento': ['ct_kind0f'],
+            'numero_documento': ['CUIT'],
+            'nombre': ['NOMBRE'],
             'provincia': ['Columna8', 'PROVINCIA', 'Provincia / Estado / Region']
         }
         

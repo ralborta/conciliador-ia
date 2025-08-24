@@ -168,9 +168,12 @@ class ClienteProcessor:
                 # ======================================
                 
                 # 1. Intentar mapeo específico para archivos Portal/AFIP
-                if tipo_doc_codigo == 'A':
+                if tipo_doc_codigo == 'A' or tipo_doc_codigo == '80':
                     tipo_documento = 'CUIT'
-                    logger.info(f"✅ Mapeo específico: 'A' → CUIT")
+                    logger.info(f"✅ Mapeo específico: '{tipo_doc_codigo}' → CUIT")
+                elif tipo_doc_codigo == '96':
+                    tipo_documento = 'DNI'
+                    logger.info(f"✅ Mapeo específico: '{tipo_doc_codigo}' → DNI")
                 else:
                     # 2. Usar mapeo genérico como fallback
                     tipo_documento = self.mapear_tipo_documento(tipo_doc_codigo)
@@ -267,9 +270,9 @@ class ClienteProcessor:
         
         # Mapeo específico para tus archivos
         mapeo_especifico = {
-            'tipo_documento': ['ct_kind0f'],
-            'numero_documento': ['CUIT'],
-            'nombre': ['NOMBRE'],
+            'tipo_documento': ['Tipo Doc. Comprador', 'Tipos de Documentos', 'ct_kind0f'],
+            'numero_documento': ['Nro. Doc. Comprador', 'Numero de Documento', 'CUIT'],
+            'nombre': ['Denominación Comprador', 'RAZON SOCIAL / APELLIDO', 'NOMBRE'],
             'provincia': ['Columna8', 'PROVINCIA', 'Provincia / Estado / Region']
         }
         

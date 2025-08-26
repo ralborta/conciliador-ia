@@ -302,7 +302,9 @@ class ClienteProcessor:
             "Número de documento",
             "Email",
             "Provincia",
-            "Cuenta contable"
+            "Cuenta contable",
+            "Campo P",
+            "Campo Q"
         ]
         
         # Crea DF vacío con columnas si df_nuevos viene vacío

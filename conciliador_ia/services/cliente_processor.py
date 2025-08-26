@@ -111,7 +111,7 @@ class ClienteProcessor:
         for _, row in df_xubio.iterrows():
             # Buscar columnas de identificador - Mapeo específico para Xubio
             id_cols = [col for col in df_xubio.columns if any(keyword in col.lower() 
-                        for keyword in ['cuit', 'dni', 'documento', 'identificador', 'numeroidentificacion', 'numero_identificacion'])]
+                        for keyword in ['cuit', 'dni', 'documento', 'identificador', 'numeroidentificacion', 'numero_identificacion', 'numeroidentificacion', 'numeroidentificacion'])]
             
             if id_cols:
                 identificador = self.normalizar_identificador(str(row[id_cols[0]]))
@@ -132,7 +132,7 @@ class ClienteProcessor:
             try:
                 # Buscar columnas relevantes - Mapeo más flexible para archivos del portal
                 tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f', 'TIPO_DOC'])
-                numero_doc_col = self._encontrar_columna(df_portal.columns, ['Numero de Documento', 'numero de documento', 'numero_documento', 'nro. doc. comprador', 'nro doc comprador', 'nro. doc comprador', 'dni', 'cuit', 'CUIT', 'NUMERO_DOC'])
+                numero_doc_col = self._encontrar_columna(df_portal.columns, ['NUMERO_DOC', 'numero_doc', 'Numero de Documento', 'numero de documento', 'numero_documento', 'nro. doc. comprador', 'nro doc comprador', 'nro. doc comprador', 'dni', 'cuit', 'CUIT', 'NUMERO_DOC'])
                 nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE'])
                 
                 if not all([tipo_doc_col, numero_doc_col, nombre_col]):

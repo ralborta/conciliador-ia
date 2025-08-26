@@ -89,9 +89,9 @@ Información adicional con:
 ## Archivo de Salida
 
 ### Formato CSV con columnas (estructura exacta de Xubio):
-1. `NUMERO` - Número secuencial
+1. `NUMERODECONTROL` - Número secuencial
 2. `NOMBRE` - Nombre del cliente
-3. `CODIGO` - Tipo de documento (CUIT/DNI)
+3. `CODIGO` - En blanco
 4. `TIPOIDE` - Tipo de documento (CUIT/DNI)
 5. `NUMEROIDENTIF` - Número de documento
 6. `CONDICI` - Condición IVA (MT, RI, CF, EX)

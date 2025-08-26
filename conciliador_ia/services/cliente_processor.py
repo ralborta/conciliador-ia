@@ -146,6 +146,39 @@ class ClienteProcessor:
         
         return ""
     
+    def obtener_provincia_por_dni(self, dni: str, df_historico: pd.DataFrame = None) -> str:
+        """Obtiene provincia por DNI usando datos históricos"""
+        if not dni or df_historico is None or df_historico.empty:
+            return ""
+        
+        dni_limpio = self.normalizar_identificador(dni)
+        
+        # Buscar en datos históricos por DNI
+        for _, row in df_historico.iterrows():
+            # Buscar columna de DNI
+            dni_col = None
+            for col in df_historico.columns:
+                if any(keyword in col.lower() for keyword in ['dni', 'documento', 'identificador', 'numeroidentificacion']):
+                    dni_col = col
+                    break
+            
+            if dni_col:
+                dni_historico = self.normalizar_identificador(str(row[dni_col]))
+                if dni_limpio == dni_historico:
+                    # Buscar columna de provincia
+                    provincia_col = None
+                    for col in df_historico.columns:
+                        if any(keyword in col.lower() for keyword in ['provincia', 'prov', 'estado']):
+                            provincia_col = col
+                            break
+                    
+                    if provincia_col:
+                        provincia = str(row[provincia_col]).strip()
+                        if provincia and provincia.lower() not in ['nan', 'none', '']:
+                            return provincia
+        
+        return ""
+    
     def obtener_provincia_por_nombre(self, nombre: str, df_historico: pd.DataFrame = None) -> str:
         """Intenta obtener provincia por nombre del cliente"""
         if not nombre or df_historico is None or df_historico.empty:
@@ -289,10 +322,21 @@ class ClienteProcessor:
                 if not provincia:
                     provincia = self._buscar_provincia(row, df_portal.columns, df_cliente)
                 
-                # Si aún no se encuentra, usar provincia por defecto
+                # Si aún no se encuentra, intentar por prefijo CUIT o DNI
+                if not provincia and tipo_documento == "CUIT":
+                    provincia = self.obtener_provincia_por_cuit(numero_formateado)
+                    if provincia:
+                        logger.info(f"Fila {idx + 1}: Provincia determinada por prefijo CUIT: {provincia}")
+                
+                if not provincia and tipo_documento == "DNI" and df_cliente is not None:
+                    provincia = self.obtener_provincia_por_dni(numero_formateado, df_cliente)
+                    if provincia:
+                        logger.info(f"Fila {idx + 1}: Provincia determinada por DNI en datos históricos: {provincia}")
+                
+                # Si aún no se encuentra, marcar como sin provincia
                 if not provincia:
-                    provincia = "Buenos Aires"  # Provincia por defecto temporal
-                    logger.warning(f"Fila {idx + 1}: No se pudo determinar provincia, usando: {provincia}")
+                    provincia = ""  # Sin provincia
+                    logger.warning(f"Fila {idx + 1}: No se pudo determinar provincia")
                 
                 # Determinar condición IVA
                 condicion_iva = self.determinar_condicion_iva(tipo_documento, numero_formateado)
@@ -428,7 +472,7 @@ class ClienteProcessor:
 
         # Estructura exacta según la imagen del archivo de clientes
         columnas_xubio = [
-            "NUMERO",
+            "NUMERODECONTROL",
             "NOMBRE", 
             "CODIGO",
             "TIPOIDE",
@@ -496,8 +540,8 @@ class ClienteProcessor:
         
         out = pd.DataFrame()
         
-        # NUMERO - Número secuencial
-        out["NUMERO"] = list(range(1, len(clientes) + 1))
+        # NUMERODECONTROL - Número secuencial
+        out["NUMERODECONTROL"] = list(range(1, len(clientes) + 1))
         
         # NOMBRE - Nombre del cliente
         for cand in ["nombre", "razon_social", "cliente", "denominacion"]:
@@ -507,10 +551,10 @@ class ClienteProcessor:
         if "NOMBRE" not in out:
             out["NOMBRE"] = [cliente.get("nombre", "") for cliente in clientes]
 
-        # CODIGO - Tipo de documento
-        out["CODIGO"] = [cliente.get("tipo_documento", "DNI") for cliente in clientes]
+        # CODIGO - En blanco
+        out["CODIGO"] = [""] * len(clientes)
         
-        # TIPOIDE - Tipo de documento (igual que CODIGO)
+        # TIPOIDE - Tipo de documento
         out["TIPOIDE"] = [cliente.get("tipo_documento", "DNI") for cliente in clientes]
 
         # NUMEROIDENTIF - Número de documento

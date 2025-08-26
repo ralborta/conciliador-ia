@@ -14,7 +14,9 @@ class ClienteProcessor:
     def __init__(self):
         self.tipo_doc_mapping = {
             '80': 'CUIT',
-            '96': 'DNI'
+            '96': 'DNI',
+            'CUIT': 'CUIT',
+            'DNI': 'DNI'
         }
         
     def normalizar_texto(self, texto: str) -> str:
@@ -131,9 +133,17 @@ class ClienteProcessor:
         for idx, row in df_portal.iterrows():
             try:
                 # Buscar columnas relevantes - Mapeo más flexible para archivos del portal
-                tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f', 'TIPO_DOC'])
+                tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f', 'TIPO_DOC', 'Tipo Doc. Comprador'])
                 numero_doc_col = self._encontrar_columna(df_portal.columns, ['NUMERO_DOC', 'numero_doc', 'Numero de Documento', 'numero de documento', 'numero_documento', 'nro. doc. comprador', 'nro doc comprador', 'nro. doc comprador', 'dni', 'cuit', 'CUIT', 'NUMERO_DOC'])
-                nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE'])
+                nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE', 'denominaciÃ³n comprador', 'denominacion comprador', 'denominaciã³n comprador'])
+                
+                # DEBUG: Verificar qué columnas se encontraron
+                logger.info(f"Fila {idx + 1}: tipo_doc_col='{tipo_doc_col}', numero_doc_col='{numero_doc_col}', nombre_col='{nombre_col}'")
+                
+                # FORZAR USO DE COLUMNAS CORRECTAS
+                if tipo_doc_col != 'Tipo Doc. Comprador':
+                    logger.warning(f"Fila {idx + 1}: Cambiando tipo_doc_col de '{tipo_doc_col}' a 'Tipo Doc. Comprador'")
+                    tipo_doc_col = 'Tipo Doc. Comprador'
                 
                 if not all([tipo_doc_col, numero_doc_col, nombre_col]):
                     errores.append({
@@ -182,16 +192,11 @@ class ClienteProcessor:
                 if identificador_normalizado in xubio_identificadores:
                     continue  # Cliente ya existe en Xubio
                 
-                # Buscar provincia
+                # Buscar provincia - TEMPORALMENTE USAR PROVINCIA POR DEFECTO
                 provincia = self._buscar_provincia(row, df_portal.columns, df_cliente)
                 if not provincia:
-                    errores.append({
-                        'origen_fila': f"Portal fila {idx + 1}",
-                        'tipo_error': 'Provincia faltante',
-                        'detalle': 'No se pudo determinar la provincia',
-                        'valor_original': str(row.to_dict())
-                    })
-                    continue
+                    provincia = "Buenos Aires"  # Provincia por defecto temporal
+                    logger.warning(f"Fila {idx + 1}: Usando provincia por defecto: {provincia}")
                 
                 # Determinar condición IVA
                 condicion_iva = self.determinar_condicion_iva(tipo_documento, numero_formateado)

@@ -19,6 +19,45 @@ class ClienteProcessor:
             'DNI': 'DNI'
         }
         
+        # Mapeo de condiciones IVA a abreviaciones
+        self.condicion_iva_mapping = {
+            'Monotributista': 'MT',
+            'Responsable Inscripto': 'RI', 
+            'Consumidor Final': 'CF',
+            'Exento': 'EX',
+            'MT': 'MT',
+            'RI': 'RI',
+            'CF': 'CF',
+            'EX': 'EX'
+        }
+        
+        # Base de datos de prefijos CUIT por provincia
+        self.prefijos_provincia = {
+            '20': 'Buenos Aires',
+            '21': 'Buenos Aires',
+            '22': 'Chaco',
+            '23': 'Chubut',
+            '24': 'Córdoba',
+            '25': 'Corrientes',
+            '26': 'Entre Ríos',
+            '27': 'Formosa',
+            '28': 'Jujuy',
+            '29': 'La Pampa',
+            '30': 'La Rioja',
+            '31': 'Mendoza',
+            '32': 'Misiones',
+            '33': 'Neuquén',
+            '34': 'Río Negro',
+            '35': 'Salta',
+            '36': 'San Juan',
+            '37': 'San Luis',
+            '38': 'Santa Cruz',
+            '39': 'Santa Fe',
+            '40': 'Santiago del Estero',
+            '41': 'Tierra del Fuego',
+            '42': 'Tucumán'
+        }
+        
     def normalizar_texto(self, texto: str) -> str:
         """Normaliza texto eliminando caracteres especiales y normalizando espacios"""
         if pd.isna(texto) or texto is None:
@@ -80,14 +119,65 @@ class ClienteProcessor:
     def determinar_condicion_iva(self, tipo_doc: str, numero_doc: str) -> str:
         """Determina condición IVA basada en tipo y número de documento"""
         if tipo_doc == "DNI":
-            return "Consumidor Final"
+            return "CF"  # Consumidor Final
         elif tipo_doc == "CUIT":
             # Lógica simplificada - en producción usar reglas más complejas
             if numero_doc.startswith('20') or numero_doc.startswith('23') or numero_doc.startswith('24'):
-                return "Responsable Inscripto"
+                return "RI"  # Responsable Inscripto
             else:
-                return "Monotributista"
-        return "Consumidor Final"
+                return "MT"  # Monotributista
+        return "CF"  # Consumidor Final por defecto
+    
+    def convertir_condicion_iva_a_abreviacion(self, condicion_iva: str) -> str:
+        """Convierte cualquier condición IVA a su abreviación de dos letras"""
+        condicion_limpia = str(condicion_iva).strip()
+        return self.condicion_iva_mapping.get(condicion_limpia, "CF")  # CF por defecto
+    
+    def obtener_provincia_por_cuit(self, cuit: str) -> str:
+        """Obtiene provincia por prefijo de CUIT"""
+        if not cuit or len(cuit) < 2:
+            return ""
+        
+        # Limpiar CUIT y tomar primeros 2 dígitos
+        cuit_limpio = self.normalizar_identificador(cuit)
+        if len(cuit_limpio) >= 2:
+            prefijo = cuit_limpio[:2]
+            return self.prefijos_provincia.get(prefijo, "")
+        
+        return ""
+    
+    def obtener_provincia_por_nombre(self, nombre: str, df_historico: pd.DataFrame = None) -> str:
+        """Intenta obtener provincia por nombre del cliente"""
+        if not nombre or df_historico is None or df_historico.empty:
+            return ""
+        
+        nombre_normalizado = self.normalizar_texto(nombre)
+        
+        # Buscar coincidencias exactas o similares en datos históricos
+        for _, row in df_historico.iterrows():
+            # Buscar columna de nombre
+            nombre_col = None
+            for col in df_historico.columns:
+                if any(keyword in col.lower() for keyword in ['nombre', 'razon', 'cliente']):
+                    nombre_col = col
+                    break
+            
+            if nombre_col:
+                nombre_historico = self.normalizar_texto(str(row[nombre_col]))
+                if nombre_normalizado == nombre_historico:
+                    # Buscar columna de provincia
+                    provincia_col = None
+                    for col in df_historico.columns:
+                        if any(keyword in col.lower() for keyword in ['provincia', 'prov', 'estado']):
+                            provincia_col = col
+                            break
+                    
+                    if provincia_col:
+                        provincia = str(row[provincia_col]).strip()
+                        if provincia and provincia.lower() not in ['nan', 'none', '']:
+                            return provincia
+        
+        return ""
     
     def detectar_nuevos_clientes(
         self,
@@ -192,11 +282,17 @@ class ClienteProcessor:
                 if identificador_normalizado in xubio_identificadores:
                     continue  # Cliente ya existe en Xubio
                 
-                # Buscar provincia - TEMPORALMENTE USAR PROVINCIA POR DEFECTO
-                provincia = self._buscar_provincia(row, df_portal.columns, df_cliente)
+                # Buscar provincia - PRIMERO intentar por documento en Xubio
+                provincia = self._obtener_provincia_por_documento(numero_formateado, df_xubio)
+                
+                # Si no se encuentra, usar método anterior como fallback
+                if not provincia:
+                    provincia = self._buscar_provincia(row, df_portal.columns, df_cliente)
+                
+                # Si aún no se encuentra, usar provincia por defecto
                 if not provincia:
                     provincia = "Buenos Aires"  # Provincia por defecto temporal
-                    logger.warning(f"Fila {idx + 1}: Usando provincia por defecto: {provincia}")
+                    logger.warning(f"Fila {idx + 1}: No se pudo determinar provincia, usando: {provincia}")
                 
                 # Determinar condición IVA
                 condicion_iva = self.determinar_condicion_iva(tipo_documento, numero_formateado)
@@ -271,6 +367,42 @@ class ClienteProcessor:
         
         return None
     
+    def _obtener_provincia_por_documento(
+        self, 
+        numero_documento: str, 
+        df_xubio: pd.DataFrame
+    ) -> Optional[str]:
+        """Recupera provincia desde Xubio usando número de documento como clave"""
+        
+        try:
+            # Normalizar número del portal (agregar guiones para formato Xubio)
+            if len(numero_documento) == 11:  # CUIT sin guiones
+                numero_normalizado = f"{numero_documento[:2]}-{numero_documento[2:10]}-{numero_documento[10:]}"
+            else:
+                numero_normalizado = numero_documento
+            
+            # Buscar en Xubio por número de documento
+            cliente_xubio = df_xubio[df_xubio['Numero de Documento'] == numero_normalizado]
+            
+            if not cliente_xubio.empty:
+                # Buscar columna de provincia
+                provincia_col = None
+                for col in df_xubio.columns:
+                    if 'provincia' in col.lower() or 'estado' in col.lower() or 'region' in col.lower():
+                        provincia_col = col
+                        break
+                
+                if provincia_col:
+                    provincia = str(cliente_xubio.iloc[0][provincia_col]).strip()
+                    if provincia and provincia.lower() not in ['nan', 'none', '']:
+                        return provincia
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"Error al buscar provincia por documento {numero_documento}: {e}")
+            return None
+    
     def _eliminar_duplicados(self, clientes: List[Dict]) -> List[Dict]:
         """Elimina duplicados basándose en número de documento"""
         vistos = set()
@@ -294,17 +426,23 @@ class ClienteProcessor:
         
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Asegurar columnas mínimas esperadas por Xubio (ajusta a tu mapping real)
+        # Estructura exacta según la imagen del archivo de clientes
         columnas_xubio = [
-            "Nombre o Razón Social",
-            "Condición frente al IVA",
-            "Tipo de documento",
-            "Número de documento",
-            "Email",
-            "Provincia",
-            "Cuenta contable",
-            "Campo P",
-            "Campo Q"
+            "NUMERO",
+            "NOMBRE", 
+            "CODIGO",
+            "TIPOIDE",
+            "NUMEROIDENTIF",
+            "CONDICI",
+            "EMAIL",
+            "TELEFON",
+            "DIRECCI",
+            "PROVINCIA",
+            "LOCALID",
+            "CUENTA",
+            "LISTADE",
+            "OBSER",
+            "CIONES"
         ]
         
         # Crea DF vacío con columnas si df_nuevos viene vacío
@@ -313,11 +451,12 @@ class ClienteProcessor:
         else:
             df_out = self._mapear_a_xubio(clientes, cuenta_contable_default, columnas_xubio)
 
-        # Siempre completar "Cuenta contable" si falta
-        if "Cuenta contable" in df_out.columns:
-            df_out["Cuenta contable"] = df_out["Cuenta contable"].fillna(cuenta_contable_default)
-        else:
-            df_out["Cuenta contable"] = cuenta_contable_default
+        # Asegurar que solo tengamos las columnas esperadas
+        df_out = df_out[columnas_xubio]
+        
+        # Reemplazar NaN por cadenas vacías en todas las columnas
+        for col in df_out.columns:
+            df_out[col] = df_out[col].fillna("")
 
         nombre = f"clientes_xubio_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.csv"
         ruta = Path(output_dir) / nombre
@@ -351,44 +490,69 @@ class ClienteProcessor:
         return str(ruta)
 
     def _mapear_a_xubio(self, clientes: List[Dict], cuenta_contable_default: str, columnas_xubio: list) -> pd.DataFrame:
-        """Mapea los datos de clientes al formato esperado por Xubio"""
+        """Mapea los datos de clientes al formato exacto de la imagen"""
         if not clientes:
             return pd.DataFrame(columns=columnas_xubio)
         
         out = pd.DataFrame()
         
-        # nombre
+        # NUMERO - Número secuencial
+        out["NUMERO"] = list(range(1, len(clientes) + 1))
+        
+        # NOMBRE - Nombre del cliente
         for cand in ["nombre", "razon_social", "cliente", "denominacion"]:
             if cand in clientes[0]:
-                out["Nombre o Razón Social"] = [cliente.get(cand, "") for cliente in clientes]
+                out["NOMBRE"] = [cliente.get(cand, "") for cliente in clientes]
                 break
-        if "Nombre o Razón Social" not in out:
-            out["Nombre o Razón Social"] = [cliente.get("nombre", "") for cliente in clientes]
+        if "NOMBRE" not in out:
+            out["NOMBRE"] = [cliente.get("nombre", "") for cliente in clientes]
 
-        # condicion IVA
+        # CODIGO - Tipo de documento
+        out["CODIGO"] = [cliente.get("tipo_documento", "DNI") for cliente in clientes]
+        
+        # TIPOIDE - Tipo de documento (igual que CODIGO)
+        out["TIPOIDE"] = [cliente.get("tipo_documento", "DNI") for cliente in clientes]
+
+        # NUMEROIDENTIF - Número de documento
+        out["NUMEROIDENTIF"] = [cliente.get("numero_documento", "") for cliente in clientes]
+
+        # CONDICI - Condición IVA (abreviación de 2 letras)
         if "condicion_iva" in clientes[0]:
-            out["Condición frente al IVA"] = [cliente.get("condicion_iva", "Consumidor Final") for cliente in clientes]
+            out["CONDICI"] = [cliente.get("condicion_iva", "CF") for cliente in clientes]
         else:
-            out["Condición frente al IVA"] = ["Consumidor Final"] * len(clientes)
+            out["CONDICI"] = ["CF"] * len(clientes)
 
-        # tipo/número doc
-        # asumí que ya normalizaste (80/96 → CUIT/DNI) en detectar_nuevos_clientes
-        out["Tipo de documento"] = [cliente.get("tipo_documento", "DNI") for cliente in clientes]
-        out["Número de documento"] = [cliente.get("numero_documento", "") for cliente in clientes]
+        # EMAIL - En blanco
+        out["EMAIL"] = [""] * len(clientes)
 
-        # email
-        out["Email"] = [cliente.get("email", "") for cliente in clientes]
+        # TELEFON - En blanco
+        out["TELEFON"] = [""] * len(clientes)
 
-        # provincia
-        out["Provincia"] = [cliente.get("provincia", "") for cliente in clientes]
+        # DIRECCI - En blanco
+        out["DIRECCI"] = [""] * len(clientes)
 
-        # cuenta
-        out["Cuenta contable"] = [cuenta_contable_default] * len(clientes)
+        # PROVINCIA - Provincia del cliente
+        out["PROVINCIA"] = [cliente.get("provincia", "") for cliente in clientes]
+
+        # LOCALID - En blanco
+        out["LOCALID"] = [""] * len(clientes)
+
+        # CUENTA - Cuenta contable
+        out["CUENTA"] = [cuenta_contable_default] * len(clientes)
+
+        # LISTADE - En blanco
+        out["LISTADE"] = [""] * len(clientes)
+
+        # OBSER - En blanco
+        out["OBSER"] = [""] * len(clientes)
+
+        # CIONES - En blanco
+        out["CIONES"] = [""] * len(clientes)
 
         # Garantizar columnas y orden
         for col in columnas_xubio:
             if col not in out.columns:
-                out[col] = ""
+                out[col] = [""] * len(clientes)
         
         return out[columnas_xubio]
 

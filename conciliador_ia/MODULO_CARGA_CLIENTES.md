@@ -88,13 +88,22 @@ Información adicional con:
 
 ## Archivo de Salida
 
-### Formato CSV con columnas:
-1. `nombre` - Nombre del cliente
-2. `tipo_documento` - "CUIT" o "DNI"
-3. `numero_documento` - DNI (8 dígitos) o CUIT (con guiones)
-4. `condicion_iva` - "Consumidor Final", "Responsable Inscripto", "Monotributista"
-5. `provincia` - Provincia del cliente
-6. `cuenta_contable` - Cuenta contable por defecto
+### Formato CSV con columnas (estructura exacta de Xubio):
+1. `NUMERO` - Número secuencial
+2. `NOMBRE` - Nombre del cliente
+3. `CODIGO` - Tipo de documento (CUIT/DNI)
+4. `TIPOIDE` - Tipo de documento (CUIT/DNI)
+5. `NUMEROIDENTIF` - Número de documento
+6. `CONDICI` - Condición IVA (MT, RI, CF, EX)
+7. `EMAIL` - Email (en blanco)
+8. `TELEFON` - Teléfono (en blanco)
+9. `DIRECCI` - Dirección (en blanco)
+10. `PROVINCIA` - Provincia del cliente
+11. `LOCALID` - Localidad (en blanco)
+12. `CUENTA` - Cuenta contable por defecto
+13. `LISTADE` - Lista de precios (en blanco)
+14. `OBSER` - Observaciones (en blanco)
+15. `CIONES` - Continuación de observaciones (en blanco)
 
 ## Reglas de Negocio
 
@@ -113,8 +122,10 @@ Información adicional con:
 - Si sigue faltando, excluye del output y reporta error
 
 ### 4. Condición IVA
-- **DNI**: "Consumidor Final"
+- **DNI**: "CF" (Consumidor Final)
 - **CUIT**: Determina por prefijo del número
+  - Prefijos 20, 23, 24: "RI" (Responsable Inscripto)
+  - Otros prefijos: "MT" (Monotributista)
 
 ## Manejo de Errores
 

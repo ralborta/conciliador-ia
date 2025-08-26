@@ -35,5 +35,8 @@ RUN mkdir -p /app/conciliador_ia/data/uploads
 # Expose port (Railway will map $PORT at runtime)
 EXPOSE 8000
 
+# Set default port environment variable
+ENV PORT=8000
+
 # Run the application
 CMD ["/app/start.sh"] 

@@ -98,27 +98,8 @@ async def test():
 
 @app.get("/health")
 async def health_check():
-    """Endpoint de verificación de salud"""
-    try:
-        # Verificar dependencias básicas
-        health_status = {
-            "status": "healthy",
-            "service": "Conciliador IA",
-            "version": "1.0.0",
-            "dependencies": {
-                "openai": bool(os.getenv('OPENAI_API_KEY')),
-                "upload_dir": os.path.exists("data/uploads")
-            }
-        }
-        
-        return health_status
-        
-    except Exception as e:
-        logger.error(f"Error en health check: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Service unhealthy"
-        )
+    """Endpoint de verificación de salud - Simplificado para Railway"""
+    return {"status": "ok", "message": "Service is running"}
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

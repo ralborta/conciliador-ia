@@ -102,15 +102,11 @@ async def test():
     """Endpoint de prueba"""
     return {"status": "ok", "message": "Backend funcionando correctamente"}
 
-@app.get("/health")
-async def health_check():
-    """Endpoint de verificación de salud - Simplificado para Railway"""
-    return {"status": "ok", "message": "Service is running"}
-
-@app.get("/ping")
-async def ping():
-    """Endpoint de ping simple para Railway"""
-    return {"pong": "ok"}
+@app.get("/health", include_in_schema=False)
+@app.head("/health", include_in_schema=False)
+def health():
+    # Nada de DB ni servicios externos acá. Solo "vive".
+    return {"status": "ok"}
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

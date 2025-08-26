@@ -101,6 +101,11 @@ async def health_check():
     """Endpoint de verificación de salud - Simplificado para Railway"""
     return {"status": "ok", "message": "Service is running"}
 
+@app.get("/ping")
+async def ping():
+    """Endpoint de ping simple para Railway"""
+    return {"pong": "ok"}
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Manejador global de excepciones"""

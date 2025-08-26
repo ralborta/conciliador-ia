@@ -58,6 +58,76 @@ class ClienteProcessor:
             '42': 'Tucumán'
         }
         
+        # Base de datos de códigos postales por rangos de DNI
+        self.cp_rangos_dni = {
+            # Buenos Aires Capital
+            '10': 'Buenos Aires Capital',
+            '11': 'Buenos Aires Capital',
+            '12': 'Buenos Aires Capital',
+            '13': 'Buenos Aires Capital',
+            '14': 'Buenos Aires Capital',
+            '15': 'Buenos Aires Capital',
+            '16': 'Buenos Aires Capital',
+            '17': 'Buenos Aires Capital',
+            '18': 'Buenos Aires Capital',
+            '19': 'Buenos Aires Capital',
+            
+            # Buenos Aires GBA
+            '20': 'Buenos Aires GBA',
+            '21': 'Buenos Aires GBA',
+            '22': 'Buenos Aires GBA',
+            '23': 'Buenos Aires GBA',
+            '24': 'Buenos Aires GBA',
+            '25': 'Buenos Aires GBA',
+            '26': 'Buenos Aires GBA',
+            '27': 'Buenos Aires GBA',
+            '28': 'Buenos Aires GBA',
+            '29': 'Buenos Aires GBA',
+            
+            # Córdoba
+            '50': 'Córdoba Capital',
+            '51': 'Córdoba Capital',
+            '52': 'Córdoba Capital',
+            '53': 'Córdoba Capital',
+            '54': 'Córdoba Capital',
+            '55': 'Córdoba Capital',
+            '56': 'Córdoba Capital',
+            '57': 'Córdoba Capital',
+            '58': 'Córdoba Capital',
+            '59': 'Córdoba Capital',
+            
+            # Santa Fe
+            '30': 'Santa Fe Capital',
+            '31': 'Santa Fe Capital',
+            '32': 'Santa Fe Capital',
+            '33': 'Santa Fe Capital',
+            '34': 'Santa Fe Capital',
+            '35': 'Santa Fe Capital',
+            '36': 'Santa Fe Capital',
+            '37': 'Santa Fe Capital',
+            '38': 'Santa Fe Capital',
+            '39': 'Santa Fe Capital',
+            
+            # Mendoza
+            '55': 'Mendoza Capital',
+            '56': 'Mendoza Capital',
+            '57': 'Mendoza Capital',
+            '58': 'Mendoza Capital',
+            '59': 'Mendoza Capital',
+            
+            # Tucumán
+            '40': 'Tucumán Capital',
+            '41': 'Tucumán Capital',
+            '42': 'Tucumán Capital',
+            '43': 'Tucumán Capital',
+            '44': 'Tucumán Capital',
+            '45': 'Tucumán Capital',
+            '46': 'Tucumán Capital',
+            '47': 'Tucumán Capital',
+            '48': 'Tucumán Capital',
+            '49': 'Tucumán Capital'
+        }
+    
     def normalizar_texto(self, texto: str) -> str:
         """Normaliza texto eliminando caracteres especiales y normalizando espacios"""
         if pd.isna(texto) or texto is None:
@@ -143,6 +213,19 @@ class ClienteProcessor:
         if len(cuit_limpio) >= 2:
             prefijo = cuit_limpio[:2]
             return self.prefijos_provincia.get(prefijo, "")
+        
+        return ""
+    
+    def obtener_localidad_por_dni(self, dni: str) -> str:
+        """Obtiene localidad por primeros dígitos del DNI"""
+        if not dni or len(dni) < 2:
+            return ""
+        
+        # Limpiar DNI y tomar primeros 2 dígitos
+        dni_limpio = self.normalizar_identificador(dni)
+        if len(dni_limpio) >= 2:
+            prefijo = dni_limpio[:2]
+            return self.cp_rangos_dni.get(prefijo, "")
         
         return ""
     
@@ -341,6 +424,13 @@ class ClienteProcessor:
                 # Determinar condición IVA
                 condicion_iva = self.determinar_condicion_iva(tipo_documento, numero_formateado)
                 
+                # Determinar localidad
+                localidad = ""
+                if tipo_documento == "DNI":
+                    localidad = self.obtener_localidad_por_dni(numero_formateado)
+                    if localidad:
+                        logger.info(f"Fila {idx + 1}: Localidad determinada por DNI: {localidad}")
+                
                 # Crear cliente nuevo
                 nuevo_cliente = {
                     'nombre': nombre,
@@ -348,6 +438,7 @@ class ClienteProcessor:
                     'numero_documento': numero_formateado,
                     'condicion_iva': condicion_iva,
                     'provincia': provincia,
+                    'localidad': localidad,
                     'cuenta_contable': 'Deudores por ventas'
                 }
                 
@@ -501,6 +592,10 @@ class ClienteProcessor:
         # Reemplazar NaN por cadenas vacías en todas las columnas
         for col in df_out.columns:
             df_out[col] = df_out[col].fillna("")
+        
+        # Asegurar que CODIGO esté en blanco (no NaN)
+        if "CODIGO" in df_out.columns:
+            df_out["CODIGO"] = [""] * len(df_out)
 
         nombre = f"clientes_xubio_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.csv"
         ruta = Path(output_dir) / nombre
@@ -578,8 +673,8 @@ class ClienteProcessor:
         # PROVINCIA - Provincia del cliente
         out["PROVINCIA"] = [cliente.get("provincia", "") for cliente in clientes]
 
-        # LOCALID - En blanco
-        out["LOCALID"] = [""] * len(clientes)
+        # LOCALID - Localidad del cliente (por DNI) o en blanco
+        out["LOCALID"] = [cliente.get("localidad", "") for cliente in clientes]
 
         # CUENTA - Cuenta contable
         out["CUENTA"] = [cuenta_contable_default] * len(clientes)

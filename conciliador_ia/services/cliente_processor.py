@@ -411,10 +411,18 @@ class ClienteProcessor:
                     if provincia:
                         logger.info(f"Fila {idx + 1}: Provincia determinada por prefijo CUIT: {provincia}")
                 
-                if not provincia and tipo_documento == "DNI" and df_cliente is not None:
-                    provincia = self.obtener_provincia_por_dni(numero_formateado, df_cliente)
-                    if provincia:
-                        logger.info(f"Fila {idx + 1}: Provincia determinada por DNI en datos históricos: {provincia}")
+                if not provincia and tipo_documento == "DNI":
+                    # Primero intentar por datos históricos
+                    if df_cliente is not None:
+                        provincia = self.obtener_provincia_por_dni(numero_formateado, df_cliente)
+                        if provincia:
+                            logger.info(f"Fila {idx + 1}: Provincia determinada por DNI en datos históricos: {provincia}")
+                    
+                    # Si no se encontró, intentar por rangos de DNI (códigos postales)
+                    if not provincia:
+                        provincia = self.obtener_localidad_por_dni(numero_formateado)
+                        if provincia:
+                            logger.info(f"Fila {idx + 1}: Provincia determinada por rango DNI: {provincia}")
                 
                 # Si aún no se encuentra, marcar como sin provincia
                 if not provincia:

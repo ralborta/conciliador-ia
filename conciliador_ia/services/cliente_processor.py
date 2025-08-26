@@ -601,16 +601,47 @@ class ClienteProcessor:
         for col in df_out.columns:
             df_out[col] = df_out[col].fillna("")
         
-        # Asegurar que CODIGO esté en blanco (no NaN)
-        if "CODIGO" in df_out.columns:
-            df_out["CODIGO"] = [""] * len(df_out)
+        # Asegurar que todos los campos vacíos sean cadenas vacías (no NaN)
+        for col in df_out.columns:
+            if col not in ["NUMERODECONTROL", "NOMBRE", "TIPOIDE", "NUMEROIDENTIF", "CONDICI", "PROVINCIA", "CUENTA"]:
+                df_out[col] = [""] * len(df_out)
 
-        nombre = f"clientes_xubio_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.csv"
+        nombre = f"clientes_xubio_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.xlsx"
         ruta = Path(output_dir) / nombre
 
-        # UTF-8 con BOM p/Excel
-        df_out.to_csv(ruta, index=False, encoding="utf-8-sig")
-        logger.info(f"Archivo de importación generado: {ruta}")
+        # Generar archivo Excel usando openpyxl directamente para controlar el formato
+        from openpyxl import Workbook
+        from openpyxl.styles import Font
+        
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Clientes Xubio"
+        
+        # Escribir headers
+        for col_idx, col_name in enumerate(columnas_xubio, 1):
+            cell = ws.cell(row=1, column=col_idx, value=col_name)
+            cell.font = Font(bold=True)
+        
+        # Escribir datos
+        for row_idx, cliente in enumerate(clientes, 2):
+            ws.cell(row=row_idx, column=1, value=row_idx - 1)  # NUMERODECONTROL
+            ws.cell(row=row_idx, column=2, value=cliente.get("nombre", ""))
+            ws.cell(row=row_idx, column=3, value=" ")  # CODIGO con espacio
+            ws.cell(row=row_idx, column=4, value=cliente.get("tipo_documento", "DNI"))
+            ws.cell(row=row_idx, column=5, value=cliente.get("numero_documento", ""))
+            ws.cell(row=row_idx, column=6, value=cliente.get("condicion_iva", "CF"))
+            ws.cell(row=row_idx, column=7, value=" ")  # EMAIL con espacio
+            ws.cell(row=row_idx, column=8, value=" ")  # TELEFON con espacio
+            ws.cell(row=row_idx, column=9, value=" ")  # DIRECCI con espacio
+            ws.cell(row=row_idx, column=10, value=cliente.get("provincia", ""))
+            ws.cell(row=row_idx, column=11, value=cliente.get("localidad", " ") if cliente.get("localidad") else " ")
+            ws.cell(row=row_idx, column=12, value=cuenta_contable_default)
+            ws.cell(row=row_idx, column=13, value=" ")  # LISTADE con espacio
+            ws.cell(row=row_idx, column=14, value=" ")  # OBSER con espacio
+            ws.cell(row=row_idx, column=15, value=" ")  # CIONES con espacio
+        
+        wb.save(ruta)
+        logger.info(f"Archivo Excel de importación generado: {ruta}")
         return str(ruta)
     
     def generar_reporte_errores(
@@ -641,7 +672,12 @@ class ClienteProcessor:
         if not clientes:
             return pd.DataFrame(columns=columnas_xubio)
         
-        out = pd.DataFrame()
+        # Crear DataFrame con todas las columnas inicializadas con cadenas vacías
+        out = pd.DataFrame(index=range(len(clientes)))
+        
+        # Inicializar todas las columnas con None (pandas lo maneja mejor)
+        for col in columnas_xubio:
+            out[col] = [None] * len(clientes)
         
         # NUMERODECONTROL - Número secuencial
         out["NUMERODECONTROL"] = list(range(1, len(clientes) + 1))
@@ -654,9 +690,6 @@ class ClienteProcessor:
         if "NOMBRE" not in out:
             out["NOMBRE"] = [cliente.get("nombre", "") for cliente in clientes]
 
-        # CODIGO - En blanco
-        out["CODIGO"] = [""] * len(clientes)
-        
         # TIPOIDE - Tipo de documento
         out["TIPOIDE"] = [cliente.get("tipo_documento", "DNI") for cliente in clientes]
 
@@ -669,15 +702,6 @@ class ClienteProcessor:
         else:
             out["CONDICI"] = ["CF"] * len(clientes)
 
-        # EMAIL - En blanco
-        out["EMAIL"] = [""] * len(clientes)
-
-        # TELEFON - En blanco
-        out["TELEFON"] = [""] * len(clientes)
-
-        # DIRECCI - En blanco
-        out["DIRECCI"] = [""] * len(clientes)
-
         # PROVINCIA - Provincia del cliente
         out["PROVINCIA"] = [cliente.get("provincia", "") for cliente in clientes]
 
@@ -686,20 +710,6 @@ class ClienteProcessor:
 
         # CUENTA - Cuenta contable
         out["CUENTA"] = [cuenta_contable_default] * len(clientes)
-
-        # LISTADE - En blanco
-        out["LISTADE"] = [""] * len(clientes)
-
-        # OBSER - En blanco
-        out["OBSER"] = [""] * len(clientes)
-
-        # CIONES - En blanco
-        out["CIONES"] = [""] * len(clientes)
-
-        # Garantizar columnas y orden
-        for col in columnas_xubio:
-            if col not in out.columns:
-                out[col] = [""] * len(clientes)
         
         return out[columnas_xubio]
 

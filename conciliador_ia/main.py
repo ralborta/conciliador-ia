@@ -65,15 +65,21 @@ async def startup_event():
     """Evento de inicio de la aplicación"""
     logger.info("Iniciando Conciliador IA...")
     
-    # Verificar configuración
-    openai_key = os.getenv('OPENAI_API_KEY')
-    if not openai_key:
-        logger.warning("OpenAI API key no configurada. La funcionalidad de IA no estará disponible.")
-    
-    # Crear directorios necesarios
-    os.makedirs("data/uploads", exist_ok=True)
-    
-    logger.info("Conciliador IA iniciado correctamente")
+    try:
+        # Verificar configuración
+        openai_key = os.getenv('OPENAI_API_KEY')
+        if not openai_key:
+            logger.warning("OpenAI API key no configurada. La funcionalidad de IA no estará disponible.")
+        
+        # Crear directorios necesarios
+        os.makedirs("data/uploads", exist_ok=True)
+        
+        logger.info("Conciliador IA iniciado correctamente")
+        logger.info(f"Servidor escuchando en puerto {os.getenv('PORT', 8000)}")
+        
+    except Exception as e:
+        logger.error(f"Error durante el startup: {e}")
+        raise
 
 @app.on_event("shutdown")
 async def shutdown_event():

@@ -192,11 +192,11 @@ class ClienteProcessor:
                 if identificador_normalizado in xubio_identificadores:
                     continue  # Cliente ya existe en Xubio
                 
-                # Buscar provincia - TEMPORALMENTE USAR PROVINCIA POR DEFECTO
-                provincia = self._buscar_provincia(row, df_portal.columns, df_cliente)
+                # Buscar provincia - SOLUCIÓN AUTOMÁTICA POR PERCEPCIONES
+                provincia = self._determinar_provincia_por_percepciones(row, df_portal.columns)
                 if not provincia:
-                    provincia = "Buenos Aires"  # Provincia por defecto temporal
-                    logger.warning(f"Fila {idx + 1}: Usando provincia por defecto: {provincia}")
+                    provincia = "Buenos Aires"  # Provincia por defecto si no se puede determinar
+                    logger.warning(f"Fila {idx + 1}: No se pudo determinar provincia, usando: {provincia}")
                 
                 # Determinar condición IVA
                 condicion_iva = self.determinar_condicion_iva(tipo_documento, numero_formateado)
@@ -236,6 +236,85 @@ class ClienteProcessor:
             for keyword in keywords_ordenados:
                 if keyword in col_lower:
                     return col
+        return None
+    
+    def _convertir_numero_argentino(self, valor: str) -> float:
+        """Convierte números con formato argentino (coma decimal) a float"""
+        if pd.isna(valor) or valor == '':
+            return 0.0
+        
+        # Convertir a string y limpiar
+        valor_str = str(valor).strip()
+        
+        # Si ya es un número, retornarlo
+        try:
+            return float(valor_str)
+        except ValueError:
+            pass
+        
+        # Convertir formato argentino (coma decimal) a formato estándar (punto decimal)
+        # Ejemplo: "1.234,56" -> 1234.56
+        valor_str = valor_str.replace('.', '').replace(',', '.')
+        
+        try:
+            return float(valor_str)
+        except ValueError:
+            logger.warning(f"No se pudo convertir valor: {valor}")
+            return 0.0
+    
+    def _determinar_provincia_por_percepciones(
+        self, 
+        row: pd.Series, 
+        columnas_portal: List[str]
+    ) -> Optional[str]:
+        """Determina provincia automáticamente por percepciones de ingresos brutos"""
+        
+        # Buscar columna de percepciones de ingresos brutos
+        percepciones_col = self._encontrar_columna(columnas_portal, [
+            'percepciones de ingresos brutos', 
+            'percepciones ingresos brutos',
+            'percepciones ib',
+            'ingresos brutos',
+            'percepciones'
+        ])
+        
+        if percepciones_col and pd.notna(row[percepciones_col]):
+            importe_percepcion = self._convertir_numero_argentino(row[percepciones_col])
+            
+            # Mapeo de percepciones por provincia (porcentajes típicos)
+            if importe_percepcion > 0:
+                # Determinar provincia por el importe de percepción
+                # Buenos Aires: 3% - 6%
+                # CABA: 1.5% - 3%
+                # Córdoba: 1.5% - 3%
+                # Santa Fe: 1.5% - 3%
+                # Otras: 1% - 2%
+                
+                # Calcular porcentaje aproximado (necesitamos el neto gravado)
+                neto_col = self._encontrar_columna(columnas_portal, ['neto gravado', 'total neto gravado'])
+                if neto_col and pd.notna(row[neto_col]):
+                    neto_gravado = self._convertir_numero_argentino(row[neto_col])
+                    if neto_gravado > 0:
+                        porcentaje = (importe_percepcion / neto_gravado) * 100
+                        
+                        # Mapeo por porcentaje
+                        if porcentaje >= 3.0:
+                            return "Buenos Aires"  # 3% - 6%
+                        elif porcentaje >= 1.5:
+                            return "Ciudad Autónoma de Buenos Aires"  # 1.5% - 3%
+                        elif porcentaje >= 1.0:
+                            return "Córdoba"  # 1% - 1.5%
+                        else:
+                            return "Otras Provincias"  # < 1%
+                
+                # Si no podemos calcular porcentaje, usar lógica alternativa
+                if importe_percepcion > 1000:  # Percepciones altas
+                    return "Buenos Aires"
+                elif importe_percepcion > 500:  # Percepciones medias
+                    return "Ciudad Autónoma de Buenos Aires"
+                else:  # Percepciones bajas
+                    return "Otras Provincias"
+        
         return None
     
     def _buscar_provincia(
@@ -292,17 +371,29 @@ class ClienteProcessor:
     ) -> str:
         """Genera archivo CSV para importación en Xubio"""
         
+        # Crear directorio de salida si no existe
+        output_dir = Path('output')
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Asegurar columnas mínimas esperadas por Xubio (ajusta a tu mapping real)
+        # Columnas EXACTAS del archivo de Xubio (17 campos)
         columnas_xubio = [
-            "Nombre o Razón Social",
-            "Condición frente al IVA",
-            "Tipo de documento",
-            "Número de documento",
-            "Email",
-            "Provincia",
-            "Cuenta contable"
+            "NUMERO",           # 1. Número secuencial
+            "NOMBRE",           # 2. Nombre/Razón social
+            "CODIGO",           # 3. Código (en blanco)
+            "TIPOIDE",          # 4. Tipo de identificación
+            "NUMEROIDENTIFICACION", # 5. Número de documento
+            "CONDIC",           # 6. Condición IVA
+            "EMAIL",            # 7. Email (en blanco)
+            "TELEFON",          # 8. Teléfono (en blanco)
+            "DIRECCI",          # 9. Dirección (en blanco)
+            "PROVINCIA",        # 10. Provincia
+            "LOCALID",          # 11. Localidad (en blanco)
+            "CUENTA",           # 12. Cuenta contable
+            "LISTADE",          # 13. Lista de precios (en blanco)
+            "OBSER",            # 14. Observaciones (en blanco)
+            "CIONES",           # 15. Continuación observaciones (en blanco)
+            "P",                # 16. Campo adicional (en blanco)
+            "Q"                 # 17. Campo adicional (en blanco)
         ]
         
         # Crea DF vacío con columnas si df_nuevos viene vacío
@@ -349,44 +440,75 @@ class ClienteProcessor:
         return str(ruta)
 
     def _mapear_a_xubio(self, clientes: List[Dict], cuenta_contable_default: str, columnas_xubio: list) -> pd.DataFrame:
-        """Mapea los datos de clientes al formato esperado por Xubio"""
+        """Mapea los datos de clientes al formato EXACTO esperado por Xubio"""
         if not clientes:
             return pd.DataFrame(columns=columnas_xubio)
         
         out = pd.DataFrame()
         
-        # nombre
+        # NUMERO - Número secuencial
+        out["NUMERO"] = list(range(1, len(clientes) + 1))
+        
+        # NOMBRE - Nombre/Razón social
         for cand in ["nombre", "razon_social", "cliente", "denominacion"]:
             if cand in clientes[0]:
-                out["Nombre o Razón Social"] = [cliente.get(cand, "") for cliente in clientes]
+                out["NOMBRE"] = [cliente.get(cand, "") for cliente in clientes]
                 break
-        if "Nombre o Razón Social" not in out:
-            out["Nombre o Razón Social"] = [cliente.get("nombre", "") for cliente in clientes]
-
-        # condicion IVA
+        if "NOMBRE" not in out:
+            out["NOMBRE"] = [cliente.get("nombre", "") for cliente in clientes]
+        
+        # CODIGO - En blanco
+        out["CODIGO"] = [""] * len(clientes)
+        
+        # TIPOIDE - Tipo de identificación (CUIT/DNI)
+        out["TIPOIDE"] = [cliente.get("tipo_documento", "DNI") for cliente in clientes]
+        
+        # NUMEROIDENTIFICACION - Número de documento
+        out["NUMEROIDENTIFICACION"] = [cliente.get("numero_documento", "") for cliente in clientes]
+        
+        # CONDIC - Condición IVA (RI/MT)
         if "condicion_iva" in clientes[0]:
-            out["Condición frente al IVA"] = [cliente.get("condicion_iva", "Consumidor Final") for cliente in clientes]
+            out["CONDIC"] = [cliente.get("condicion_iva", "RI") for cliente in clientes]
         else:
-            out["Condición frente al IVA"] = ["Consumidor Final"] * len(clientes)
-
-        # tipo/número doc
-        # asumí que ya normalizaste (80/96 → CUIT/DNI) en detectar_nuevos_clientes
-        out["Tipo de documento"] = [cliente.get("tipo_documento", "DNI") for cliente in clientes]
-        out["Número de documento"] = [cliente.get("numero_documento", "") for cliente in clientes]
-
-        # email
-        out["Email"] = [cliente.get("email", "") for cliente in clientes]
-
-        # provincia
-        out["Provincia"] = [cliente.get("provincia", "") for cliente in clientes]
-
-        # cuenta
-        out["Cuenta contable"] = [cuenta_contable_default] * len(clientes)
-
-        # Garantizar columnas y orden
+            out["CONDIC"] = ["RI"] * len(clientes)
+        
+        # EMAIL - En blanco
+        out["EMAIL"] = [""] * len(clientes)
+        
+        # TELEFON - En blanco
+        out["TELEFON"] = [""] * len(clientes)
+        
+        # DIRECCI - En blanco
+        out["DIRECCI"] = [""] * len(clientes)
+        
+        # PROVINCIA - Provincia
+        out["PROVINCIA"] = [cliente.get("provincia", "") for cliente in clientes]
+        
+        # LOCALID - En blanco
+        out["LOCALID"] = [""] * len(clientes)
+        
+        # CUENTA - Cuenta contable
+        out["CUENTA"] = [cuenta_contable_default] * len(clientes)
+        
+        # LISTADE - En blanco
+        out["LISTADE"] = [""] * len(clientes)
+        
+        # OBSER - En blanco
+        out["OBSER"] = [""] * len(clientes)
+        
+        # CIONES - En blanco
+        out["CIONES"] = [""] * len(clientes)
+        
+        # P - En blanco
+        out["P"] = [""] * len(clientes)
+        
+        # Q - En blanco
+        out["Q"] = [""] * len(clientes)
+        
+        # Garantizar columnas y orden EXACTO
         for col in columnas_xubio:
             if col not in out.columns:
-                out[col] = ""
+                out[col] = [""] * len(clientes)
         
         return out[columnas_xubio]
 

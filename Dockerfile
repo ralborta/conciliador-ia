@@ -38,5 +38,5 @@ EXPOSE 8000
 # Set default port environment variable
 ENV PORT=8000
 
-# Run the application
-CMD ["/app/start.sh"] 
+# Run the application with puerto fijo
+CMD ["uvicorn", "conciliador_ia.main:app", "--host", "0.0.0.0", "--port", "8000"] 

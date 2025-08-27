@@ -46,7 +46,7 @@ app.add_middleware(
 )
 
 # Importar routers DESPUÉS de CORS
-from routers import upload, conciliacion, compras, arca_xubio
+from routers import upload, conciliacion, compras, arca_xubio, carga_informacion
 try:
     from routers import carga_documentos  # type: ignore
 except Exception:
@@ -57,6 +57,7 @@ app.include_router(upload.router, prefix="/api/v1")
 app.include_router(conciliacion.router, prefix="/api/v1")
 app.include_router(compras.router, prefix="/api/v1")
 app.include_router(arca_xubio.router, prefix="/api/v1")
+app.include_router(carga_informacion.router, prefix="/api/v1")
 if carga_documentos:
     app.include_router(carga_documentos.router, prefix="/api/v1")
 
@@ -96,6 +97,11 @@ async def root():
         "status": "running",
         "timestamp": "2025-07-24"
     }
+
+@app.get("/health")
+async def health_check():
+    """Endpoint de health check para Railway"""
+    return {"status": "healthy", "timestamp": "2025-07-24"}
 
 @app.get("/test")
 async def test():

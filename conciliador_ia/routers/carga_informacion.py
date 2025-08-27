@@ -7,13 +7,13 @@ import os
 from . import __name__ as _router_name  # noqa
 
 try:
-    from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
+    from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR
     from ..services.carga_info.processor import process
-    from ..services.carga_info.exporter import ExportadorVentas
+    from ..services.carga_info.exporter import ExportadorVentas, SALIDA_DIR
 except ImportError:
-    from services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
+    from services.carga_info.loader import CargaArchivos, ENTRADA_DIR
     from services.carga_info.processor import process
-    from services.carga_info.exporter import ExportadorVentas
+    from services.carga_info.exporter import ExportadorVentas, SALIDA_DIR
 
 
 logger = logging.getLogger(__name__)
@@ -134,8 +134,20 @@ async def download_output(filename: str):
     try:
         safe_name = filename.replace("..", "").replace("/", "_")
         file_path = SALIDA_DIR / safe_name
+        
+        # Debug logging
+        logger.info(f"Descarga solicitada: filename={filename}, safe_name={safe_name}")
+        logger.info(f"Buscando archivo en: {file_path}")
+        logger.info(f"Directorio SALIDA_DIR existe: {SALIDA_DIR.exists()}")
+        logger.info(f"Archivo existe: {file_path.exists()}")
+        
         if not file_path.exists():
-            raise HTTPException(status_code=404, detail="Archivo no encontrado")
+            # Listar archivos disponibles para debug
+            available_files = list(SALIDA_DIR.glob("*")) if SALIDA_DIR.exists() else []
+            logger.warning(f"Archivo no encontrado. Archivos disponibles: {[f.name for f in available_files]}")
+            raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {filename}")
+        
+        logger.info(f"Archivo encontrado, enviando: {file_path}")
         return FileResponse(str(file_path), filename=safe_name)
     except HTTPException:
         raise

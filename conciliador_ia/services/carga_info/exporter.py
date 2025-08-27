@@ -5,8 +5,8 @@ import logging
 from openpyxl import load_workbook # Added for direct template writing
 
 # Definir directorios
-SALIDA_DIR = Path("data/salida")
-ENTRADA_DIR = Path("data/entrada")
+SALIDA_DIR = Path(__file__).parent.parent.parent / "data" / "salida"
+ENTRADA_DIR = Path(__file__).parent.parent.parent / "data" / "entrada"
 
 def ensure_dirs():
     """Asegura que existan los directorios necesarios"""

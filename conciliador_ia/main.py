@@ -36,7 +36,34 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CONFIGURAR CORS ANTES DE CARGAR NADA - SOLUCIÓN RÁPIDA
+# ENDPOINTS CRÍTICOS ANTES DE MIDDLEWARES
+@app.get("/health")
+async def health_check():
+    """Endpoint de health check para Railway - DEBE IR ANTES DE MIDDLEWARES"""
+    return {"status": "healthy", "timestamp": "2025-07-24"}
+
+@app.head("/health")
+async def health_check_head():
+    """Health check HEAD para Railway"""
+    return {"status": "healthy"}
+
+@app.get("/healthz")
+async def health_check_alt():
+    """Health check alternativo"""
+    return {"status": "healthy", "timestamp": "2025-07-24"}
+
+@app.get("/")
+async def root():
+    """Endpoint raíz"""
+    return {
+        "message": "Conciliador IA - Backend para conciliación automática",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "status": "running",
+        "timestamp": "2025-07-24"
+    }
+
+# CONFIGURAR CORS DESPUÉS DE ENDPOINTS CRÍTICOS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # LIBERAR CORS COMPLETAMENTE
@@ -94,22 +121,6 @@ async def startup_event():
 async def shutdown_event():
     """Evento de cierre de la aplicación"""
     logger.info("Cerrando Conciliador IA...")
-
-@app.get("/")
-async def root():
-    """Endpoint raíz"""
-    return {
-        "message": "Conciliador IA - Backend para conciliación automática",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "status": "running",
-        "timestamp": "2025-07-24"
-    }
-
-@app.get("/health")
-async def health_check():
-    """Endpoint de health check para Railway"""
-    return {"status": "healthy", "timestamp": "2025-07-24"}
 
 @app.get("/test")
 async def test():

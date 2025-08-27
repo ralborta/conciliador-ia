@@ -36,20 +36,23 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# ENDPOINTS CRÍTICOS ANTES DE MIDDLEWARES
+# ENDPOINTS CRÍTICOS ANTES DE MIDDLEWARES - SÚPER SIMPLES
 @app.get("/health")
 async def health_check():
-    """Endpoint de health check para Railway - DEBE IR ANTES DE MIDDLEWARES"""
+    """Endpoint de health check para Railway - SÚPER SIMPLE, SIN DEPENDENCIAS"""
+    print("HEALTH CHECK PING - ", __name__)  # Log directo a stdout
     return {"status": "healthy", "timestamp": "2025-07-24"}
 
 @app.head("/health")
 async def health_check_head():
     """Health check HEAD para Railway"""
+    print("HEALTH HEAD PING - ", __name__)
     return {"status": "healthy"}
 
 @app.get("/healthz")
 async def health_check_alt():
     """Health check alternativo"""
+    print("HEALTHZ PING - ", __name__)
     return {"status": "healthy", "timestamp": "2025-07-24"}
 
 @app.get("/")
@@ -126,6 +129,19 @@ async def shutdown_event():
 async def test():
     """Endpoint de prueba"""
     return {"status": "ok", "message": "Backend funcionando correctamente"}
+
+@app.get("/debug")
+async def debug_info():
+    """Endpoint de debug para verificar configuración"""
+    import os
+    return {
+        "status": "debug",
+        "port": os.environ.get("PORT", "NO_DEFINIDO"),
+        "host": os.environ.get("HOST", "NO_DEFINIDO"),
+        "cwd": os.getcwd(),
+        "python_path": sys.path,
+        "app_name": __name__
+    }
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

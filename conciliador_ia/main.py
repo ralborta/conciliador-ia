@@ -64,7 +64,10 @@ if carga_documentos:
 @app.on_event("startup")
 async def startup_event():
     """Evento de inicio de la aplicación"""
-    logger.info("Iniciando Conciliador IA...")
+    logger.info("=== INICIANDO CONCILIADOR IA ===")
+    logger.info(f"Directorio de trabajo: {os.getcwd()}")
+    logger.info(f"Variables de entorno PORT: {os.environ.get('PORT', 'NO_DEFINIDO')}")
+    logger.info(f"Variables de entorno HOST: {os.environ.get('HOST', 'NO_DEFINIDO')}")
     
     try:
         # Verificar configuración
@@ -74,12 +77,17 @@ async def startup_event():
         
         # Crear directorios necesarios
         os.makedirs("data/uploads", exist_ok=True)
+        os.makedirs("data/salida", exist_ok=True)
+        os.makedirs("data/entrada", exist_ok=True)
         
-        logger.info("Conciliador IA iniciado correctamente")
-        logger.info(f"Servidor escuchando en puerto {os.getenv('PORT', 8000)}")
+        logger.info("✅ Directorios creados correctamente")
+        logger.info("✅ Conciliador IA iniciado correctamente")
+        logger.info(f"🚀 Servidor escuchando en puerto {os.getenv('PORT', 8000)}")
         
     except Exception as e:
-        logger.error(f"Error durante el startup: {e}")
+        logger.error(f"❌ Error durante el startup: {e}")
+        import traceback
+        logger.error(f"Traceback completo: {traceback.format_exc()}")
         raise
 
 @app.on_event("shutdown")
@@ -107,12 +115,6 @@ async def health_check():
 async def test():
     """Endpoint de prueba"""
     return {"status": "ok", "message": "Backend funcionando correctamente"}
-
-@app.get("/health", include_in_schema=False)
-@app.head("/health", include_in_schema=False)
-def health():
-    # Nada de DB ni servicios externos acá. Solo "vive".
-    return {"status": "ok"}
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

@@ -103,13 +103,13 @@ class TransformadorArchivos:
         Detecta si es un archivo GH IIBB TANGO
         """
         # Verificar columnas características
-        columnas_requeridas = ["descipción", "razón social", "provincia", "localidad"]
+        columnas_requeridas = ["descripción", "razón social", "provincia", "localidad"]
         columnas_encontradas = [col for col in columnas_requeridas if any(col in col_name for col_name in columnas)]
         
         if len(columnas_encontradas) >= 3:  # Al menos 3 de las 4 columnas
             # Verificar contenido de la columna descripción
-            if "descipción" in [col.lower() for col in df.columns]:
-                col_descripcion = [col for col in df.columns if "descipción" in col.lower()][0]
+            if "descripción" in [col.lower() for col in df.columns]:
+                col_descripcion = [col for col in df.columns if "descripción" in col.lower()][0]
                 # Verificar si contiene patrones de facturas
                 muestra = df[col_descripcion].head(5).astype(str)
                 patrones_factura = ["factura", "crédito", "venta", "0000"]
@@ -188,7 +188,7 @@ class TransformadorArchivos:
         df_copy = df.copy()
         
         # Encontrar columna descripción
-        col_descripcion = [col for col in df.columns if "descipción" in col.lower()][0]
+        col_descripcion = [col for col in df.columns if "descripción" in col.lower()][0]
         
         # Función para extraer número de factura
         def extraer_numero_factura(descripcion: str) -> str:

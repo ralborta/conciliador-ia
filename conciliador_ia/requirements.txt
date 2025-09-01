@@ -1,8 +1,6 @@
 fastapi==0.103.1
 uvicorn==0.23.2
-ese NOOOOES
-
-OPailwauy acarajo!!!python-multipart==0.0.6
+python-multipart==0.0.6
 pandas==2.1.3
 pdfplumber==0.9.0
 openai==1.3.0

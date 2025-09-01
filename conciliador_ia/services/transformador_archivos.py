@@ -42,17 +42,19 @@ class TransformadorArchivos:
             # Paso 2: Transformar si es necesario
             if tipo_archivo == "GH_IIBB_TANGO":
                 if df_afip is None:
-                    raise ValueError("Archivo AFIP requerido para transformar archivo GH IIBB TANGO")
-                
-                df_portal_transformado, log_transformacion, stats_transformacion = self.transformar_gh_iibb(
-                    df_portal, df_afip
-                )
-                log_proceso.extend(log_transformacion)
-                estadisticas.update(stats_transformacion)
-                
-                # Usar el archivo transformado
-                df_portal = df_portal_transformado
-                log_proceso.append(f"✅ Transformación completada: {len(df_portal)} registros procesados")
+                    log_proceso.append("⚠️ Archivo AFIP no proporcionado - No se puede transformar")
+                    log_proceso.append("📝 El archivo se procesará en formato original")
+                    estadisticas["error_transformacion"] = "Archivo AFIP requerido"
+                else:
+                    df_portal_transformado, log_transformacion, stats_transformacion = self.transformar_gh_iibb(
+                        df_portal, df_afip
+                    )
+                    log_proceso.extend(log_transformacion)
+                    estadisticas.update(stats_transformacion)
+                    
+                    # Usar el archivo transformado
+                    df_portal = df_portal_transformado
+                    log_proceso.append(f"✅ Transformación completada: {len(df_portal)} registros procesados")
             
             elif tipo_archivo == "PORTAL_AFIP":
                 log_proceso.append("✅ Archivo Portal AFIP - No requiere transformación")

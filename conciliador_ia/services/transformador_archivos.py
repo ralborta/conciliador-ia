@@ -222,11 +222,11 @@ class TransformadorArchivos:
         """
         df_resultado = df_gh.copy()
         
-        # Encontrar columnas relevantes en AFIP
-        col_numero_desde = [col for col in df_afip.columns if "número desde" in col.lower() or "numero desde" in col.lower()][0]
+        # Encontrar columnas relevantes en AFIP (usar patrones exactos)
+        col_numero_desde = [col for col in df_afip.columns if "nãºmero desde" in col.lower()][0]
         col_tipo_doc = [col for col in df_afip.columns if "tipo doc. receptor" in col.lower()][0]
         col_numero_doc = [col for col in df_afip.columns if "nro. doc. receptor" in col.lower()][0]
-        col_denominacion = [col for col in df_afip.columns if "denominación receptor" in col.lower()][0]
+        col_denominacion = [col for col in df_afip.columns if "denominaciã³n receptor" in col.lower()][0]
         
         # Función para buscar en AFIP
         def buscar_en_afip(numero_factura: str) -> Dict[str, Any]:

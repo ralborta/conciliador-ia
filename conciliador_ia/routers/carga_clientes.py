@@ -120,6 +120,10 @@ async def importar_clientes(
                 df_portal_final, df_xubio, df_cliente
             )
             
+            # AGREGAR: Logs de transformación a la respuesta
+            logs_transformacion = resultado_transformacion.get("log_proceso", [])
+            estadisticas_transformacion = resultado_transformacion.get("estadisticas", {})
+            
             # Generar archivos de salida (siempre genera el de importación, aún vacío)
             archivo_modelo = processor.generar_archivo_importacion(
                 nuevos_clientes, SALIDA_DIR, cuenta_contable_default
@@ -144,6 +148,9 @@ async def importar_clientes(
                     "tipo_archivo_detectado": resultado_transformacion["tipo_archivo_detectado"],
                     "transformacion_realizada": resultado_transformacion["requiere_transformacion"]
                 },
+                # AGREGAR: Logs de transformación para que el cliente vea el progreso
+                logs_transformacion=logs_transformacion,
+                estadisticas_transformacion=estadisticas_transformacion,
                 descargas={
                     "archivo_modelo": f"/api/v1/documentos/clientes/descargar?filename={Path(archivo_modelo).name}",
                     "reporte_errores": f"/api/v1/documentos/clientes/descargar?filename={Path(archivo_errores).name}" if archivo_errores else ""

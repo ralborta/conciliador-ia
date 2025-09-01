@@ -60,6 +60,9 @@ class ClienteImportResponse(BaseModel):
     job_id: str
     resumen: Dict[str, int]
     descargas: Dict[str, str]
+    # AGREGAR: Campos para logs de transformación
+    logs_transformacion: Optional[List[str]] = []
+    estadisticas_transformacion: Optional[Dict[str, Any]] = {}
 
 class ClienteImportError(BaseModel):
     origen_fila: str

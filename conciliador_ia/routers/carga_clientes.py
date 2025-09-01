@@ -107,9 +107,26 @@ async def importar_clientes(
             # Asegurá que SALIDA_DIR exista (por si el loader no lo creó)
             SALIDA_DIR.mkdir(parents=True, exist_ok=True)
 
-            # PASO NUEVO: Usar TransformadorArchivos para detectar y transformar
+            # PASO NUEVO: Detectar qué archivo es cada uno y usar TransformadorArchivos
+            # Primero detectar qué archivo es el GH IIBB y cuál es el AFIP
+            tipo_portal = transformador.detectar_tipo_archivo(df_portal)
+            tipo_xubio = transformador.detectar_tipo_archivo(df_xubio)
+            
+            # Si el archivo "portal" es AFIP y el "xubio" es GH IIBB, intercambiar
+            if tipo_portal == "PORTAL_AFIP" and tipo_xubio == "GH_IIBB_TANGO":
+                logger.info("Intercambiando archivos: portal es AFIP, xubio es GH IIBB")
+                df_gh_iibb = df_xubio
+                df_afip = df_portal
+                df_xubio_final = df_portal  # El archivo AFIP será el maestro de Xubio
+            else:
+                # Caso normal: portal es GH IIBB, xubio es maestro Xubio
+                df_gh_iibb = df_portal
+                df_afip = None
+                df_xubio_final = df_xubio
+            
+            # Usar TransformadorArchivos para transformar el archivo GH IIBB
             resultado_transformacion = transformador.procesar_archivo_completo(
-                df_portal, df_afip=None, df_xubio=df_xubio
+                df_gh_iibb, df_afip=df_afip, df_xubio=df_xubio_final
             )
             
             # Usar el archivo transformado si fue necesario
@@ -117,7 +134,7 @@ async def importar_clientes(
             
             # Detectar clientes nuevos (con archivo ya transformado)
             nuevos_clientes, errores = processor.detectar_nuevos_clientes(
-                df_portal_final, df_xubio, df_cliente
+                df_portal_final, df_xubio_final, df_cliente
             )
             
             # AGREGAR: Logs de transformación a la respuesta

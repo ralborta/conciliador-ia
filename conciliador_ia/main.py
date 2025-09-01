@@ -76,7 +76,7 @@ app.add_middleware(
 )
 
 # Importar routers DESPUÉS de CORS
-from routers import upload, conciliacion, compras, arca_xubio, carga_informacion
+from routers import upload, conciliacion, compras, arca_xubio, carga_informacion, carga_clientes
 try:
     from routers import carga_documentos  # type: ignore
 except Exception:
@@ -88,6 +88,7 @@ app.include_router(conciliacion.router, prefix="/api/v1")
 app.include_router(compras.router, prefix="/api/v1")
 app.include_router(arca_xubio.router, prefix="/api/v1")
 app.include_router(carga_informacion.router, prefix="/api/v1")
+app.include_router(carga_clientes.router, prefix="/api/v1")
 if carga_documentos:
     app.include_router(carga_documentos.router, prefix="/api/v1")
 

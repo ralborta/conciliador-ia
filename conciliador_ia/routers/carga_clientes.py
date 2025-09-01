@@ -12,11 +12,13 @@ from traceback import format_exc
 try:
     from ..services.cliente_processor import ClienteProcessor
     from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
+    from ..services.transformador_archivos import TransformadorArchivos
     from ..models.schemas import ClienteImportResponse, ClienteImportJob
 except ImportError:
     # Fallback para imports directos
     from services.cliente_processor import ClienteProcessor
     from services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
+    from services.transformador_archivos import TransformadorArchivos
     from models.schemas import ClienteImportResponse, ClienteImportJob
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ router = APIRouter(tags=["carga-clientes"])
 # Inicializar servicios
 processor = ClienteProcessor()
 loader = CargaArchivos()
+transformador = TransformadorArchivos()
 
 # Almacenamiento temporal de jobs (en producción usar Redis o base de datos)
 jobs: Dict[str, ClienteImportJob] = {}
@@ -104,9 +107,17 @@ async def importar_clientes(
             # Asegurá que SALIDA_DIR exista (por si el loader no lo creó)
             SALIDA_DIR.mkdir(parents=True, exist_ok=True)
 
-            # Detectar clientes nuevos
+            # PASO NUEVO: Usar TransformadorArchivos para detectar y transformar
+            resultado_transformacion = transformador.procesar_archivo_completo(
+                df_portal, df_afip=None, df_xubio=df_xubio
+            )
+            
+            # Usar el archivo transformado si fue necesario
+            df_portal_final = resultado_transformacion["df_portal_transformado"]
+            
+            # Detectar clientes nuevos (con archivo ya transformado)
             nuevos_clientes, errores = processor.detectar_nuevos_clientes(
-                df_portal, df_xubio, df_cliente
+                df_portal_final, df_xubio, df_cliente
             )
             
             # Generar archivos de salida (siempre genera el de importación, aún vacío)
@@ -129,7 +140,9 @@ async def importar_clientes(
                     "nuevos_detectados": len(nuevos_clientes),
                     "con_provincia": len(nuevos_clientes),
                     "sin_provincia": len([e for e in errores if e['tipo_error'] == 'Provincia faltante']),
-                    "errores": len(errores)
+                    "errores": len(errores),
+                    "tipo_archivo_detectado": resultado_transformacion["tipo_archivo_detectado"],
+                    "transformacion_realizada": resultado_transformacion["requiere_transformacion"]
                 },
                 descargas={
                     "archivo_modelo": f"/api/v1/documentos/clientes/descargar?filename={Path(archivo_modelo).name}",

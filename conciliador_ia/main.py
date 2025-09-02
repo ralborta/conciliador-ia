@@ -128,6 +128,7 @@ async def startup_event():
         # Verificar qué archivos de routers existen
         print("🔍 Verificando archivos de routers...")
         router_files = [
+            "routers/test_router.py",
             "routers/upload.py",
             "routers/conciliacion.py", 
             "routers/compras.py",
@@ -154,6 +155,19 @@ async def startup_event():
         print("📦 Cargando routers uno por uno...")
         
         routers_loaded = 0
+        
+        # PRIMERO: Cargar router de prueba para verificar que el sistema funciona
+        try:
+            print("  🔄 Cargando TEST ROUTER (prueba)...")
+            from routers import test_router
+            app.include_router(test_router.router, prefix="/api/v1")
+            print("  ✅ TEST ROUTER cargado - Sistema de routers funciona!")
+            routers_loaded += 1
+        except Exception as e:
+            error_msg = f"Error cargando TEST ROUTER: {str(e)}"
+            print(f"  ❌ {error_msg}")
+            app._startup_errors.append(error_msg)
+            traceback.print_exc()
         
         try:
             print("  🔄 Cargando upload router...")
@@ -239,7 +253,7 @@ async def startup_event():
             app._startup_errors.append(error_msg)
             # No hacer traceback aquí porque puede ser opcional
         
-        print(f"📊 Routers cargados exitosamente: {routers_loaded}/7")
+        print(f"📊 Routers cargados exitosamente: {routers_loaded}/8")
         
         if routers_loaded > 0:
             app._routers_loaded = True

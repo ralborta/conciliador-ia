@@ -81,6 +81,7 @@ export default function CargaClientesPage() {
     setResult(null);
 
     try {
+      // 🔒 Manejo robusto de errores para evitar React #418/#423
       const formData = new FormData();
       formData.append('empresa_id', empresaId);
       formData.append('archivo_portal', archivoPortal);
@@ -90,19 +91,30 @@ export default function CargaClientesPage() {
       }
       formData.append('cuenta_contable_default', cuentaContableDefault);
 
-      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/documentos/clientes/importar', {
+      console.log("🚀 Enviando archivos:", {
+        portal: archivoPortal.name,
+        xubio: archivoXubio.name,
+        cliente: archivoCliente?.name || "No especificado",
+        empresa: empresaId
+      });
+
+      // Usar proxy de Vercel para evitar CORS
+      const response = await fetch('/api/importar-clientes', {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Error en el procesamiento');
+        const errorText = await response.text();
+        console.error("❌ Error en importación:", response.status, errorText);
+        throw new Error(`Import falló (${response.status}): ${errorText}`);
       }
 
-      const data = await response.json();
+      console.log("✅ Importación exitosa");
+      const data = await response.json().catch(() => ({}));
       setResult(data);
     } catch (err) {
+      console.error("❌ Error completo:", err);
       setError(err instanceof Error ? err.message : 'Error inesperado');
     } finally {
       setIsProcessing(false);

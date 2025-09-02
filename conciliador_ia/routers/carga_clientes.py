@@ -295,6 +295,27 @@ async def importar_solo_clientes(
                 
                 # Procesar clientes (ahora con archivo transformado)
                 nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
+                
+                # GENERAR ARCHIVO DE SALIDA CON CLIENTES NUEVOS
+                if len(nuevos_clientes) > 0:
+                    try:
+                        from services.carga_info.exporter import ExportadorVentas
+                        exportador = ExportadorVentas()
+                        
+                        # Crear DataFrame con clientes nuevos
+                        df_clientes_nuevos = pd.DataFrame(nuevos_clientes)
+                        
+                        # Generar archivo Excel
+                        archivo_salida = f"data/salida/clientes_nuevos_{job_id}.xlsx"
+                        exportador.exportar_clientes(df_clientes_nuevos, archivo_salida)
+                        
+                        mensajes_conversion.append(f"📄 Archivo generado: {archivo_salida}")
+                        mensajes_conversion.append(f"💾 {len(nuevos_clientes)} clientes nuevos exportados")
+                        
+                    except Exception as e:
+                        mensajes_conversion.append(f"⚠️ Error generando archivo: {str(e)}")
+                else:
+                    mensajes_conversion.append("ℹ️ No se encontraron clientes nuevos para exportar")
             elif tipo_archivo == "PORTAL_AFIP":
                 mensajes_conversion.append("🏛️ Archivo Portal AFIP detectado - procesando como maestro")
                 nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
@@ -330,7 +351,7 @@ async def importar_solo_clientes(
                     "errores": len(errores)
                 },
                 descargas={
-                    "archivo_clientes": f"/api/v1/descargar/{job_id}/clientes.xlsx" if nuevos_clientes else ""
+                    "archivo_clientes": f"/api/v1/descargar/{job_id}/clientes_nuevos_{job_id}.xlsx" if nuevos_clientes else ""
                 },
                 logs_transformacion=mensajes_conversion
             )
@@ -512,3 +533,32 @@ async def eliminar_job(job_id: str):
     del jobs[job_id]
     
     return {"message": "Job eliminado correctamente"}
+
+
+@router.get("/descargar/{job_id}/{filename}")
+async def descargar_archivo(job_id: str, filename: str):
+    """
+    Descarga archivos generados por el procesamiento
+    """
+    try:
+        # Construir ruta del archivo
+        archivo_path = f"data/salida/{filename}"
+        
+        if not os.path.exists(archivo_path):
+            raise HTTPException(status_code=404, detail="Archivo no encontrado")
+        
+        # Verificar que el archivo pertenece al job
+        if not filename.startswith(f"clientes_nuevos_{job_id}"):
+            raise HTTPException(status_code=403, detail="Acceso denegado al archivo")
+        
+        return FileResponse(
+            path=archivo_path,
+            filename=filename,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error descargando archivo {filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")

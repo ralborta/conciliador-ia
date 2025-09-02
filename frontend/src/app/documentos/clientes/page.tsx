@@ -7,17 +7,14 @@ import { Upload, FileText, Users, Download, AlertCircle, CheckCircle, Loader2 } 
 interface ProcessingResult {
   job_id: string;
   resumen: {
-    total_portal: number;
-    total_xubio: number;
-    nuevos_detectados: number;
-    con_provincia: number;
-    sin_provincia: number;
+    total_filas: number;
+    clientes_nuevos: number;
     errores: number;
   };
   descargas: {
-    archivo_modelo: string;
-    reporte_errores: string;
+    archivo_clientes: string;
   };
+  logs_transformacion?: string[];
 }
 
 export default function CargaClientesPage() {
@@ -72,8 +69,9 @@ export default function CargaClientesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!empresaId || !archivoPortal || !archivoXubio) {
-      setError('Por favor complete todos los campos requeridos');
+    // Para el endpoint importar-solo-clientes solo necesitamos UN archivo
+    if (!archivoCliente) {
+      setError('Por favor seleccione un archivo para procesar');
       return;
     }
 
@@ -84,23 +82,14 @@ export default function CargaClientesPage() {
     try {
       // 🔒 Manejo robusto de errores para evitar React #418/#423
       const formData = new FormData();
-      formData.append('empresa_id', empresaId);
-      formData.append('archivo_portal', archivoPortal);
-      formData.append('archivo_xubio', archivoXubio);
-      if (archivoCliente) {
-        formData.append('archivo_cliente', archivoCliente);
-      }
-      formData.append('cuenta_contable_default', cuentaContableDefault);
+      formData.append('archivo', archivoCliente);
 
-      console.log("🚀 Enviando archivos:", {
-        portal: archivoPortal.name,
-        xubio: archivoXubio.name,
-        cliente: archivoCliente?.name || "No especificado",
-        empresa: empresaId
+      console.log("🚀 Enviando archivo:", {
+        cliente: archivoCliente?.name || "No especificado"
       });
 
-      // Usar URL absoluta al backend Railway
-      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/importar-clientes', {
+      // Usar URL absoluta al backend Railway con el endpoint correcto
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/importar-solo-clientes', {
         method: 'POST',
         body: formData,
       });
@@ -122,11 +111,10 @@ export default function CargaClientesPage() {
         });
       }
       
-      if (data.nuevos_clientes && data.nuevos_clientes.length > 0) {
-        console.log(`📋 Clientes procesados: ${data.nuevos_clientes.length}`);
-        data.nuevos_clientes.forEach((cliente: any, index: number) => {
-          console.log(`${index + 1}. ${cliente.nombre} (${cliente.tipo_documento}: ${cliente.numero_documento}) - ${cliente.provincia}`);
-        });
+      if (data.resumen && data.resumen.clientes_nuevos > 0) {
+        console.log(`📋 Clientes procesados: ${data.resumen.clientes_nuevos}`);
+        console.log(`📊 Total filas: ${data.resumen.total_filas}`);
+        console.log(`❌ Errores: ${data.resumen.errores}`);
       }
       
       if (data.errores && data.errores.length > 0) {
@@ -255,10 +243,10 @@ export default function CargaClientesPage() {
               </p>
             </div>
 
-            {/* Archivo Cliente (Opcional) */}
+            {/* Archivo del Cliente */}
             <div>
               <label htmlFor="archivo_cliente" className="block text-sm font-medium text-gray-700 mb-2">
-                Excel del Cliente (Opcional)
+                Archivo del Cliente *
               </label>
               <div className="flex items-center space-x-3">
                 <input
@@ -267,11 +255,12 @@ export default function CargaClientesPage() {
                   accept=".csv,.xlsx,.xls"
                   onChange={(e) => setArchivoCliente(e.target.files?.[0] || null)}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
                 />
                 <FileText className="w-5 h-5 text-gray-400" />
               </div>
               <p className="mt-1 text-sm text-gray-500">
-                CSV o Excel con información adicional del cliente (provincia, etc.)
+                Archivo Excel del cliente (Portal AFIP, Xubio, o GH IIBB TANGO)
               </p>
             </div>
 
@@ -505,11 +494,11 @@ export default function CargaClientesPage() {
             {/* Resumen */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{result.resumen.total_portal}</div>
-                <div className="text-sm text-blue-700">Total Portal</div>
+                <div className="text-2xl font-bold text-blue-600">{result.resumen.total_filas}</div>
+                <div className="text-sm text-blue-700">Total Filas</div>
               </div>
               <div className="bg-green-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{result.resumen.nuevos_detectados}</div>
+                <div className="text-2xl font-bold text-green-600">{result.resumen.clientes_nuevos}</div>
                 <div className="text-sm text-green-700">Nuevos Clientes</div>
               </div>
               <div className="bg-yellow-50 p-4 rounded-lg">
@@ -522,24 +511,13 @@ export default function CargaClientesPage() {
             <div className="space-y-3">
               <h3 className="text-lg font-medium text-gray-900 mb-3">Archivos Generados</h3>
               
-              <div className="flex items-center space-x-3">
-                <Download className="w-5 h-5 text-blue-600" />
-                <span className="text-gray-700">Archivo de Importación:</span>
-                <button
-                  onClick={() => downloadFile(result.descargas.archivo_modelo, 'importacion_clientes_xubio.csv')}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  Descargar
-                </button>
-              </div>
-
-              {result.descargas.reporte_errores && (
+              {result.descargas.archivo_clientes && (
                 <div className="flex items-center space-x-3">
-                  <Download className="w-5 h-5 text-red-600" />
-                  <span className="text-gray-700">Reporte de Errores:</span>
+                  <Download className="w-5 h-5 text-blue-600" />
+                  <span className="text-gray-700">Archivo de Clientes Nuevos:</span>
                   <button
-                    onClick={() => downloadFile(result.descargas.reporte_errores, 'reporte_errores.csv')}
-                    className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    onClick={() => downloadFile(result.descargas.archivo_clientes, 'clientes_nuevos.xlsx')}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     Descargar
                   </button>

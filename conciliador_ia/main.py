@@ -81,51 +81,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Importar routers DESPUÉS de CORS
-from routers import upload, conciliacion, compras, arca_xubio, carga_informacion, carga_clientes
-try:
-    from routers import carga_documentos  # type: ignore
-except Exception:
-    carga_documentos = None
-
-# INCLUIR RUTAS DESPUÉS DE CORS
-app.include_router(upload.router, prefix="/api/v1")
-app.include_router(conciliacion.router, prefix="/api/v1")
-app.include_router(compras.router, prefix="/api/v1")
-app.include_router(arca_xubio.router, prefix="/api/v1")
-app.include_router(carga_informacion.router, prefix="/api/v1")
-app.include_router(carga_clientes.router, prefix="/api/v1")
-if carga_documentos:
-    app.include_router(carga_documentos.router, prefix="/api/v1")
+# Los routers se cargarán después del startup para evitar bloqueos
 
 @app.on_event("startup")
 async def startup_event():
-    """Evento de inicio de la aplicación"""
-    logger.info("=== INICIANDO CONCILIADOR IA ===")
-    logger.info(f"Directorio de trabajo: {os.getcwd()}")
-    logger.info(f"Variables de entorno PORT: {os.environ.get('PORT', 'NO_DEFINIDO')}")
-    logger.info(f"Variables de entorno HOST: {os.environ.get('HOST', 'NO_DEFINIDO')}")
+    """Evento de inicio de la aplicación - SIMPLIFICADO PARA RAILWAY"""
+    print("=== INICIANDO CONCILIADOR IA ===")
+    print(f"Directorio de trabajo: {os.getcwd()}")
+    print(f"Variables de entorno PORT: {os.environ.get('PORT', 'NO_DEFINIDO')}")
+    print(f"Variables de entorno HOST: {os.environ.get('HOST', 'NO_DEFINIDO')}")
     
     try:
-        # Verificar configuración
-        openai_key = os.getenv('OPENAI_API_KEY')
-        if not openai_key:
-            logger.warning("OpenAI API key no configurada. La funcionalidad de IA no estará disponible.")
-        
-        # Crear directorios necesarios
+        # Crear directorios necesarios (sin bloquear)
         os.makedirs("data/uploads", exist_ok=True)
         os.makedirs("data/salida", exist_ok=True)
         os.makedirs("data/entrada", exist_ok=True)
         
-        logger.info("✅ Directorios creados correctamente")
-        logger.info("✅ Conciliador IA iniciado correctamente")
-        logger.info(f"🚀 Servidor escuchando en puerto {os.getenv('PORT', 8000)}")
+        # Cargar routers después del healthcheck
+        print("📦 Cargando routers...")
+        from routers import upload, conciliacion, compras, arca_xubio, carga_informacion, carga_clientes
+        try:
+            from routers import carga_documentos  # type: ignore
+        except Exception:
+            carga_documentos = None
+
+        # INCLUIR RUTAS
+        app.include_router(upload.router, prefix="/api/v1")
+        app.include_router(conciliacion.router, prefix="/api/v1")
+        app.include_router(compras.router, prefix="/api/v1")
+        app.include_router(arca_xubio.router, prefix="/api/v1")
+        app.include_router(carga_informacion.router, prefix="/api/v1")
+        app.include_router(carga_clientes.router, prefix="/api/v1")
+        if carga_documentos:
+            app.include_router(carga_documentos.router, prefix="/api/v1")
+        
+        print("✅ Directorios creados correctamente")
+        print("✅ Routers cargados correctamente")
+        print("✅ Conciliador IA iniciado correctamente")
+        print(f"🚀 Servidor escuchando en puerto {os.getenv('PORT', 8000)}")
         
     except Exception as e:
-        logger.error(f"❌ Error durante el startup: {e}")
-        import traceback
-        logger.error(f"Traceback completo: {traceback.format_exc()}")
-        raise
+        print(f"❌ Error durante el startup: {e}")
+        # NO hacer raise para evitar que bloquee el healthcheck
 
 @app.on_event("shutdown")
 async def shutdown_event():

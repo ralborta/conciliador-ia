@@ -84,7 +84,13 @@ app.add_middleware(
 # Cargar routers inmediatamente para Railway
 print("📦 Cargando routers...")
 try:
-    from routers import upload, conciliacion, compras, arca_xubio, carga_informacion, carga_clientes
+    # Cargar solo el router de carga_clientes primero
+    from routers import carga_clientes
+    app.include_router(carga_clientes.router, prefix="/api/v1")
+    print("✅ Router carga_clientes cargado correctamente")
+    
+    # Cargar el resto de routers
+    from routers import upload, conciliacion, compras, arca_xubio, carga_informacion
     try:
         from routers import carga_documentos  # type: ignore
     except Exception:
@@ -96,11 +102,10 @@ try:
     app.include_router(compras.router, prefix="/api/v1")
     app.include_router(arca_xubio.router, prefix="/api/v1")
     app.include_router(carga_informacion.router, prefix="/api/v1")
-    app.include_router(carga_clientes.router, prefix="/api/v1")
     if carga_documentos:
         app.include_router(carga_documentos.router, prefix="/api/v1")
     
-    print("✅ Routers cargados correctamente")
+    print("✅ Todos los routers cargados correctamente")
     
 except Exception as e:
     print(f"❌ Error cargando routers: {e}")

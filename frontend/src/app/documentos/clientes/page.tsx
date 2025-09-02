@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Upload, FileText, Users, Download, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { importarClientes, validarArchivos } from '../../../lib/api';
+import { importarClientes, validarArchivos } from '@/lib/api';
 
 interface ProcessingResult {
   job_id: string;

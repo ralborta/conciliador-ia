@@ -102,14 +102,19 @@ class TransformadorArchivos:
         """
         Detecta si es un archivo GH IIBB TANGO
         """
-        # Verificar columnas características
-        columnas_requeridas = ["descripción", "razón social", "provincia", "localidad"]
+        # Verificar columnas características (con tildes y sin tildes)
+        columnas_requeridas = ["descripción", "descipción", "razón social", "razon social", "provincia", "localidad"]
         columnas_encontradas = [col for col in columnas_requeridas if any(col in col_name for col_name in columnas)]
         
-        if len(columnas_encontradas) >= 3:  # Al menos 3 de las 4 columnas
+        if len(columnas_encontradas) >= 3:  # Al menos 3 de las 6 columnas
             # Verificar contenido de la columna descripción
-            if "descripción" in [col.lower() for col in df.columns]:
-                col_descripcion = [col for col in df.columns if "descripción" in col.lower()][0]
+            col_descripcion = None
+            for col in df.columns:
+                if "descripción" in col.lower() or "descipción" in col.lower():
+                    col_descripcion = col
+                    break
+            
+            if col_descripcion:
                 # Verificar si contiene patrones de facturas
                 muestra = df[col_descripcion].head(5).astype(str)
                 patrones_factura = ["factura", "crédito", "venta", "0000"]
@@ -128,6 +133,7 @@ class TransformadorArchivos:
         columnas_requeridas = ["tipo doc. comprador", "numero de documento", "denominación comprador"]
         columnas_encontradas = [col for col in columnas_requeridas if any(col in col_name for col_name in columnas)]
         
+        # Portal AFIP tiene columnas específicas de compradores
         return len(columnas_encontradas) >= 2
     
     def _es_archivo_xubio_clientes(self, df: pd.DataFrame, columnas: List[str]) -> bool:
@@ -135,10 +141,11 @@ class TransformadorArchivos:
         Detecta si es un archivo Xubio Clientes
         """
         # Verificar columnas características de Xubio
-        columnas_requeridas = ["cuit", "nombre", "razonsocial"]
+        columnas_requeridas = ["cuit", "nombre", "razonsocial", "codigo", "descripcion"]
         columnas_encontradas = [col for col in columnas_requeridas if any(col in col_name for col_name in columnas)]
         
-        return len(columnas_encontradas) >= 2
+        # Xubio tiene muchas columnas (52) y incluye CUIT, Nombre, Codigo, etc.
+        return len(columnas_encontradas) >= 2 and len(df.columns) > 20
     
     def transformar_gh_iibb(
         self, 

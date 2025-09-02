@@ -12,13 +12,11 @@ from traceback import format_exc
 try:
     from ..services.cliente_processor import ClienteProcessor
     from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
-    from ..services.transformador_archivos import TransformadorArchivos
     from ..models.schemas import ClienteImportResponse, ClienteImportJob
 except ImportError:
     # Fallback para imports directos
     from services.cliente_processor import ClienteProcessor
     from services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
-    from services.transformador_archivos import TransformadorArchivos
     from models.schemas import ClienteImportResponse, ClienteImportJob
 
 logger = logging.getLogger(__name__)
@@ -27,13 +25,12 @@ router = APIRouter(tags=["carga-clientes"])
 # Inicializar servicios
 processor = ClienteProcessor()
 loader = CargaArchivos()
-transformador = TransformadorArchivos()
 
 # Almacenamiento temporal de jobs (en producción usar Redis o base de datos)
 jobs: Dict[str, ClienteImportJob] = {}
 
-# Función común para ambos endpoints
-async def _importar_clientes_impl(
+@router.post("/importar")
+async def importar_clientes(
     empresa_id: Optional[str] = Form("default"),
     archivo_portal: UploadFile = File(...),
     archivo_xubio: UploadFile = File(...),
@@ -44,12 +41,6 @@ async def _importar_clientes_impl(
     Importa clientes nuevos desde archivos del portal y Xubio
     """
     try:
-        # DEBUG: Logs para diagnóstico
-        logger.info(f"=== IMPORTAR CLIENTES ===")
-        logger.info(f"Empresa ID: {empresa_id}")
-        logger.info(f"Archivo Portal: {archivo_portal.filename if archivo_portal else 'None'}")
-        logger.info(f"Archivo Xubio: {archivo_xubio.filename if archivo_xubio else 'None'}")
-        logger.info(f"Archivo Cliente: {archivo_cliente.filename if archivo_cliente else 'None'}")
         # Validar empresa_id (ahora opcional)
         if not empresa_id or empresa_id.strip() == "":
             empresa_id = "default"
@@ -113,39 +104,10 @@ async def _importar_clientes_impl(
             # Asegurá que SALIDA_DIR exista (por si el loader no lo creó)
             SALIDA_DIR.mkdir(parents=True, exist_ok=True)
 
-            # PASO NUEVO: Detectar qué archivo es cada uno y usar TransformadorArchivos
-            # Primero detectar qué archivo es el GH IIBB y cuál es el AFIP
-            tipo_portal = transformador.detectar_tipo_archivo(df_portal)
-            tipo_xubio = transformador.detectar_tipo_archivo(df_xubio)
-            
-            # Si el archivo "portal" es AFIP y el "xubio" es GH IIBB, intercambiar
-            if tipo_portal == "PORTAL_AFIP" and tipo_xubio == "GH_IIBB_TANGO":
-                logger.info("Intercambiando archivos: portal es AFIP, xubio es GH IIBB")
-                df_gh_iibb = df_xubio
-                df_afip = df_portal
-                df_xubio_final = df_portal  # El archivo AFIP será el maestro de Xubio
-            else:
-                # Caso normal: portal es GH IIBB, xubio es maestro Xubio
-                df_gh_iibb = df_portal
-                df_afip = None
-                df_xubio_final = df_xubio
-            
-            # Usar TransformadorArchivos para transformar el archivo GH IIBB
-            resultado_transformacion = transformador.procesar_archivo_completo(
-                df_gh_iibb, df_afip=df_afip, df_xubio=df_xubio_final
-            )
-            
-            # Usar el archivo transformado si fue necesario
-            df_portal_final = resultado_transformacion["df_portal_transformado"]
-            
-            # Detectar clientes nuevos (con archivo ya transformado)
+            # Detectar clientes nuevos
             nuevos_clientes, errores = processor.detectar_nuevos_clientes(
-                df_portal_final, df_xubio_final, df_cliente
+                df_portal, df_xubio, df_cliente
             )
-            
-            # AGREGAR: Logs de transformación a la respuesta
-            logs_transformacion = resultado_transformacion.get("log_proceso", [])
-            estadisticas_transformacion = resultado_transformacion.get("estadisticas", {})
             
             # Generar archivos de salida (siempre genera el de importación, aún vacío)
             archivo_modelo = processor.generar_archivo_importacion(
@@ -167,13 +129,8 @@ async def _importar_clientes_impl(
                     "nuevos_detectados": len(nuevos_clientes),
                     "con_provincia": len(nuevos_clientes),
                     "sin_provincia": len([e for e in errores if e['tipo_error'] == 'Provincia faltante']),
-                    "errores": len(errores),
-                    "tipo_archivo_detectado": resultado_transformacion["tipo_archivo_detectado"],
-                    "transformacion_realizada": resultado_transformacion["requiere_transformacion"]
+                    "errores": len(errores)
                 },
-                # AGREGAR: Logs de transformación para que el cliente vea el progreso
-                logs_transformacion=logs_transformacion,
-                estadisticas_transformacion=estadisticas_transformacion,
                 descargas={
                     "archivo_modelo": f"/api/v1/documentos/clientes/descargar?filename={Path(archivo_modelo).name}",
                     "reporte_errores": f"/api/v1/documentos/clientes/descargar?filename={Path(archivo_errores).name}" if archivo_errores else ""
@@ -213,6 +170,29 @@ async def _importar_clientes_impl(
     except Exception as e:
         logger.error(f"Error inesperado en importar_clientes: {e}")
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+
+# ENDPOINTS DE COMPATIBILIDAD - Aceptar ambas rutas (con y sin /v1)
+@router.post("/importar-clientes")  # ← canónica (guiones)
+async def importar_clientes_compat(
+    empresa_id: Optional[str] = Form("default"),
+    archivo_portal: UploadFile = File(...),
+    archivo_xubio: UploadFile = File(...),
+    archivo_cliente: Optional[UploadFile] = File(None),
+    cuenta_contable_default: Optional[str] = Form("Deudores por ventas")
+):
+    """Endpoint de compatibilidad - /api/importar-clientes"""
+    return await importar_clientes(empresa_id, archivo_portal, archivo_xubio, archivo_cliente, cuenta_contable_default)
+
+@router.post("/importar_clientes")  # ← alias compat (underscore)
+async def importar_clientes_underscore(
+    empresa_id: Optional[str] = Form("default"),
+    archivo_portal: UploadFile = File(...),
+    archivo_xubio: UploadFile = File(...),
+    archivo_cliente: Optional[UploadFile] = File(None),
+    cuenta_contable_default: Optional[str] = Form("Deudores por ventas")
+):
+    """Alias para compatibilidad con underscore"""
+    return await importar_clientes(empresa_id, archivo_portal, archivo_xubio, archivo_cliente, cuenta_contable_default)
 
 @router.post("/validar")
 async def validar_archivos(
@@ -366,26 +346,3 @@ async def eliminar_job(job_id: str):
     del jobs[job_id]
     
     return {"message": "Job eliminado correctamente"}
-
-# ALIAS DE RUTAS - Soporte para ambas versiones (ES/EN)
-@router.post("/documentos/clientes/importar")
-async def importar_clientes_es(
-    empresa_id: Optional[str] = Form("default"),
-    archivo_portal: UploadFile = File(...),
-    archivo_xubio: UploadFile = File(...),
-    archivo_cliente: Optional[UploadFile] = File(None),
-    cuenta_contable_default: Optional[str] = Form("Deudores por ventas")
-):
-    """Endpoint en español - /api/v1/documentos/clientes/importar"""
-    return await _importar_clientes_impl(empresa_id, archivo_portal, archivo_xubio, archivo_cliente, cuenta_contable_default)
-
-@router.post("/documents/clients/importar")
-async def importar_clientes_en(
-    empresa_id: Optional[str] = Form("default"),
-    archivo_portal: UploadFile = File(...),
-    archivo_xubio: UploadFile = File(...),
-    archivo_cliente: Optional[UploadFile] = File(None),
-    cuenta_contable_default: Optional[str] = Form("Deudores por ventas")
-):
-    """Endpoint en inglés - /api/v1/documents/clients/importar"""
-    return await _importar_clientes_impl(empresa_id, archivo_portal, archivo_xubio, archivo_cliente, cuenta_contable_default)

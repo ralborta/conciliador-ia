@@ -40,6 +40,10 @@ async def health():
 async def health_v1():
     return {"status": "healthy", "version": "v1"}
 
+@app.get("/api/health")
+async def health_legacy():
+    return {"status": "healthy", "version": "legacy"}
+
 @app.get("/")
 async def root():
     return {"message": "Conciliador IA funcionando", "status": "ok"}
@@ -130,94 +134,120 @@ async def debug_import_test():
     
     return results
 
-# CARGAR ROUTERS REALES
-print("🚀 CARGANDO ROUTERS REALES...")
+# KILL SWITCH: Montar routers con dos prefijos (/api/v1 y /api)
+API_PREFIX = os.getenv("API_PREFIX", "/api/v1")
+API_PREFIX_LEGACY = os.getenv("API_PREFIX_LEGACY", "/api")  # ← acepta llamadas sin /v1
+
+print("🚀 CARGANDO ROUTERS CON KILL SWITCH...")
 routers_loaded = 0
 
-try:
-    # Cargar upload router
-    print("  🔄 Cargando upload router...")
-    from routers import upload
-    app.include_router(upload.router, prefix="/api/v1")
-    print("  ✅ Upload router cargado")
-    routers_loaded += 1
-except Exception as e:
-    print(f"  ❌ Error cargando upload router: {e}")
+def mount_all(prefix: str):
+    """Monta todos los routers con un prefijo específico"""
+    global routers_loaded
+    
+    try:
+        # Cargar upload router
+        print(f"  🔄 Cargando upload router en {prefix}...")
+        from routers import upload
+        app.include_router(upload.router, prefix=prefix)
+        print(f"  ✅ Upload router cargado en {prefix}")
+        routers_loaded += 1
+    except Exception as e:
+        print(f"  ❌ Error cargando upload router en {prefix}: {e}")
 
-try:
-    # Cargar conciliacion router
-    print("  🔄 Cargando conciliacion router...")
-    from routers import conciliacion
-    app.include_router(conciliacion.router, prefix="/api/v1")
-    print("  ✅ Conciliacion router cargado")
-    routers_loaded += 1
-except Exception as e:
-    print(f"  ❌ Error cargando conciliacion router: {e}")
+    try:
+        # Cargar conciliacion router
+        print(f"  🔄 Cargando conciliacion router en {prefix}...")
+        from routers import conciliacion
+        app.include_router(conciliacion.router, prefix=prefix)
+        print(f"  ✅ Conciliacion router cargado en {prefix}")
+        routers_loaded += 1
+    except Exception as e:
+        print(f"  ❌ Error cargando conciliacion router en {prefix}: {e}")
 
-try:
-    # Cargar compras router
-    print("  🔄 Cargando compras router...")
-    from routers import compras
-    app.include_router(compras.router, prefix="/api/v1")
-    print("  ✅ Compras router cargado")
-    routers_loaded += 1
-except Exception as e:
-    print(f"  ❌ Error cargando compras router: {e}")
+    try:
+        # Cargar compras router
+        print(f"  🔄 Cargando compras router en {prefix}...")
+        from routers import compras
+        app.include_router(compras.router, prefix=prefix)
+        print(f"  ✅ Compras router cargado en {prefix}")
+        routers_loaded += 1
+    except Exception as e:
+        print(f"  ❌ Error cargando compras router en {prefix}: {e}")
 
-try:
-    # Cargar arca_xubio router
-    print("  🔄 Cargando arca_xubio router...")
-    from routers import arca_xubio
-    app.include_router(arca_xubio.router, prefix="/api/v1")
-    print("  ✅ Arca_xubio router cargado")
-    routers_loaded += 1
-except Exception as e:
-    print(f"  ❌ Error cargando arca_xubio router: {e}")
+    try:
+        # Cargar arca_xubio router
+        print(f"  🔄 Cargando arca_xubio router en {prefix}...")
+        from routers import arca_xubio
+        app.include_router(arca_xubio.router, prefix=prefix)
+        print(f"  ✅ Arca_xubio router cargado en {prefix}")
+        routers_loaded += 1
+    except Exception as e:
+        print(f"  ❌ Error cargando arca_xubio router en {prefix}: {e}")
 
-try:
-    # Cargar carga_informacion router
-    print("  🔄 Cargando carga_informacion router...")
-    from routers import carga_informacion
-    app.include_router(carga_informacion.router, prefix="/api/v1")
-    print("  ✅ Carga_informacion router cargado")
-    routers_loaded += 1
-except Exception as e:
-    print(f"  ❌ Error cargando carga_informacion router: {e}")
+    try:
+        # Cargar carga_informacion router
+        print(f"  🔄 Cargando carga_informacion router en {prefix}...")
+        from routers import carga_informacion
+        app.include_router(carga_informacion.router, prefix=prefix)
+        print(f"  ✅ Carga_informacion router cargado en {prefix}")
+        routers_loaded += 1
+    except Exception as e:
+        print(f"  ❌ Error cargando carga_informacion router en {prefix}: {e}")
 
-try:
-    # Cargar carga_clientes router
-    print("  🔄 Cargando carga_clientes router...")
-    from routers import carga_clientes
-    app.include_router(carga_clientes.router, prefix="/api/v1")
-    print("  ✅ Carga_clientes router cargado")
-    routers_loaded += 1
-except Exception as e:
-    print(f"  ❌ Error cargando carga_clientes router: {e}")
+    try:
+        # Cargar carga_clientes router
+        print(f"  🔄 Cargando carga_clientes router en {prefix}...")
+        from routers import carga_clientes
+        app.include_router(carga_clientes.router, prefix=prefix)
+        print(f"  ✅ Carga_clientes router cargado en {prefix}")
+        routers_loaded += 1
+    except Exception as e:
+        print(f"  ❌ Error cargando carga_clientes router en {prefix}: {e}")
 
-try:
-    # Cargar carga_documentos router
-    print("  🔄 Cargando carga_documentos router...")
-    from routers import carga_documentos
-    app.include_router(carga_documentos.router, prefix="/api/v1")
-    print("  ✅ Carga_documentos router cargado")
-    routers_loaded += 1
-except Exception as e:
-    print(f"  ❌ Error cargando carga_documentos router: {e}")
+    try:
+        # Cargar carga_documentos router
+        print(f"  🔄 Cargando carga_documentos router en {prefix}...")
+        from routers import carga_documentos
+        app.include_router(carga_documentos.router, prefix=prefix)
+        print(f"  ✅ Carga_documentos router cargado en {prefix}")
+        routers_loaded += 1
+    except Exception as e:
+        print(f"  ❌ Error cargando carga_documentos router en {prefix}: {e}")
 
-print(f"📊 Routers cargados: {routers_loaded}/7")
+# Montar routers en ambos prefijos
+print(f"📦 Montando routers en {API_PREFIX}...")
+mount_all(API_PREFIX)
+
+print(f"📦 Montando routers en {API_PREFIX_LEGACY}...")
+mount_all(API_PREFIX_LEGACY)  # ← **acepta /api/...** (sin /v1)
+
+print(f"📊 Total de routers montados: {routers_loaded}")
 
 # ENDPOINTS TEMPORALES PARA QUE EL FRONTEND NO EXPLOTE
 @app.get("/api/v1/importar-clientes")
-async def temp_importar_clientes():
-    return {"success": True, "message": "Endpoint temporal - routers no cargados aún", "data": []}
+async def temp_importar_clientes_v1():
+    return {"success": True, "message": "Endpoint temporal v1 - routers no cargados aún", "data": []}
+
+@app.get("/api/importar-clientes")
+async def temp_importar_clientes_legacy():
+    return {"success": True, "message": "Endpoint temporal legacy - routers no cargados aún", "data": []}
 
 @app.post("/api/v1/upload")
-async def temp_upload():
-    return {"success": True, "message": "Endpoint temporal - routers no cargados aún"}
+async def temp_upload_v1():
+    return {"success": True, "message": "Endpoint temporal v1 - routers no cargados aún"}
+
+@app.post("/api/upload")
+async def temp_upload_legacy():
+    return {"success": True, "message": "Endpoint temporal legacy - routers no cargados aún"}
 
 @app.get("/api/v1/test")
-async def temp_test():
-    return {"success": True, "message": "Endpoint temporal funcionando"}
+async def temp_test_v1():
+    return {"success": True, "message": "Endpoint temporal v1 funcionando"}
+
+@app.get("/api/test")
+async def temp_test_legacy():
+    return {"success": True, "message": "Endpoint temporal legacy funcionando"}
 
 # STARTUP
 @app.on_event("startup")
@@ -225,7 +255,8 @@ async def startup():
     """Startup mínimo"""
     print("🚀 CONCILIADOR IA INICIADO")
     print(f"📁 Directorio: {os.getcwd()}")
-    print(f"📊 Routers cargados: {routers_loaded}/7")
+    print(f"📊 Routers montados: {routers_loaded}")
+    print(f"🔗 Prefijos activos: {API_PREFIX}, {API_PREFIX_LEGACY}")
     
     # Crear directorios
     try:

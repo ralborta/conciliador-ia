@@ -83,7 +83,7 @@ class CargaArchivos:
         if suffix == ".csv":
             # 1) Intento con utf-8 y coma
             try:
-                df = pd.read_csv(path, encoding="utf-8", sep=",")
+                df = pd.read_csv(path, encoding="utf-8", sep=",", dtype=str, keep_default_na=False)
                 if df is not None and df.shape[1] >= 1:
                     logger.info(f"CSV cargado: {path.name} encoding=utf-8 sep=, filas={len(df)}")
                     return df
@@ -107,7 +107,7 @@ class CargaArchivos:
                             # fall back a ;
                             sep = ";"
                         
-                        df = pd.read_csv(io.StringIO(text), sep=sep)
+                        df = pd.read_csv(io.StringIO(text), sep=sep, dtype=str, keep_default_na=False)
                         if df is not None and df.shape[1] >= 1:
                             logger.info(f"CSV cargado: {path.name} encoding={enc} sep='{sep}' filas={len(df)}")
                             return df
@@ -119,7 +119,7 @@ class CargaArchivos:
 
             # último recurso
             try:
-                df = pd.read_csv(path, sep=";", encoding="latin-1", engine="python")
+                df = pd.read_csv(path, sep=";", encoding="latin-1", engine="python", dtype=str, keep_default_na=False)
                 logger.info(f"CSV cargado (último recurso): {path.name} encoding=latin-1 sep=; filas={len(df)}")
                 return df
             except Exception as e:
@@ -131,7 +131,7 @@ class CargaArchivos:
             if suffix == ".xlsx":
                 try:
                     # openpyxl
-                    df = pd.read_excel(path, engine="openpyxl")
+                    df = pd.read_excel(path, engine="openpyxl", dtype=str, keep_default_na=False)
                     logger.info(f"Excel cargado: {path.name} engine=openpyxl filas={len(df)}")
                     return df
                 except Exception as e:
@@ -140,7 +140,7 @@ class CargaArchivos:
             else:
                 try:
                     # .xls -> xlrd (asegurate de tener xlrd==1.2.0 instalado)
-                    df = pd.read_excel(path, engine="xlrd")
+                    df = pd.read_excel(path, engine="xlrd", dtype=str, keep_default_na=False)
                     logger.info(f"Excel cargado: {path.name} engine=xlrd filas={len(df)}")
                     return df
                 except Exception as e:

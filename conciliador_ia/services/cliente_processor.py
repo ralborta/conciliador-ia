@@ -2,6 +2,8 @@ import pandas as pd
 import logging
 import re
 import unicodedata
+import math
+import traceback
 from typing import Dict, List, Tuple, Optional, Any
 from pathlib import Path
 from datetime import datetime
@@ -9,6 +11,22 @@ import uuid
 import os
 
 logger = logging.getLogger(__name__)
+
+def s(x):
+    """Helper para convertir cualquier valor a string de forma segura"""
+    if x is None: 
+        return ""
+    if isinstance(x, float) and math.isnan(x): 
+        return ""
+    return str(x)
+
+def safe_join(*parts: object) -> str:
+    """Helper para concatenar strings de forma segura"""
+    return "".join(s(p) for p in parts)
+
+def strip_xls_float(sv: str) -> str:
+    """Quita .0 heredado de Excel sin romper strings"""
+    return sv[:-2] if isinstance(sv, str) and sv.endswith(".0") else sv
 
 class ClienteProcessor:
     def __init__(self):
@@ -303,41 +321,42 @@ class ClienteProcessor:
     ) -> Tuple[List[Dict], List[Dict]]:
         """Detecta clientes nuevos comparando portal vs Xubio"""
         
-        # Debug: Log de columnas disponibles
-        logger.info(f"Columnas del Portal: {list(df_portal.columns)}")
-        logger.info(f"Columnas de Xubio: {list(df_xubio.columns)}")
-        if df_cliente is not None:
-            logger.info(f"Columnas del Cliente: {list(df_cliente.columns)}")
-        
-        nuevos_clientes = []
-        errores = []
-        
-        # Normalizar maestros
-        xubio_identificadores = set()
-        xubio_nombres = set()
-        
-        for _, row in df_xubio.iterrows():
-            # Buscar columnas de identificador - Mapeo específico para Xubio
-            id_cols = [col for col in df_xubio.columns if any(keyword in col.lower() 
-                        for keyword in ['cuit', 'dni', 'documento', 'identificador', 'numeroidentificacion', 'numero_identificacion', 'numeroidentificacion', 'numeroidentificacion'])]
+        try:
+            # Debug: Log de columnas disponibles
+            logger.info(f"Columnas del Portal: {list(df_portal.columns)}")
+            logger.info(f"Columnas de Xubio: {list(df_xubio.columns)}")
+            if df_cliente is not None:
+                logger.info(f"Columnas del Cliente: {list(df_cliente.columns)}")
             
-            if id_cols:
-                identificador = self.normalizar_identificador(str(row[id_cols[0]]))
-                if identificador:
-                    xubio_identificadores.add(identificador)
+            nuevos_clientes = []
+            errores = []
             
-            # Buscar columnas de nombre - Mapeo específico para Xubio
-            nombre_cols = [col for col in df_xubio.columns if any(keyword in col.lower() 
-                          for keyword in ['nombre', 'razon', 'cliente', 'NOMBRE'])]
-            
-            if nombre_cols:
-                nombre = self.normalizar_texto(str(row[nombre_cols[0]]))
-                if nombre:
-                    xubio_nombres.add(nombre)
+            # Normalizar maestros
+            xubio_identificadores = set()
+            xubio_nombres = set()
         
-        # Procesar cada fila del portal
-        for idx, row in df_portal.iterrows():
-            try:
+            for _, row in df_xubio.iterrows():
+                # Buscar columnas de identificador - Mapeo específico para Xubio
+                id_cols = [col for col in df_xubio.columns if any(keyword in col.lower() 
+                            for keyword in ['cuit', 'dni', 'documento', 'identificador', 'numeroidentificacion', 'numero_identificacion', 'numeroidentificacion', 'numeroidentificacion'])]
+                
+                if id_cols:
+                    identificador = self.normalizar_identificador(str(row[id_cols[0]]))
+                    if identificador:
+                        xubio_identificadores.add(identificador)
+                
+                # Buscar columnas de nombre - Mapeo específico para Xubio
+                nombre_cols = [col for col in df_xubio.columns if any(keyword in col.lower() 
+                              for keyword in ['nombre', 'razon', 'cliente', 'NOMBRE'])]
+                
+                if nombre_cols:
+                    nombre = self.normalizar_texto(str(row[nombre_cols[0]]))
+                    if nombre:
+                        xubio_nombres.add(nombre)
+            
+            # Procesar cada fila del portal
+            for idx, row in df_portal.iterrows():
+                try:
                 # Buscar columnas relevantes - Mapeo más flexible para archivos del portal
                 tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f', 'TIPO_DOC', 'Tipo Doc. Comprador'])
                 numero_doc_col = self._encontrar_columna(df_portal.columns, ['NUMERO_DOC', 'numero_doc', 'Numero de Documento', 'numero de documento', 'numero_documento', 'nro. doc. comprador', 'nro doc comprador', 'nro. doc comprador', 'dni', 'cuit', 'CUIT', 'NUMERO_DOC'])
@@ -354,9 +373,9 @@ class ClienteProcessor:
                 
                 if not all([tipo_doc_col, numero_doc_col, nombre_col]):
                     errores.append({
-                        'origen_fila': f"Portal fila {fila_num + 1}",
+                        'origen_fila': safe_join("Portal fila ", fila_num + 1),
                         'tipo_error': 'Columnas faltantes',
-                        'detalle': f'No se encontraron columnas: tipo_doc={bool(tipo_doc_col)}, numero_doc={bool(numero_doc_col)}, nombre={bool(nombre_col)}',
+                        'detalle': safe_join('No se encontraron columnas: tipo_doc=', bool(tipo_doc_col), ', numero_doc=', bool(numero_doc_col), ', nombre=', bool(nombre_col)),
                         'valor_original': str(row.to_dict())
                     })
                     continue
@@ -370,9 +389,9 @@ class ClienteProcessor:
                 tipo_documento = self.mapear_tipo_documento(tipo_doc_codigo)
                 if not tipo_documento:
                     errores.append({
-                        'origen_fila': f"Portal fila {fila_num + 1}",
+                        'origen_fila': safe_join("Portal fila ", fila_num + 1),
                         'tipo_error': 'Tipo de documento no reconocido',
-                        'detalle': f'Código {tipo_doc_codigo} no mapeable',
+                        'detalle': safe_join('Código ', tipo_doc_codigo, ' no mapeable'),
                         'valor_original': tipo_doc_codigo
                     })
                     continue
@@ -385,9 +404,9 @@ class ClienteProcessor:
                 
                 if not valido:
                     errores.append({
-                        'origen_fila': f"Portal fila {fila_num + 1}",
-                        'tipo_error': f'{tipo_documento} inválido',
-                        'detalle': f'Longitud o formato incorrecto',
+                        'origen_fila': safe_join("Portal fila ", fila_num + 1),
+                        'tipo_error': safe_join(tipo_documento, ' inválido'),
+                        'detalle': 'Longitud o formato incorrecto',
                         'valor_original': numero_doc
                     })
                     continue
@@ -455,16 +474,25 @@ class ClienteProcessor:
                 
             except Exception as e:
                 errores.append({
-                    'origen_fila': f"Portal fila {fila_num + 1}",
+                    'origen_fila': safe_join("Portal fila ", fila_num + 1),
                     'tipo_error': 'Error de procesamiento',
                     'detalle': str(e),
                     'valor_original': str(row.to_dict())
                 })
         
-        # Eliminar duplicados por identificador
-        clientes_unicos = self._eliminar_duplicados(nuevos_clientes)
-        
-        return clientes_unicos, errores
+            # Eliminar duplicados por identificador
+            clientes_unicos = self._eliminar_duplicados(nuevos_clientes)
+            
+            return clientes_unicos, errores
+            
+        except Exception as e:
+            logger.error("IMPORT FAIL\n%s", traceback.format_exc())
+            return [], [{
+                'origen_fila': 'Sistema',
+                'tipo_error': f'{type(e).__name__}',
+                'detalle': str(e),
+                'valor_original': 'Error en procesamiento general'
+            }]
     
     def _encontrar_columna(self, columnas: List[str], keywords: List[str]) -> Optional[str]:
         """Encuentra columna que contenga alguno de los keywords"""

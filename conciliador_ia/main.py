@@ -115,8 +115,14 @@ async def debug_import_test():
         
         if test_result["file_exists"]:
             try:
+                # Agregar el directorio conciliador_ia al path
+                import sys
+                conciliador_path = os.path.join(os.getcwd(), "conciliador_ia")
+                if conciliador_path not in sys.path:
+                    sys.path.insert(0, conciliador_path)
+                
                 # Intentar import
-                module = __import__(f"conciliador_ia.routers.{router_name}", fromlist=[router_name])
+                module = __import__(f"routers.{router_name}", fromlist=[router_name])
                 test_result["import_success"] = True
                 
                 # Verificar que tenga 'router'
@@ -145,10 +151,16 @@ def mount_all(prefix: str):
     """Monta todos los routers con un prefijo específico"""
     global routers_loaded
     
+    # Agregar el directorio conciliador_ia al path
+    import sys
+    conciliador_path = os.path.join(os.getcwd(), "conciliador_ia")
+    if conciliador_path not in sys.path:
+        sys.path.insert(0, conciliador_path)
+    
     try:
         # Cargar upload router
         print(f"  🔄 Cargando upload router en {prefix}...")
-        from conciliador_ia.routers import upload
+        from routers import upload
         app.include_router(upload.router, prefix=prefix)
         print(f"  ✅ Upload router cargado en {prefix}")
         routers_loaded += 1
@@ -158,7 +170,7 @@ def mount_all(prefix: str):
     try:
         # Cargar conciliacion router
         print(f"  🔄 Cargando conciliacion router en {prefix}...")
-        from conciliador_ia.routers import conciliacion
+        from routers import conciliacion
         app.include_router(conciliacion.router, prefix=prefix)
         print(f"  ✅ Conciliacion router cargado en {prefix}")
         routers_loaded += 1
@@ -168,7 +180,7 @@ def mount_all(prefix: str):
     try:
         # Cargar compras router
         print(f"  🔄 Cargando compras router en {prefix}...")
-        from conciliador_ia.routers import compras
+        from routers import compras
         app.include_router(compras.router, prefix=prefix)
         print(f"  ✅ Compras router cargado en {prefix}")
         routers_loaded += 1
@@ -178,7 +190,7 @@ def mount_all(prefix: str):
     try:
         # Cargar arca_xubio router
         print(f"  🔄 Cargando arca_xubio router en {prefix}...")
-        from conciliador_ia.routers import arca_xubio
+        from routers import arca_xubio
         app.include_router(arca_xubio.router, prefix=prefix)
         print(f"  ✅ Arca_xubio router cargado en {prefix}")
         routers_loaded += 1
@@ -188,7 +200,7 @@ def mount_all(prefix: str):
     try:
         # Cargar carga_informacion router
         print(f"  🔄 Cargando carga_informacion router en {prefix}...")
-        from conciliador_ia.routers import carga_informacion
+        from routers import carga_informacion
         app.include_router(carga_informacion.router, prefix=prefix)
         print(f"  ✅ Carga_informacion router cargado en {prefix}")
         routers_loaded += 1
@@ -198,7 +210,7 @@ def mount_all(prefix: str):
     try:
         # Cargar carga_clientes router
         print(f"  🔄 Cargando carga_clientes router en {prefix}...")
-        from conciliador_ia.routers import carga_clientes
+        from routers import carga_clientes
         app.include_router(carga_clientes.router, prefix=prefix)
         print(f"  ✅ Carga_clientes router cargado en {prefix}")
         routers_loaded += 1
@@ -208,7 +220,7 @@ def mount_all(prefix: str):
     try:
         # Cargar carga_documentos router
         print(f"  🔄 Cargando carga_documentos router en {prefix}...")
-        from conciliador_ia.routers import carga_documentos
+        from routers import carga_documentos
         app.include_router(carga_documentos.router, prefix=prefix)
         print(f"  ✅ Carga_documentos router cargado en {prefix}")
         routers_loaded += 1

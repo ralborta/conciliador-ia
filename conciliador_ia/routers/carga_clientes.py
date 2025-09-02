@@ -302,11 +302,10 @@ async def importar_solo_clientes(
                 resumen={
                     "total_filas": len(df),
                     "clientes_nuevos": len(nuevos_clientes),
-                    "errores": len(errores),
-                    "archivo_procesado": archivo.filename
+                    "errores": len(errores)
                 },
                 descargas={
-                    "archivo_clientes": f"/api/v1/descargar/{job_id}/clientes.xlsx" if nuevos_clientes else None
+                    "archivo_clientes": f"/api/v1/descargar/{job_id}/clientes.xlsx" if nuevos_clientes else ""
                 },
                 logs_transformacion=mensajes_conversion
             )
@@ -326,7 +325,7 @@ async def importar_solo_clientes(
             job.progreso = 0
             job.resultado = ClienteImportResponse(
                 job_id=job_id,
-                resumen={"error": str(e)},
+                resumen={"error": 1},
                 descargas={},
                 logs_transformacion=[f"❌ Error procesando archivo: {str(e)}"]
             )

@@ -391,94 +391,94 @@ class ClienteProcessor:
                         errores.append({
                             'origen_fila': safe_join("Portal fila ", fila_num + 1),
                             'tipo_error': 'Tipo de documento no reconocido',
-                        'detalle': safe_join('Código ', tipo_doc_codigo, ' no mapeable'),
-                        'valor_original': tipo_doc_codigo
-                    })
-                    continue
+                            'detalle': safe_join('Código ', tipo_doc_codigo, ' no mapeable'),
+                            'valor_original': tipo_doc_codigo
+                        })
+                        continue
+                    
+                    # Validar y formatear documento
+                    if tipo_documento == "DNI":
+                        valido, numero_formateado = self.validar_y_formatear_dni(numero_doc)
+                    else:  # CUIT
+                        valido, numero_formateado = self.validar_y_formatear_cuit(numero_doc)
                 
-                # Validar y formatear documento
-                if tipo_documento == "DNI":
-                    valido, numero_formateado = self.validar_y_formatear_dni(numero_doc)
-                else:  # CUIT
-                    valido, numero_formateado = self.validar_y_formatear_cuit(numero_doc)
+                    if not valido:
+                        errores.append({
+                            'origen_fila': safe_join("Portal fila ", fila_num + 1),
+                            'tipo_error': safe_join(tipo_documento, ' inválido'),
+                            'detalle': 'Longitud o formato incorrecto',
+                            'valor_original': numero_doc
+                        })
+                        continue
+                    
+                    # Verificar si es cliente nuevo
+                    identificador_normalizado = self.normalizar_identificador(numero_doc)
+                    nombre_normalizado = self.normalizar_texto(nombre)
+                    
+                    if identificador_normalizado in xubio_identificadores:
+                        continue  # Cliente ya existe en Xubio
+                    
+                    # Buscar provincia - PRIMERO intentar por documento en Xubio
+                    provincia = self._obtener_provincia_por_documento(numero_formateado, df_xubio)
                 
-                if not valido:
+                    # Si no se encuentra, usar método anterior como fallback
+                    if not provincia:
+                        provincia = self._buscar_provincia(row, df_portal.columns, df_cliente)
+                    
+                    # Si aún no se encuentra, intentar por prefijo CUIT o DNI
+                    if not provincia and tipo_documento == "CUIT":
+                        provincia = self.obtener_provincia_por_cuit(numero_formateado)
+                        if provincia:
+                            logger.info(f"Fila {fila_num + 1}: Provincia determinada por prefijo CUIT: {provincia}")
+                    
+                    if not provincia and tipo_documento == "DNI":
+                        # Primero intentar por datos históricos
+                        if df_cliente is not None:
+                            provincia = self.obtener_provincia_por_dni(numero_formateado, df_cliente)
+                            if provincia:
+                                logger.info(f"Fila {fila_num + 1}: Provincia determinada por DNI en datos históricos: {provincia}")
+                        
+                        # Si no se encontró, intentar por rangos de DNI (códigos postales)
+                        if not provincia:
+                            provincia = self.obtener_localidad_por_dni(numero_formateado)
+                            if provincia:
+                                logger.info(f"Fila {fila_num + 1}: Provincia determinada por rango DNI: {provincia}")
+                    
+                    # Si aún no se encuentra, marcar como sin provincia
+                    if not provincia:
+                        provincia = ""  # Sin provincia
+                        logger.warning(f"Fila {fila_num + 1}: No se pudo determinar provincia")
+                    
+                    # Determinar condición IVA
+                    condicion_iva = self.determinar_condicion_iva(tipo_documento, numero_formateado)
+                
+                    # Determinar localidad
+                    localidad = ""
+                    if tipo_documento == "DNI":
+                        localidad = self.obtener_localidad_por_dni(numero_formateado)
+                        if localidad:
+                            logger.info(f"Fila {fila_num + 1}: Localidad determinada por DNI: {localidad}")
+                    
+                    # Crear cliente nuevo
+                    nuevo_cliente = {
+                        'nombre': nombre,
+                        'tipo_documento': tipo_documento,
+                        'numero_documento': numero_formateado,
+                        'condicion_iva': condicion_iva,
+                        'provincia': provincia,
+                        'localidad': localidad,
+                        'cuenta_contable': 'Deudores por ventas'
+                    }
+                    
+                    nuevos_clientes.append(nuevo_cliente)
+                
+                except Exception as e:
                     errores.append({
                         'origen_fila': safe_join("Portal fila ", fila_num + 1),
-                        'tipo_error': safe_join(tipo_documento, ' inválido'),
-                        'detalle': 'Longitud o formato incorrecto',
-                        'valor_original': numero_doc
+                        'tipo_error': 'Error de procesamiento',
+                        'detalle': str(e),
+                        'valor_original': str(row.to_dict())
                     })
-                    continue
-                
-                # Verificar si es cliente nuevo
-                identificador_normalizado = self.normalizar_identificador(numero_doc)
-                nombre_normalizado = self.normalizar_texto(nombre)
-                
-                if identificador_normalizado in xubio_identificadores:
-                    continue  # Cliente ya existe en Xubio
-                
-                # Buscar provincia - PRIMERO intentar por documento en Xubio
-                provincia = self._obtener_provincia_por_documento(numero_formateado, df_xubio)
-                
-                # Si no se encuentra, usar método anterior como fallback
-                if not provincia:
-                    provincia = self._buscar_provincia(row, df_portal.columns, df_cliente)
-                
-                # Si aún no se encuentra, intentar por prefijo CUIT o DNI
-                if not provincia and tipo_documento == "CUIT":
-                    provincia = self.obtener_provincia_por_cuit(numero_formateado)
-                    if provincia:
-                        logger.info(f"Fila {fila_num + 1}: Provincia determinada por prefijo CUIT: {provincia}")
-                
-                if not provincia and tipo_documento == "DNI":
-                    # Primero intentar por datos históricos
-                    if df_cliente is not None:
-                        provincia = self.obtener_provincia_por_dni(numero_formateado, df_cliente)
-                        if provincia:
-                            logger.info(f"Fila {fila_num + 1}: Provincia determinada por DNI en datos históricos: {provincia}")
-                    
-                    # Si no se encontró, intentar por rangos de DNI (códigos postales)
-                    if not provincia:
-                        provincia = self.obtener_localidad_por_dni(numero_formateado)
-                        if provincia:
-                            logger.info(f"Fila {fila_num + 1}: Provincia determinada por rango DNI: {provincia}")
-                
-                # Si aún no se encuentra, marcar como sin provincia
-                if not provincia:
-                    provincia = ""  # Sin provincia
-                    logger.warning(f"Fila {fila_num + 1}: No se pudo determinar provincia")
-                
-                # Determinar condición IVA
-                condicion_iva = self.determinar_condicion_iva(tipo_documento, numero_formateado)
-                
-                # Determinar localidad
-                localidad = ""
-                if tipo_documento == "DNI":
-                    localidad = self.obtener_localidad_por_dni(numero_formateado)
-                    if localidad:
-                        logger.info(f"Fila {fila_num + 1}: Localidad determinada por DNI: {localidad}")
-                
-                # Crear cliente nuevo
-                nuevo_cliente = {
-                    'nombre': nombre,
-                    'tipo_documento': tipo_documento,
-                    'numero_documento': numero_formateado,
-                    'condicion_iva': condicion_iva,
-                    'provincia': provincia,
-                    'localidad': localidad,
-                    'cuenta_contable': 'Deudores por ventas'
-                }
-                
-                nuevos_clientes.append(nuevo_cliente)
-                
-        except Exception as e:
-            errores.append({
-                'origen_fila': safe_join("Portal fila ", fila_num + 1),
-                'tipo_error': 'Error de procesamiento',
-                'detalle': str(e),
-                'valor_original': str(row.to_dict())
-            })
         
             # Eliminar duplicados por identificador
             clientes_unicos = self._eliminar_duplicados(nuevos_clientes)

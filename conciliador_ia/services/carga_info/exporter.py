@@ -113,3 +113,5 @@ class ExportadorVentas(Exporter):
 
 # Constante para compatibilidad
 SALIDA_DIR = "data/salida"
+lo q neces 
+

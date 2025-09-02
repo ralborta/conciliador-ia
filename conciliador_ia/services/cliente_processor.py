@@ -472,13 +472,13 @@ class ClienteProcessor:
                 
                 nuevos_clientes.append(nuevo_cliente)
                 
-            except Exception as e:
-                    errores.append({
-                        'origen_fila': safe_join("Portal fila ", fila_num + 1),
-                        'tipo_error': 'Error de procesamiento',
-                        'detalle': str(e),
-                        'valor_original': str(row.to_dict())
-                    })
+        except Exception as e:
+            errores.append({
+                'origen_fila': safe_join("Portal fila ", fila_num + 1),
+                'tipo_error': 'Error de procesamiento',
+                'detalle': str(e),
+                'valor_original': str(row.to_dict())
+            })
         
             # Eliminar duplicados por identificador
             clientes_unicos = self._eliminar_duplicados(nuevos_clientes)

@@ -366,16 +366,24 @@ class ClienteProcessor:
                     fila_num = idx[0] if isinstance(idx, tuple) else idx
                     logger.info(f"Fila {fila_num + 1}: tipo_doc_col='{tipo_doc_col}', numero_doc_col='{numero_doc_col}', nombre_col='{nombre_col}'")
                     
-                    # FORZAR USO DE COLUMNAS CORRECTAS
-                    if tipo_doc_col != 'Tipo Doc. Comprador':
-                        logger.warning(f"Fila {fila_num + 1}: Cambiando tipo_doc_col de '{tipo_doc_col}' a 'Tipo Doc. Comprador'")
-                        tipo_doc_col = 'Tipo Doc. Comprador'
+                    # MOSTRAR COLUMNAS DISPONIBLES EN PRIMERA FILA
+                    if fila_num == 0:
+                        logger.info(f"📋 COLUMNAS DISPONIBLES: {list(df_portal.columns)}")
+                        logger.info(f"🔍 BÚSQUEDA DE COLUMNAS:")
+                        logger.info(f"   - Tipo documento: '{tipo_doc_col}'")
+                        logger.info(f"   - Número documento: '{numero_doc_col}'")
+                        logger.info(f"   - Nombre: '{nombre_col}'")
+                    
+                    # NO FORZAR COLUMNAS - USAR LAS DETECTADAS
+                    # if tipo_doc_col != 'Tipo Doc. Comprador':
+                    #     logger.warning(f"Fila {fila_num + 1}: Cambiando tipo_doc_col de '{tipo_doc_col}' a 'Tipo Doc. Comprador'")
+                    #     tipo_doc_col = 'Tipo Doc. Comprador'
                     
                     if not all([tipo_doc_col, numero_doc_col, nombre_col]):
                         errores.append({
                             'origen_fila': safe_join("Portal fila ", fila_num + 1),
                             'tipo_error': 'Columnas faltantes',
-                            'detalle': safe_join('No se encontraron columnas: tipo_doc=', bool(tipo_doc_col), ', numero_doc=', bool(numero_doc_col), ', nombre=', bool(nombre_col)),
+                            'detalle': safe_join('No se encontraron columnas requeridas. Disponibles: ', ', '.join(df_portal.columns), '. Buscadas: tipo_doc=', bool(tipo_doc_col), ', numero_doc=', bool(numero_doc_col), ', nombre=', bool(nombre_col)),
                             'valor_original': str(row.to_dict())
                         })
                         continue
@@ -388,19 +396,24 @@ class ClienteProcessor:
                     # Mapear tipo de documento
                     tipo_documento = self.mapear_tipo_documento(tipo_doc_codigo)
                     if not tipo_documento:
+                        logger.warning(f"Fila {fila_num + 1}: Código de documento no reconocido: '{tipo_doc_codigo}'")
                         errores.append({
                             'origen_fila': safe_join("Portal fila ", fila_num + 1),
                             'tipo_error': 'Tipo de documento no reconocido',
-                            'detalle': safe_join('Código ', tipo_doc_codigo, ' no mapeable'),
+                            'detalle': safe_join('Código ', tipo_doc_codigo, ' no mapeable. Códigos válidos: 80=CUIT, 96=DNI'),
                             'valor_original': tipo_doc_codigo
                         })
                         continue
+                    else:
+                        logger.info(f"Fila {fila_num + 1}: Conversión exitosa '{tipo_doc_codigo}' → '{tipo_documento}'")
                     
                     # Validar y formatear documento
                     if tipo_documento == "DNI":
                         valido, numero_formateado = self.validar_y_formatear_dni(numero_doc)
+                        logger.info(f"Fila {fila_num + 1}: Validación DNI '{numero_doc}' → '{numero_formateado}' (válido: {valido})")
                     else:  # CUIT
                         valido, numero_formateado = self.validar_y_formatear_cuit(numero_doc)
+                        logger.info(f"Fila {fila_num + 1}: Validación CUIT '{numero_doc}' → '{numero_formateado}' (válido: {valido})")
                 
                     if not valido:
                         errores.append({
@@ -415,15 +428,24 @@ class ClienteProcessor:
                     identificador_normalizado = self.normalizar_identificador(numero_doc)
                     nombre_normalizado = self.normalizar_texto(nombre)
                     
+                    logger.info(f"Fila {fila_num + 1}: Cliente '{nombre}' (Doc: {numero_formateado}) - Normalizado: '{identificador_normalizado}'")
+                    
                     if identificador_normalizado in xubio_identificadores:
+                        logger.info(f"Fila {fila_num + 1}: Cliente ya existe en Xubio - Saltando")
                         continue  # Cliente ya existe en Xubio
+                    else:
+                        logger.info(f"Fila {fila_num + 1}: Cliente NUEVO detectado - Procesando")
                     
                     # Buscar provincia - PRIMERO intentar por documento en Xubio
                     provincia = self._obtener_provincia_por_documento(numero_formateado, df_xubio)
+                    if provincia:
+                        logger.info(f"Fila {fila_num + 1}: Provincia desde Xubio: {provincia}")
                 
                     # Si no se encuentra, usar método anterior como fallback
                     if not provincia:
                         provincia = self._buscar_provincia(row, df_portal.columns, df_cliente)
+                        if provincia:
+                            logger.info(f"Fila {fila_num + 1}: Provincia desde datos del portal: {provincia}")
                     
                     # Si aún no se encuentra, intentar por prefijo CUIT o DNI
                     if not provincia and tipo_documento == "CUIT":
@@ -451,6 +473,7 @@ class ClienteProcessor:
                     
                     # Determinar condición IVA
                     condicion_iva = self.determinar_condicion_iva(tipo_documento, numero_formateado)
+                    logger.info(f"Fila {fila_num + 1}: Condición IVA determinada: {condicion_iva}")
                 
                     # Determinar localidad
                     localidad = ""
@@ -471,6 +494,7 @@ class ClienteProcessor:
                     }
                     
                     nuevos_clientes.append(nuevo_cliente)
+                    logger.info(f"Fila {fila_num + 1}: ✅ CLIENTE CREADO: {nombre} ({tipo_documento}: {numero_formateado}) - {provincia}")
                 
                 except Exception as e:
                     errores.append({

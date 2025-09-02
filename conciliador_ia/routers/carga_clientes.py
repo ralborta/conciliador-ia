@@ -32,8 +32,8 @@ transformador = TransformadorArchivos()
 # Almacenamiento temporal de jobs (en producción usar Redis o base de datos)
 jobs: Dict[str, ClienteImportJob] = {}
 
-@router.post("/importar")
-async def importar_clientes(
+# Función común para ambos endpoints
+async def _importar_clientes_impl(
     empresa_id: Optional[str] = Form("default"),
     archivo_portal: UploadFile = File(...),
     archivo_xubio: UploadFile = File(...),
@@ -44,6 +44,12 @@ async def importar_clientes(
     Importa clientes nuevos desde archivos del portal y Xubio
     """
     try:
+        # DEBUG: Logs para diagnóstico
+        logger.info(f"=== IMPORTAR CLIENTES ===")
+        logger.info(f"Empresa ID: {empresa_id}")
+        logger.info(f"Archivo Portal: {archivo_portal.filename if archivo_portal else 'None'}")
+        logger.info(f"Archivo Xubio: {archivo_xubio.filename if archivo_xubio else 'None'}")
+        logger.info(f"Archivo Cliente: {archivo_cliente.filename if archivo_cliente else 'None'}")
         # Validar empresa_id (ahora opcional)
         if not empresa_id or empresa_id.strip() == "":
             empresa_id = "default"
@@ -360,3 +366,26 @@ async def eliminar_job(job_id: str):
     del jobs[job_id]
     
     return {"message": "Job eliminado correctamente"}
+
+# ALIAS DE RUTAS - Soporte para ambas versiones (ES/EN)
+@router.post("/documentos/clientes/importar")
+async def importar_clientes_es(
+    empresa_id: Optional[str] = Form("default"),
+    archivo_portal: UploadFile = File(...),
+    archivo_xubio: UploadFile = File(...),
+    archivo_cliente: Optional[UploadFile] = File(None),
+    cuenta_contable_default: Optional[str] = Form("Deudores por ventas")
+):
+    """Endpoint en español - /api/v1/documentos/clientes/importar"""
+    return await _importar_clientes_impl(empresa_id, archivo_portal, archivo_xubio, archivo_cliente, cuenta_contable_default)
+
+@router.post("/documents/clients/importar")
+async def importar_clientes_en(
+    empresa_id: Optional[str] = Form("default"),
+    archivo_portal: UploadFile = File(...),
+    archivo_xubio: UploadFile = File(...),
+    archivo_cliente: Optional[UploadFile] = File(None),
+    cuenta_contable_default: Optional[str] = Form("Deudores por ventas")
+):
+    """Endpoint en inglés - /api/v1/documents/clients/importar"""
+    return await _importar_clientes_impl(empresa_id, archivo_portal, archivo_xubio, archivo_cliente, cuenta_contable_default)

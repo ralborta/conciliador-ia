@@ -266,9 +266,34 @@ async def importar_solo_clientes(
             mensajes_conversion.append(f"🔍 Tipo detectado: {tipo_archivo}")
             
             if tipo_archivo == "GH_IIBB_TANGO":
-                mensajes_conversion.append("🔄 Archivo de cliente detectado - iniciando comparación inteligente")
-                # Para archivos de cliente, necesitamos comparar contra maestros existentes
-                # Por ahora, procesamos como clientes nuevos
+                mensajes_conversion.append("🔄 Archivo de cliente detectado - iniciando transformación inteligente con IA")
+                
+                # TRANSFORMACIÓN INTELIGENTE CON IA
+                try:
+                    # Importar transformador inteligente
+                    from services.transformador_inteligente import TransformadorInteligente
+                    
+                    # Crear transformador inteligente
+                    transformador_ia = TransformadorInteligente()
+                    
+                    # Cargar maestros (por ahora vacíos, pero el sistema está preparado)
+                    df_portal_vacio = pd.DataFrame()
+                    df_xubio_vacio = pd.DataFrame()
+                    transformador_ia.cargar_maestros(df_portal_vacio, df_xubio_vacio)
+                    
+                    # Transformar con IA
+                    df_clientes_nuevos, clientes_existentes, errores_transformacion = transformador_ia.transformar_tango_a_clientes(df)
+                    
+                    mensajes_conversion.append(f"✅ Transformación IA completada: {len(df_clientes_nuevos)} clientes nuevos, {len(clientes_existentes)} existentes")
+                    
+                    # Usar el archivo transformado
+                    df = df_clientes_nuevos
+                    
+                except Exception as e:
+                    mensajes_conversion.append(f"⚠️ Error en transformación IA: {str(e)}")
+                    mensajes_conversion.append("🔄 Procesando archivo original...")
+                
+                # Procesar clientes (ahora con archivo transformado)
                 nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
             elif tipo_archivo == "PORTAL_AFIP":
                 mensajes_conversion.append("🏛️ Archivo Portal AFIP detectado - procesando como maestro")

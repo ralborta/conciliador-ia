@@ -103,176 +103,182 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 🚀 CARGAR ROUTERS DIRECTAMENTE - SIN STARTUP EVENT
+print("=" * 60)
+print("=== CARGANDO ROUTERS DIRECTAMENTE ===")
+print("=" * 60)
+
+app._startup_errors = []
+app._startup_completed = False
+app._routers_loaded = False
+
+try:
+    # Crear directorios necesarios
+    print("📁 Creando directorios...")
+    os.makedirs("data/uploads", exist_ok=True)
+    os.makedirs("data/salida", exist_ok=True)
+    os.makedirs("data/entrada", exist_ok=True)
+    print("✅ Directorios creados correctamente")
+    
+    # Verificar qué archivos de routers existen
+    print("🔍 Verificando archivos de routers...")
+    router_files = [
+        "routers/test_router.py",
+        "routers/upload.py",
+        "routers/conciliacion.py", 
+        "routers/compras.py",
+        "routers/arca_xubio.py",
+        "routers/carga_informacion.py",
+        "routers/carga_clientes.py",
+        "routers/carga_documentos.py"
+    ]
+    
+    existing_files = []
+    missing_files = []
+    
+    for file in router_files:
+        if os.path.exists(file):
+            existing_files.append(file)
+            print(f"  ✅ {file}")
+        else:
+            missing_files.append(file)
+            print(f"  ❌ {file} - NO EXISTE")
+    
+    print(f"📊 Archivos encontrados: {len(existing_files)}/{len(router_files)}")
+    
+    # Intentar cargar routers uno por uno con debug
+    print("📦 Cargando routers uno por uno...")
+    
+    routers_loaded = 0
+    
+    # PRIMERO: Cargar router de prueba para verificar que el sistema funciona
+    try:
+        print("  🔄 Cargando TEST ROUTER (prueba)...")
+        from routers import test_router
+        app.include_router(test_router.router, prefix="/api/v1")
+        print("  ✅ TEST ROUTER cargado - Sistema de routers funciona!")
+        routers_loaded += 1
+    except Exception as e:
+        error_msg = f"Error cargando TEST ROUTER: {str(e)}"
+        print(f"  ❌ {error_msg}")
+        app._startup_errors.append(error_msg)
+        traceback.print_exc()
+    
+    try:
+        print("  🔄 Cargando upload router...")
+        from routers import upload
+        app.include_router(upload.router, prefix="/api/v1")
+        print("  ✅ Upload router cargado")
+        routers_loaded += 1
+    except Exception as e:
+        error_msg = f"Error cargando upload router: {str(e)}"
+        print(f"  ❌ {error_msg}")
+        app._startup_errors.append(error_msg)
+        traceback.print_exc()
+    
+    try:
+        print("  🔄 Cargando conciliacion router...")
+        from routers import conciliacion
+        app.include_router(conciliacion.router, prefix="/api/v1")
+        print("  ✅ Conciliacion router cargado")
+        routers_loaded += 1
+    except Exception as e:
+        error_msg = f"Error cargando conciliacion router: {str(e)}"
+        print(f"  ❌ {error_msg}")
+        app._startup_errors.append(error_msg)
+        traceback.print_exc()
+    
+    try:
+        print("  🔄 Cargando compras router...")
+        from routers import compras
+        app.include_router(compras.router, prefix="/api/v1")
+        print("  ✅ Compras router cargado")
+        routers_loaded += 1
+    except Exception as e:
+        error_msg = f"Error cargando compras router: {str(e)}"
+        print(f"  ❌ {error_msg}")
+        app._startup_errors.append(error_msg)
+        traceback.print_exc()
+    
+    try:
+        print("  🔄 Cargando arca_xubio router...")
+        from routers import arca_xubio
+        app.include_router(arca_xubio.router, prefix="/api/v1")
+        print("  ✅ Arca_xubio router cargado")
+        routers_loaded += 1
+    except Exception as e:
+        error_msg = f"Error cargando arca_xubio router: {str(e)}"
+        print(f"  ❌ {error_msg}")
+        app._startup_errors.append(error_msg)
+        traceback.print_exc()
+    
+    try:
+        print("  🔄 Cargando carga_informacion router...")
+        from routers import carga_informacion
+        app.include_router(carga_informacion.router, prefix="/api/v1")
+        print("  ✅ Carga_informacion router cargado")
+        routers_loaded += 1
+    except Exception as e:
+        error_msg = f"Error cargando carga_informacion router: {str(e)}"
+        print(f"  ❌ {error_msg}")
+        app._startup_errors.append(error_msg)
+        traceback.print_exc()
+    
+    try:
+        print("  🔄 Cargando carga_clientes router...")
+        from routers import carga_clientes
+        app.include_router(carga_clientes.router, prefix="/api/v1")
+        print("  ✅ Carga_clientes router cargado")
+        routers_loaded += 1
+    except Exception as e:
+        error_msg = f"Error cargando carga_clientes router: {str(e)}"
+        print(f"  ❌ {error_msg}")
+        app._startup_errors.append(error_msg)
+        traceback.print_exc()
+    
+    try:
+        print("  🔄 Cargando carga_documentos router...")
+        from routers import carga_documentos
+        app.include_router(carga_documentos.router, prefix="/api/v1")
+        print("  ✅ Carga_documentos router cargado")
+        routers_loaded += 1
+    except Exception as e:
+        error_msg = f"Error cargando carga_documentos router: {str(e)}"
+        print(f"  ❌ {error_msg}")
+        app._startup_errors.append(error_msg)
+        # No hacer traceback aquí porque puede ser opcional
+    
+    print(f"📊 Routers cargados exitosamente: {routers_loaded}/8")
+    
+    if routers_loaded > 0:
+        app._routers_loaded = True
+        print("✅ Al menos algunos routers se cargaron correctamente")
+    else:
+        print("❌ NO se pudo cargar ningún router")
+    
+    app._startup_completed = True
+    print("=" * 60)
+    print("✅ ROUTERS CARGADOS DIRECTAMENTE")
+    print(f"🚀 Servidor listo en puerto {os.getenv('PORT', 8000)}")
+    print("=" * 60)
+    
+except Exception as e:
+    error_msg = f"Error crítico durante la carga de routers: {str(e)}"
+    print(f"💥 {error_msg}")
+    app._startup_errors.append(error_msg)
+    app._startup_completed = True  # Marcar como completado aunque haya errores
+    traceback.print_exc()
+
 @app.on_event("startup")
 async def startup_event():
-    """Evento de inicio - CON DEBUGGING COMPLETO"""
-    print("=" * 60)
-    print("=== INICIANDO CONCILIADOR IA - DEBUG MODE ===")
-    print("=" * 60)
+    """Evento de inicio - SIMPLIFICADO PARA RAILWAY"""
+    print("=== INICIANDO CONCILIADOR IA ===")
     print(f"Directorio de trabajo: {os.getcwd()}")
     print(f"Variables de entorno PORT: {os.environ.get('PORT', 'NO_DEFINIDO')}")
     print(f"Variables de entorno HOST: {os.environ.get('HOST', 'NO_DEFINIDO')}")
     
-    app._startup_errors = []
-    app._startup_completed = False
-    app._routers_loaded = False
-    
-    try:
-        # Crear directorios necesarios
-        print("📁 Creando directorios...")
-        os.makedirs("data/uploads", exist_ok=True)
-        os.makedirs("data/salida", exist_ok=True)
-        os.makedirs("data/entrada", exist_ok=True)
-        print("✅ Directorios creados correctamente")
-        
-        # Verificar qué archivos de routers existen
-        print("🔍 Verificando archivos de routers...")
-        router_files = [
-            "routers/test_router.py",
-            "routers/upload.py",
-            "routers/conciliacion.py", 
-            "routers/compras.py",
-            "routers/arca_xubio.py",
-            "routers/carga_informacion.py",
-            "routers/carga_clientes.py",
-            "routers/carga_documentos.py"
-        ]
-        
-        existing_files = []
-        missing_files = []
-        
-        for file in router_files:
-            if os.path.exists(file):
-                existing_files.append(file)
-                print(f"  ✅ {file}")
-            else:
-                missing_files.append(file)
-                print(f"  ❌ {file} - NO EXISTE")
-        
-        print(f"📊 Archivos encontrados: {len(existing_files)}/{len(router_files)}")
-        
-        # Intentar cargar routers uno por uno con debug
-        print("📦 Cargando routers uno por uno...")
-        
-        routers_loaded = 0
-        
-        # PRIMERO: Cargar router de prueba para verificar que el sistema funciona
-        try:
-            print("  🔄 Cargando TEST ROUTER (prueba)...")
-            from routers import test_router
-            app.include_router(test_router.router, prefix="/api/v1")
-            print("  ✅ TEST ROUTER cargado - Sistema de routers funciona!")
-            routers_loaded += 1
-        except Exception as e:
-            error_msg = f"Error cargando TEST ROUTER: {str(e)}"
-            print(f"  ❌ {error_msg}")
-            app._startup_errors.append(error_msg)
-            traceback.print_exc()
-        
-        try:
-            print("  🔄 Cargando upload router...")
-            from routers import upload
-            app.include_router(upload.router, prefix="/api/v1")
-            print("  ✅ Upload router cargado")
-            routers_loaded += 1
-        except Exception as e:
-            error_msg = f"Error cargando upload router: {str(e)}"
-            print(f"  ❌ {error_msg}")
-            app._startup_errors.append(error_msg)
-            traceback.print_exc()
-        
-        try:
-            print("  🔄 Cargando conciliacion router...")
-            from routers import conciliacion
-            app.include_router(conciliacion.router, prefix="/api/v1")
-            print("  ✅ Conciliacion router cargado")
-            routers_loaded += 1
-        except Exception as e:
-            error_msg = f"Error cargando conciliacion router: {str(e)}"
-            print(f"  ❌ {error_msg}")
-            app._startup_errors.append(error_msg)
-            traceback.print_exc()
-        
-        try:
-            print("  🔄 Cargando compras router...")
-            from routers import compras
-            app.include_router(compras.router, prefix="/api/v1")
-            print("  ✅ Compras router cargado")
-            routers_loaded += 1
-        except Exception as e:
-            error_msg = f"Error cargando compras router: {str(e)}"
-            print(f"  ❌ {error_msg}")
-            app._startup_errors.append(error_msg)
-            traceback.print_exc()
-        
-        try:
-            print("  🔄 Cargando arca_xubio router...")
-            from routers import arca_xubio
-            app.include_router(arca_xubio.router, prefix="/api/v1")
-            print("  ✅ Arca_xubio router cargado")
-            routers_loaded += 1
-        except Exception as e:
-            error_msg = f"Error cargando arca_xubio router: {str(e)}"
-            print(f"  ❌ {error_msg}")
-            app._startup_errors.append(error_msg)
-            traceback.print_exc()
-        
-        try:
-            print("  🔄 Cargando carga_informacion router...")
-            from routers import carga_informacion
-            app.include_router(carga_informacion.router, prefix="/api/v1")
-            print("  ✅ Carga_informacion router cargado")
-            routers_loaded += 1
-        except Exception as e:
-            error_msg = f"Error cargando carga_informacion router: {str(e)}"
-            print(f"  ❌ {error_msg}")
-            app._startup_errors.append(error_msg)
-            traceback.print_exc()
-        
-        try:
-            print("  🔄 Cargando carga_clientes router...")
-            from routers import carga_clientes
-            app.include_router(carga_clientes.router, prefix="/api/v1")
-            print("  ✅ Carga_clientes router cargado")
-            routers_loaded += 1
-        except Exception as e:
-            error_msg = f"Error cargando carga_clientes router: {str(e)}"
-            print(f"  ❌ {error_msg}")
-            app._startup_errors.append(error_msg)
-            traceback.print_exc()
-        
-        try:
-            print("  🔄 Cargando carga_documentos router...")
-            from routers import carga_documentos
-            app.include_router(carga_documentos.router, prefix="/api/v1")
-            print("  ✅ Carga_documentos router cargado")
-            routers_loaded += 1
-        except Exception as e:
-            error_msg = f"Error cargando carga_documentos router: {str(e)}"
-            print(f"  ❌ {error_msg}")
-            app._startup_errors.append(error_msg)
-            # No hacer traceback aquí porque puede ser opcional
-        
-        print(f"📊 Routers cargados exitosamente: {routers_loaded}/8")
-        
-        if routers_loaded > 0:
-            app._routers_loaded = True
-            print("✅ Al menos algunos routers se cargaron correctamente")
-        else:
-            print("❌ NO se pudo cargar ningún router")
-        
-        app._startup_completed = True
-        print("=" * 60)
-        print("✅ STARTUP COMPLETADO")
-        print(f"🚀 Servidor escuchando en puerto {os.getenv('PORT', 8000)}")
-        print("=" * 60)
-        
-    except Exception as e:
-        error_msg = f"Error crítico durante el startup: {str(e)}"
-        print(f"💥 {error_msg}")
-        app._startup_errors.append(error_msg)
-        app._startup_completed = True  # Marcar como completado aunque haya errores
-        traceback.print_exc()
+    print("✅ Conciliador IA iniciado correctamente")
+    print(f"🚀 Servidor escuchando en puerto {os.getenv('PORT', 8000)}")
 
 @app.on_event("shutdown")
 async def shutdown_event():

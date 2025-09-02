@@ -64,7 +64,7 @@ class Exporter:
             for key, value in data.items():
                 if isinstance(value, pd.DataFrame):
                     json_data[key] = value.to_dict('records')
-                else:
+            else:
                     json_data[key] = value
             
             with open(output_path, 'w', encoding='utf-8') as f:
@@ -91,10 +91,25 @@ class Exporter:
                     "columns": len(df.columns),
                     "columns_list": list(df.columns)
                 }
-            else:
+        else:
                 summary["sheets_info"][sheet_name] = {
                     "type": type(df).__name__,
                     "value": str(df)[:100] + "..." if len(str(df)) > 100 else str(df)
                 }
         
         return summary
+
+# Clase específica para exportar ventas (compatibilidad con código existente)
+class ExportadorVentas(Exporter):
+    """Clase específica para exportar datos de ventas"""
+    
+    def __init__(self, output_dir: str = "data/salida"):
+        super().__init__(output_dir)
+        self.SALIDA_DIR = self.output_dir  # Para compatibilidad
+    
+    def exportar_ventas(self, data: Dict[str, Any], filename: str = "ventas_exportadas") -> str:
+        """Exportar datos de ventas a Excel"""
+        return self.export_to_excel(data, filename)
+
+# Constante para compatibilidad
+SALIDA_DIR = "data/salida"

@@ -6,95 +6,22 @@ import os
 from dotenv import load_dotenv
 import sys
 from pathlib import Path
-import traceback
 
-# Asegurar que los imports internos funcionen tanto localmente como en contenedor
+# Setup básico
 current_dir = Path(__file__).resolve().parent
 if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
 
-# Cargar variables de entorno
 load_dotenv()
 
-# Configurar logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('conciliador_ia.log')
-    ]
-)
-
+# Logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Crear aplicación FastAPI
-app = FastAPI(
-    title="Conciliador IA",
-    description="Backend para conciliación automática de extractos bancarios con comprobantes usando IA",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
-)
+# APP
+app = FastAPI(title="Conciliador IA", version="1.0.0")
 
-# ENDPOINTS CRÍTICOS ANTES DE MIDDLEWARES
-@app.get("/health")
-async def health_check():
-    """Endpoint de health check para Railway"""
-    print("HEALTH CHECK PING - ", __name__)
-    return {"status": "healthy", "timestamp": "2025-07-24"}
-
-@app.get("/api/v1/health")
-async def health_check_v1():
-    """Endpoint de health check v1 para Railway"""
-    print("HEALTH CHECK V1 PING - ", __name__)
-    return {"status": "healthy", "timestamp": "2025-07-24", "version": "v1"}
-
-@app.head("/health")
-async def health_check_head():
-    """Health check HEAD para Railway"""
-    print("HEALTH HEAD PING - ", __name__)
-    return {"status": "healthy"}
-
-@app.get("/healthz")
-async def health_check_alt():
-    """Health check alternativo"""
-    print("HEALTHZ PING - ", __name__)
-    return {"status": "healthy", "timestamp": "2025-07-24"}
-
-@app.get("/")
-async def root():
-    """Endpoint raíz"""
-    return {
-        "message": "Conciliador IA - Backend para conciliación automática",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "status": "running",
-        "timestamp": "2025-07-24",
-        "routers_loaded": getattr(app, '_routers_loaded', False)
-    }
-
-# DEBUG: Endpoint para ver qué rutas están cargadas
-@app.get("/debug/routes")
-async def debug_routes():
-    """Ver todas las rutas cargadas"""
-    routes = []
-    for route in app.routes:
-        if hasattr(route, 'path') and hasattr(route, 'methods'):
-            routes.append({
-                "path": route.path,
-                "methods": list(route.methods) if route.methods else [],
-                "name": getattr(route, 'name', 'unknown')
-            })
-    return {
-        "total_routes": len(routes),
-        "routes": routes,
-        "routers_loaded": getattr(app, '_routers_loaded', False),
-        "startup_completed": getattr(app, '_startup_completed', False),
-        "startup_errors": getattr(app, '_startup_errors', [])
-    }
-
-# CONFIGURAR CORS DESPUÉS DE ENDPOINTS CRÍTICOS
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -103,248 +30,136 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🚀 CARGAR ROUTERS DIRECTAMENTE - SIN STARTUP EVENT
-print("=" * 60)
-print("=== CARGANDO ROUTERS DIRECTAMENTE ===")
-print("=" * 60)
+# HEALTH CHECKS
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
 
-app._startup_errors = []
-app._startup_completed = False
-app._routers_loaded = False
+@app.get("/api/v1/health")
+async def health_v1():
+    return {"status": "healthy", "version": "v1"}
 
-try:
-    # Crear directorios necesarios
-    print("📁 Creando directorios...")
-    os.makedirs("data/uploads", exist_ok=True)
-    os.makedirs("data/salida", exist_ok=True)
-    os.makedirs("data/entrada", exist_ok=True)
-    print("✅ Directorios creados correctamente")
+@app.get("/")
+async def root():
+    return {"message": "Conciliador IA funcionando", "status": "ok"}
+
+# DIAGNÓSTICO COMPLETO
+@app.get("/debug/filesystem")
+async def debug_filesystem():
+    """Ver estructura de archivos"""
+    try:
+        result = {
+            "cwd": os.getcwd(),
+            "files": {},
+            "routers_exists": os.path.exists("routers"),
+            "routers_is_dir": os.path.isdir("routers") if os.path.exists("routers") else False
+        }
+        
+        # Listar archivos raíz
+        root_files = []
+        for item in os.listdir('.'):
+            if os.path.isfile(item):
+                root_files.append(item)
+            elif os.path.isdir(item):
+                root_files.append(f"{item}/")
+        result["root_files"] = root_files
+        
+        # Listar routers si existe
+        if os.path.exists("routers") and os.path.isdir("routers"):
+            router_files = []
+            for item in os.listdir("routers"):
+                size = os.path.getsize(f"routers/{item}") if os.path.isfile(f"routers/{item}") else 0
+                router_files.append({"name": item, "size": size})
+            result["router_files"] = router_files
+        else:
+            result["router_files"] = "NO_EXISTS"
+            
+        return result
+        
+    except Exception as e:
+        return {"error": str(e), "traceback": str(e)}
+
+@app.get("/debug/import-test")
+async def debug_import_test():
+    """Probar imports uno por uno"""
+    results = {
+        "routers_dir_exists": os.path.exists("routers"),
+        "routers_init_exists": os.path.exists("routers/__init__.py"),
+        "import_tests": []
+    }
     
-    # Verificar qué archivos de routers existen
-    print("🔍 Verificando archivos de routers...")
-    router_files = [
-        "routers/test_router.py",
-        "routers/upload.py",
-        "routers/conciliacion.py", 
-        "routers/compras.py",
-        "routers/arca_xubio.py",
-        "routers/carga_informacion.py",
-        "routers/carga_clientes.py",
-        "routers/carga_documentos.py"
+    # Lista de routers a probar
+    routers_to_test = [
+        "upload", 
+        "conciliacion", 
+        "compras", 
+        "arca_xubio", 
+        "carga_informacion", 
+        "carga_clientes",
+        "carga_documentos"
     ]
     
-    existing_files = []
-    missing_files = []
-    
-    for file in router_files:
-        if os.path.exists(file):
-            existing_files.append(file)
-            print(f"  ✅ {file}")
+    for router_name in routers_to_test:
+        test_result = {
+            "name": router_name,
+            "file_exists": os.path.exists(f"routers/{router_name}.py"),
+            "import_success": False,
+            "has_router": False,
+            "error": None
+        }
+        
+        if test_result["file_exists"]:
+            try:
+                # Intentar import
+                module = __import__(f"routers.{router_name}", fromlist=[router_name])
+                test_result["import_success"] = True
+                
+                # Verificar que tenga 'router'
+                if hasattr(module, 'router'):
+                    test_result["has_router"] = True
+                else:
+                    test_result["error"] = "Módulo importado pero no tiene atributo 'router'"
+                    
+            except Exception as e:
+                test_result["error"] = str(e)
         else:
-            missing_files.append(file)
-            print(f"  ❌ {file} - NO EXISTE")
+            test_result["error"] = "Archivo no existe"
+            
+        results["import_tests"].append(test_result)
     
-    print(f"📊 Archivos encontrados: {len(existing_files)}/{len(router_files)}")
-    
-    # Intentar cargar routers uno por uno con debug
-    print("📦 Cargando routers uno por uno...")
-    
-    routers_loaded = 0
-    
-    # PRIMERO: Cargar router de prueba para verificar que el sistema funciona
-    try:
-        print("  🔄 Cargando TEST ROUTER (prueba)...")
-        from routers import test_router
-        app.include_router(test_router.router, prefix="/api/v1")
-        print("  ✅ TEST ROUTER cargado - Sistema de routers funciona!")
-        routers_loaded += 1
-    except Exception as e:
-        error_msg = f"Error cargando TEST ROUTER: {str(e)}"
-        print(f"  ❌ {error_msg}")
-        app._startup_errors.append(error_msg)
-        traceback.print_exc()
-    
-    try:
-        print("  🔄 Cargando upload router...")
-        from routers import upload
-        app.include_router(upload.router, prefix="/api/v1")
-        print("  ✅ Upload router cargado")
-        routers_loaded += 1
-    except Exception as e:
-        error_msg = f"Error cargando upload router: {str(e)}"
-        print(f"  ❌ {error_msg}")
-        app._startup_errors.append(error_msg)
-        traceback.print_exc()
-    
-    try:
-        print("  🔄 Cargando conciliacion router...")
-        from routers import conciliacion
-        app.include_router(conciliacion.router, prefix="/api/v1")
-        print("  ✅ Conciliacion router cargado")
-        routers_loaded += 1
-    except Exception as e:
-        error_msg = f"Error cargando conciliacion router: {str(e)}"
-        print(f"  ❌ {error_msg}")
-        app._startup_errors.append(error_msg)
-        traceback.print_exc()
-    
-    try:
-        print("  🔄 Cargando compras router...")
-        from routers import compras
-        app.include_router(compras.router, prefix="/api/v1")
-        print("  ✅ Compras router cargado")
-        routers_loaded += 1
-    except Exception as e:
-        error_msg = f"Error cargando compras router: {str(e)}"
-        print(f"  ❌ {error_msg}")
-        app._startup_errors.append(error_msg)
-        traceback.print_exc()
-    
-    try:
-        print("  🔄 Cargando arca_xubio router...")
-        from routers import arca_xubio
-        app.include_router(arca_xubio.router, prefix="/api/v1")
-        print("  ✅ Arca_xubio router cargado")
-        routers_loaded += 1
-    except Exception as e:
-        error_msg = f"Error cargando arca_xubio router: {str(e)}"
-        print(f"  ❌ {error_msg}")
-        app._startup_errors.append(error_msg)
-        traceback.print_exc()
-    
-    try:
-        print("  🔄 Cargando carga_informacion router...")
-        from routers import carga_informacion
-        app.include_router(carga_informacion.router, prefix="/api/v1")
-        print("  ✅ Carga_informacion router cargado")
-        routers_loaded += 1
-    except Exception as e:
-        error_msg = f"Error cargando carga_informacion router: {str(e)}"
-        print(f"  ❌ {error_msg}")
-        app._startup_errors.append(error_msg)
-        traceback.print_exc()
-    
-    try:
-        print("  🔄 Cargando carga_clientes router...")
-        from routers import carga_clientes
-        app.include_router(carga_clientes.router, prefix="/api/v1")
-        print("  ✅ Carga_clientes router cargado")
-        routers_loaded += 1
-    except Exception as e:
-        error_msg = f"Error cargando carga_clientes router: {str(e)}"
-        print(f"  ❌ {error_msg}")
-        app._startup_errors.append(error_msg)
-        traceback.print_exc()
-    
-    try:
-        print("  🔄 Cargando carga_documentos router...")
-        from routers import carga_documentos
-        app.include_router(carga_documentos.router, prefix="/api/v1")
-        print("  ✅ Carga_documentos router cargado")
-        routers_loaded += 1
-    except Exception as e:
-        error_msg = f"Error cargando carga_documentos router: {str(e)}"
-        print(f"  ❌ {error_msg}")
-        app._startup_errors.append(error_msg)
-        # No hacer traceback aquí porque puede ser opcional
-    
-    print(f"📊 Routers cargados exitosamente: {routers_loaded}/8")
-    
-    if routers_loaded > 0:
-        app._routers_loaded = True
-        print("✅ Al menos algunos routers se cargaron correctamente")
-    else:
-        print("❌ NO se pudo cargar ningún router")
-    
-    app._startup_completed = True
-    print("=" * 60)
-    print("✅ ROUTERS CARGADOS DIRECTAMENTE")
-    print(f"🚀 Servidor listo en puerto {os.getenv('PORT', 8000)}")
-    print("=" * 60)
-    
-except Exception as e:
-    error_msg = f"Error crítico durante la carga de routers: {str(e)}"
-    print(f"💥 {error_msg}")
-    app._startup_errors.append(error_msg)
-    app._startup_completed = True  # Marcar como completado aunque haya errores
-    traceback.print_exc()
+    return results
 
+# ENDPOINTS TEMPORALES PARA QUE EL FRONTEND NO EXPLOTE
+@app.get("/api/v1/importar-clientes")
+async def temp_importar_clientes():
+    return {"success": True, "message": "Endpoint temporal - routers no cargados aún", "data": []}
+
+@app.post("/api/v1/upload")
+async def temp_upload():
+    return {"success": True, "message": "Endpoint temporal - routers no cargados aún"}
+
+@app.get("/api/v1/test")
+async def temp_test():
+    return {"success": True, "message": "Endpoint temporal funcionando"}
+
+# STARTUP
 @app.on_event("startup")
-async def startup_event():
-    """Evento de inicio - SIMPLIFICADO PARA RAILWAY"""
-    print("=== INICIANDO CONCILIADOR IA ===")
-    print(f"Directorio de trabajo: {os.getcwd()}")
-    print(f"Variables de entorno PORT: {os.environ.get('PORT', 'NO_DEFINIDO')}")
-    print(f"Variables de entorno HOST: {os.environ.get('HOST', 'NO_DEFINIDO')}")
+async def startup():
+    """Startup mínimo"""
+    print("🚀 CONCILIADOR IA INICIADO")
+    print(f"📁 Directorio: {os.getcwd()}")
     
-    print("✅ Conciliador IA iniciado correctamente")
-    print(f"🚀 Servidor escuchando en puerto {os.getenv('PORT', 8000)}")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Evento de cierre de la aplicación"""
-    logger.info("Cerrando Conciliador IA...")
-
-@app.get("/test")
-async def test():
-    """Endpoint de prueba"""
-    return {"status": "ok", "message": "Backend funcionando correctamente"}
-
-@app.get("/debug")
-async def debug_info():
-    """Endpoint de debug para verificar configuración"""
-    return {
-        "status": "debug",
-        "port": os.environ.get("PORT", "NO_DEFINIDO"),
-        "host": os.environ.get("HOST", "NO_DEFINIDO"),
-        "cwd": os.getcwd(),
-        "python_path": sys.path,
-        "app_name": __name__,
-        "routers_loaded": getattr(app, '_routers_loaded', False),
-        "startup_completed": getattr(app, '_startup_completed', False),
-        "startup_errors": getattr(app, '_startup_errors', []),
-        "total_routes": len(app.routes)
-    }
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    """Manejador global de excepciones"""
-    logger.error(f"Error no manejado: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={
-            "success": False,
-            "error": "Error interno del servidor",
-            "details": str(exc) if os.getenv('DEBUG', 'False').lower() == 'true' else None
-        }
-    )
-
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    """Manejador de excepciones HTTP"""
-    logger.error(f"Error HTTP {exc.status_code}: {exc.detail}")
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "success": False,
-            "error": exc.detail
-        }
-    )
+    # Crear directorios
+    try:
+        os.makedirs("data/uploads", exist_ok=True)
+        os.makedirs("data/salida", exist_ok=True)
+        os.makedirs("data/entrada", exist_ok=True)
+        print("✅ Directorios creados")
+    except Exception as e:
+        print(f"❌ Error creando directorios: {e}")
 
 if __name__ == "__main__":
     import uvicorn
-    
-    # Configuración del servidor
     host = os.getenv('HOST', '0.0.0.0')
     port = int(os.getenv('PORT', 8000))
-    debug = os.getenv('DEBUG', 'False').lower() == 'true'
-    
-    logger.info(f"Iniciando servidor en {host}:{port}")
-    
-    uvicorn.run(
-        "main:app",
-        host=host,
-        port=port,
-        reload=debug,
-        log_level="info"
-    )
+    uvicorn.run("main:app", host=host, port=port, log_level="info")

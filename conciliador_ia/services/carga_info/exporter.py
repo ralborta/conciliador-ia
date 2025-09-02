@@ -64,7 +64,7 @@ class Exporter:
             for key, value in data.items():
                 if isinstance(value, pd.DataFrame):
                     json_data[key] = value.to_dict('records')
-            else:
+                else:
                     json_data[key] = value
             
             with open(output_path, 'w', encoding='utf-8') as f:
@@ -91,7 +91,7 @@ class Exporter:
                     "columns": len(df.columns),
                     "columns_list": list(df.columns)
                 }
-        else:
+            else:
                 summary["sheets_info"][sheet_name] = {
                     "type": type(df).__name__,
                     "value": str(df)[:100] + "..." if len(str(df)) > 100 else str(df)
@@ -110,8 +110,24 @@ class ExportadorVentas(Exporter):
     def exportar_ventas(self, data: Dict[str, Any], filename: str = "ventas_exportadas") -> str:
         """Exportar datos de ventas a Excel"""
         return self.export_to_excel(data, filename)
+    
+    def exportar_clientes(self, df_clientes: pd.DataFrame, filename: str) -> str:
+        """Exportar clientes a archivo Excel"""
+        try:
+            # Crear directorio si no existe
+            output_path = Path(filename)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Exportar a Excel
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+                df_clientes.to_excel(writer, sheet_name='Clientes_Nuevos', index=False)
+            
+            logger.info(f"Clientes exportados a Excel: {filename}")
+            return filename
+            
+        except Exception as e:
+            logger.error(f"Error exportando clientes: {e}")
+            raise
 
 # Constante para compatibilidad
 SALIDA_DIR = "data/salida"
-
-

@@ -344,16 +344,17 @@ class ClienteProcessor:
                 nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE', 'denominaciÃ³n comprador', 'denominacion comprador', 'denominaciã³n comprador'])
                 
                 # DEBUG: Verificar qué columnas se encontraron
-                logger.info(f"Fila {idx + 1}: tipo_doc_col='{tipo_doc_col}', numero_doc_col='{numero_doc_col}', nombre_col='{nombre_col}'")
+                fila_num = idx[0] if isinstance(idx, tuple) else idx
+                logger.info(f"Fila {fila_num + 1}: tipo_doc_col='{tipo_doc_col}', numero_doc_col='{numero_doc_col}', nombre_col='{nombre_col}'")
                 
                 # FORZAR USO DE COLUMNAS CORRECTAS
                 if tipo_doc_col != 'Tipo Doc. Comprador':
-                    logger.warning(f"Fila {idx + 1}: Cambiando tipo_doc_col de '{tipo_doc_col}' a 'Tipo Doc. Comprador'")
+                    logger.warning(f"Fila {fila_num + 1}: Cambiando tipo_doc_col de '{tipo_doc_col}' a 'Tipo Doc. Comprador'")
                     tipo_doc_col = 'Tipo Doc. Comprador'
                 
                 if not all([tipo_doc_col, numero_doc_col, nombre_col]):
                     errores.append({
-                        'origen_fila': f"Portal fila {idx + 1}",
+                        'origen_fila': f"Portal fila {fila_num + 1}",
                         'tipo_error': 'Columnas faltantes',
                         'detalle': f'No se encontraron columnas: tipo_doc={bool(tipo_doc_col)}, numero_doc={bool(numero_doc_col)}, nombre={bool(nombre_col)}',
                         'valor_original': str(row.to_dict())
@@ -369,7 +370,7 @@ class ClienteProcessor:
                 tipo_documento = self.mapear_tipo_documento(tipo_doc_codigo)
                 if not tipo_documento:
                     errores.append({
-                        'origen_fila': f"Portal fila {idx + 1}",
+                        'origen_fila': f"Portal fila {fila_num + 1}",
                         'tipo_error': 'Tipo de documento no reconocido',
                         'detalle': f'Código {tipo_doc_codigo} no mapeable',
                         'valor_original': tipo_doc_codigo
@@ -384,7 +385,7 @@ class ClienteProcessor:
                 
                 if not valido:
                     errores.append({
-                        'origen_fila': f"Portal fila {idx + 1}",
+                        'origen_fila': f"Portal fila {fila_num + 1}",
                         'tipo_error': f'{tipo_documento} inválido',
                         'detalle': f'Longitud o formato incorrecto',
                         'valor_original': numero_doc
@@ -409,25 +410,25 @@ class ClienteProcessor:
                 if not provincia and tipo_documento == "CUIT":
                     provincia = self.obtener_provincia_por_cuit(numero_formateado)
                     if provincia:
-                        logger.info(f"Fila {idx + 1}: Provincia determinada por prefijo CUIT: {provincia}")
+                        logger.info(f"Fila {fila_num + 1}: Provincia determinada por prefijo CUIT: {provincia}")
                 
                 if not provincia and tipo_documento == "DNI":
                     # Primero intentar por datos históricos
                     if df_cliente is not None:
                         provincia = self.obtener_provincia_por_dni(numero_formateado, df_cliente)
                         if provincia:
-                            logger.info(f"Fila {idx + 1}: Provincia determinada por DNI en datos históricos: {provincia}")
+                            logger.info(f"Fila {fila_num + 1}: Provincia determinada por DNI en datos históricos: {provincia}")
                     
                     # Si no se encontró, intentar por rangos de DNI (códigos postales)
                     if not provincia:
                         provincia = self.obtener_localidad_por_dni(numero_formateado)
                         if provincia:
-                            logger.info(f"Fila {idx + 1}: Provincia determinada por rango DNI: {provincia}")
+                            logger.info(f"Fila {fila_num + 1}: Provincia determinada por rango DNI: {provincia}")
                 
                 # Si aún no se encuentra, marcar como sin provincia
                 if not provincia:
                     provincia = ""  # Sin provincia
-                    logger.warning(f"Fila {idx + 1}: No se pudo determinar provincia")
+                    logger.warning(f"Fila {fila_num + 1}: No se pudo determinar provincia")
                 
                 # Determinar condición IVA
                 condicion_iva = self.determinar_condicion_iva(tipo_documento, numero_formateado)
@@ -437,7 +438,7 @@ class ClienteProcessor:
                 if tipo_documento == "DNI":
                     localidad = self.obtener_localidad_por_dni(numero_formateado)
                     if localidad:
-                        logger.info(f"Fila {idx + 1}: Localidad determinada por DNI: {localidad}")
+                        logger.info(f"Fila {fila_num + 1}: Localidad determinada por DNI: {localidad}")
                 
                 # Crear cliente nuevo
                 nuevo_cliente = {
@@ -454,7 +455,7 @@ class ClienteProcessor:
                 
             except Exception as e:
                 errores.append({
-                    'origen_fila': f"Portal fila {idx + 1}",
+                    'origen_fila': f"Portal fila {fila_num + 1}",
                     'tipo_error': 'Error de procesamiento',
                     'detalle': str(e),
                     'valor_original': str(row.to_dict())

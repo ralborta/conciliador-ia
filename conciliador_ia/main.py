@@ -43,6 +43,12 @@ async def health_check():
     print("HEALTH CHECK PING - ", __name__)  # Log directo a stdout
     return {"status": "healthy", "timestamp": "2025-07-24"}
 
+@app.get("/api/v1/health")
+async def health_check_v1():
+    """Endpoint de health check v1 para Railway"""
+    print("HEALTH CHECK V1 PING - ", __name__)
+    return {"status": "healthy", "timestamp": "2025-07-24", "version": "v1"}
+
 @app.head("/health")
 async def health_check_head():
     """Health check HEAD para Railway"""

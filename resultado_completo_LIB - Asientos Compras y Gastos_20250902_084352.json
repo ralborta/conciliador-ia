@@ -1,0 +1,150 @@
+{
+  "archivo_procesado": "LIB - Asientos Compras y Gastos.xlsx",
+  "fecha_procesamiento": "2025-09-02T08:43:52.498435",
+  "estadisticas": {
+    "filas_totales": 23,
+    "clientes_nuevos": 0,
+    "errores": 23
+  },
+  "nuevos_clientes": [],
+  "errores": [
+    {
+      "origen_fila": "Portal fila 1",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': 'Ejercicio Abr 23 - Mar 24', 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 2",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': 'Ventas Lerma', 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 3",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 4",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': 'Proveedores', 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 5",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 6",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': 'Cuenta', 'Unnamed: 2': 'Detalle', 'Unnamed: 3': 'SyS  ', 'Unnamed: 4': nan, 'Unnamed: 5': 'WP', 'Unnamed: 6': 'Check', 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 7",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 8",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': '2.1.1.01.001', 'Unnamed: 2': 'Proveedores', 'Unnamed: 3': 31898573.15, 'Unnamed: 4': nan, 'Unnamed: 5': 25383142.26020001, 'Unnamed: 6': 6515430.88979999, 'Unnamed: 7': 'nm'}"
+    },
+    {
+      "origen_fila": "Portal fila 9",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 10",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 11",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 12",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 13",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': 'Saldo Inicial', 'Unnamed: 2': 31898573, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 14",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 15",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': 'Compras', 'Unnamed: 2': 19005894.480000004, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 16",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 17",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': 'Pagos por banco', 'Unnamed: 2': 19937003.409999996, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 18",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 19",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': 'Tarjetas de crédito', 'Unnamed: 2': 5509694.6098, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 20",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 21",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': 'Retenciones', 'Unnamed: 2': 74627.20000000003, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 22",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    },
+    {
+      "origen_fila": "Portal fila 23",
+      "tipo_error": "Columnas faltantes",
+      "detalle": "No se encontraron columnas requeridas. Disponibles: Libertador S.A, Unnamed: 1, Unnamed: 2, Unnamed: 3, Unnamed: 4, Unnamed: 5, Unnamed: 6, Unnamed: 7. Buscadas: tipo_doc=False, numero_doc=False, nombre=False",
+      "valor_original": "{'Libertador S.A': nan, 'Unnamed: 1': 'Saldo de proveedores', 'Unnamed: 2': 25383142.26020001, 'Unnamed: 3': nan, 'Unnamed: 4': nan, 'Unnamed: 5': nan, 'Unnamed: 6': nan, 'Unnamed: 7': nan}"
+    }
+  ]
+}

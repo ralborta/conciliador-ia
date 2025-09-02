@@ -113,6 +113,22 @@ export default function CargaClientesPage() {
 
       console.log("✅ Importación exitosa");
       const data = await response.json();
+      
+      // Mostrar mensajes detallados en la UI
+      if (data.nuevos_clientes && data.nuevos_clientes.length > 0) {
+        console.log(`📋 Clientes procesados: ${data.nuevos_clientes.length}`);
+        data.nuevos_clientes.forEach((cliente: any, index: number) => {
+          console.log(`${index + 1}. ${cliente.nombre} (${cliente.tipo_documento}: ${cliente.numero_documento}) - ${cliente.provincia}`);
+        });
+      }
+      
+      if (data.errores && data.errores.length > 0) {
+        console.log(`⚠️ Errores encontrados: ${data.errores.length}`);
+        data.errores.forEach((error: any, index: number) => {
+          console.log(`${index + 1}. ${error.tipo_error}: ${error.detalle}`);
+        });
+      }
+      
       setResult(data);
     } catch (err) {
       console.error("❌ Error completo:", err);

@@ -10,9 +10,9 @@ export async function POST(req: Request) {
       form.set("file", form.get("archivo") as File);
     }
 
-    // ⚠️ Usa SIEMPRE el path "ES" que ya confirmaste que funciona
+    // ⚠️ Usa SIEMPRE el path correcto que funciona
     const upstream = await fetch(
-      "https://conciliador-ia-production.up.railway.app/api/v1/documentos/clientes/importar",
+      "https://conciliador-ia-production.up.railway.app/api/v1/importar-clientes",
       { method: "POST", body: form, cache: "no-store" } // NO pongas Content-Type manual
     );
 

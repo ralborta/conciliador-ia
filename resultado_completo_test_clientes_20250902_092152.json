@@ -1,0 +1,2262 @@
+{
+  "archivo_procesado": "test_clientes.xlsx",
+  "fecha_procesamiento": "2025-09-02T09:21:52.054382",
+  "estadisticas": {
+    "filas_totales": 250,
+    "clientes_nuevos": 250,
+    "errores": 0
+  },
+  "nuevos_clientes": [
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71448322-2",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71884469-6",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "20005578",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "25098563",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "33203901",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "37563890",
+      "condicion_iva": "CF",
+      "provincia": "Entre Ríos",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "34862021",
+      "condicion_iva": "CF",
+      "provincia": "Río Negro",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71078758-8",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "30616360",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "39434364",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "25433814",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-13377311-9",
+      "condicion_iva": "RI",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "92632076",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "35736296",
+      "condicion_iva": "CF",
+      "provincia": "San Juan",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-22516861-0",
+      "condicion_iva": "RI",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "45628572",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "25396122",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "34833561",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-70940339-3",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71894503-4",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "29114923",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "25464840",
+      "condicion_iva": "CF",
+      "provincia": "Chaco",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-30365352-0",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-70825057-7",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "43804402",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "24347950",
+      "condicion_iva": "CF",
+      "provincia": "La Pampa",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-52098167-1",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "37349416",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "30654009",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "33123848",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "23031768",
+      "condicion_iva": "CF",
+      "provincia": "Neuquén",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "96074856",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-66136703-9",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "22762974",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-31341626-2",
+      "condicion_iva": "MT",
+      "provincia": "Río Negro",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "44072377",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "29857088",
+      "condicion_iva": "CF",
+      "provincia": "La Pampa",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71825104-0",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "35027661",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "21714733",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "23-10075142-9",
+      "condicion_iva": "RI",
+      "provincia": "La Pampa",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "45337756",
+      "condicion_iva": "CF",
+      "provincia": "Entre Ríos",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "44950818",
+      "condicion_iva": "CF",
+      "provincia": "Chaco",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71820149-3",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "41653153",
+      "condicion_iva": "CF",
+      "provincia": "Jujuy",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71891988-2",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "39686407",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-25651436-3",
+      "condicion_iva": "RI",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "32509367",
+      "condicion_iva": "CF",
+      "provincia": "Entre Ríos",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "34831852",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-20232802-5",
+      "condicion_iva": "RI",
+      "provincia": "Salta",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "28861244",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "41029798",
+      "condicion_iva": "CF",
+      "provincia": "Mendoza",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-11889171-7",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-33828892-7",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "27107004",
+      "condicion_iva": "CF",
+      "provincia": "Neuquén",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "30162670",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71739307-0",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71639092-2",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "20075345",
+      "condicion_iva": "CF",
+      "provincia": "Córdoba",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "27529226",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "38484701",
+      "condicion_iva": "CF",
+      "provincia": "Santiago del Estero",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "36648577",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-37551446-0",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "33-71578496-9",
+      "condicion_iva": "MT",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71889125-2",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-53449605-9",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-70714779-9",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-54621862-3",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "14818993",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-21803855-8",
+      "condicion_iva": "RI",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71838160-2",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "33-71143252-9",
+      "condicion_iva": "MT",
+      "provincia": "Chubut",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "36577333",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "25447639",
+      "condicion_iva": "CF",
+      "provincia": "Entre Ríos",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "38643497",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "24245967",
+      "condicion_iva": "CF",
+      "provincia": "Mendoza",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "42618774",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-95471992-9",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-50000319-3",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-32312745-0",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "38285685",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "23-27694870-9",
+      "condicion_iva": "RI",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-13059508-7",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-52224094-6",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "26920979",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "35366638",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "45500778",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "28382864",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "31406195",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "31151524",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "23-32556173-4",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "37629792",
+      "condicion_iva": "CF",
+      "provincia": "Córdoba",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "23-29371481-9",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-55296780-8",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "30216364",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "05809707",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-34207272-1",
+      "condicion_iva": "RI",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "40073804",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "04528987",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "11865917",
+      "condicion_iva": "CF",
+      "provincia": "Córdoba",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "28068814",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "31369192",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-69083969-1",
+      "condicion_iva": "MT",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-27984885-9",
+      "condicion_iva": "MT",
+      "provincia": "Mendoza",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "30924688",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "17490494",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "26456285",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71462265-6",
+      "condicion_iva": "MT",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "28009773",
+      "condicion_iva": "CF",
+      "provincia": "Río Negro",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "33-71677240-9",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "28727760",
+      "condicion_iva": "CF",
+      "provincia": "Córdoba",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "04876004",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "41022190",
+      "condicion_iva": "CF",
+      "provincia": "Chaco",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "28153104",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "32830202",
+      "condicion_iva": "CF",
+      "provincia": "Corrientes",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "31385152",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "28448601",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-68127321-9",
+      "condicion_iva": "MT",
+      "provincia": "Salta",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "32201903",
+      "condicion_iva": "CF",
+      "provincia": "Tucumán",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "20813792",
+      "condicion_iva": "CF",
+      "provincia": "Entre Ríos",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "27861809",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "35147017",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "32614485",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-26504912-0",
+      "condicion_iva": "MT",
+      "provincia": "La Pampa",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "23884900",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "33775095",
+      "condicion_iva": "CF",
+      "provincia": "Chubut",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "42426158",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "23918862",
+      "condicion_iva": "CF",
+      "provincia": "Neuquén",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-70708767-2",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-24924494-0",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "42339748",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-25257842-1",
+      "condicion_iva": "RI",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "25768994",
+      "condicion_iva": "CF",
+      "provincia": "Catamarca",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-28182168-8",
+      "condicion_iva": "RI",
+      "provincia": "Entre Ríos",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-34874021-6",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71707464-1",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "17789955",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-13856681-2",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "14999299",
+      "condicion_iva": "CF",
+      "provincia": "Chaco",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71578600-8",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-11674649-3",
+      "condicion_iva": "RI",
+      "provincia": "Neuquén",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "13908302",
+      "condicion_iva": "CF",
+      "provincia": "Córdoba",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "35815590",
+      "condicion_iva": "CF",
+      "provincia": "Santa Cruz",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "96384489",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "39335870",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "CALLAHUANCA CARLOS HUMBERTO",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-27716176-2",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-40915743-8",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "23-30003482-9",
+      "condicion_iva": "RI",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "25433698",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "31845968",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "28346245",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-94224158-6",
+      "condicion_iva": "RI",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "35767050",
+      "condicion_iva": "CF",
+      "provincia": "San Luis",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "30799120",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "47704395",
+      "condicion_iva": "CF",
+      "provincia": "San Juan",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-28641060-0",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "14585983",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71658263-5",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "94200435",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "42946741",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "34539472",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "27442622",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "33832634",
+      "condicion_iva": "CF",
+      "provincia": "Córdoba",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "22777267",
+      "condicion_iva": "CF",
+      "provincia": "Jujuy",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-32313660-3",
+      "condicion_iva": "RI",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-18412539-1",
+      "condicion_iva": "RI",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "32588287",
+      "condicion_iva": "CF",
+      "provincia": "Chubut",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "29472693",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-70764533-0",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "17045767",
+      "condicion_iva": "CF",
+      "provincia": "Córdoba",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "29813057",
+      "condicion_iva": "CF",
+      "provincia": "San Luis",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "16532891",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-29369005-8",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "Daiana",
+      "tipo_documento": "DNI",
+      "numero_documento": "40238843",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71131448-9",
+      "condicion_iva": "MT",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71733432-5",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "10200673",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "33-71750347-9",
+      "condicion_iva": "MT",
+      "provincia": "Mendoza",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "33-71712066-9",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71206361-7",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71804092-9",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71820095-0",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71624791-7",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "38291994",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "13049916",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "40008297",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-94174101-1",
+      "condicion_iva": "RI",
+      "provincia": "Córdoba",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "96162285",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "27204895",
+      "condicion_iva": "CF",
+      "provincia": "Santa Fe",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-70755202-2",
+      "condicion_iva": "MT",
+      "provincia": "Santa Cruz",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71872107-1",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-93725192-6",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-11410965-8",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "45428829",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-11177996-2",
+      "condicion_iva": "RI",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71862440-8",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-17595118-6",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "26280497",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71492246-3",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-22601875-2",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-56202160-0",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-14569034-0",
+      "condicion_iva": "RI",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "22587505",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "21569649",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "24024825",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-24203290-0",
+      "condicion_iva": "RI",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71619320-5",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-70766435-1",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-70821436-8",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-54579185-0",
+      "condicion_iva": "MT",
+      "provincia": "Córdoba",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71357880-7",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-69411056-4",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-56859229-4",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "39402394",
+      "condicion_iva": "CF",
+      "provincia": "Salta",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "32727943",
+      "condicion_iva": "CF",
+      "provincia": "Mendoza",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "31852152",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-24632262-2",
+      "condicion_iva": "MT",
+      "provincia": "Santa Cruz",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "10250229",
+      "condicion_iva": "CF",
+      "provincia": "Córdoba",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "35595618",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-70969494-0",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "31930240",
+      "condicion_iva": "CF",
+      "provincia": "Córdoba",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "33155538",
+      "condicion_iva": "CF",
+      "provincia": "La Rioja",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "25199585",
+      "condicion_iva": "CF",
+      "provincia": "San Luis",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "45731885",
+      "condicion_iva": "CF",
+      "provincia": "Neuquén",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "13730894",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "21830319",
+      "condicion_iva": "CF",
+      "provincia": "Córdoba",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-65870709-0",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "33834169",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "42340298",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Tucumán Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-42340298-4",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-92891726-7",
+      "condicion_iva": "RI",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "23386698",
+      "condicion_iva": "CF",
+      "provincia": "Entre Ríos",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "26025001",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "20457582",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "33-70896779-9",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "24755156",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71459622-1",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-13442351-5",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "25871859",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "23313539",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "22173197",
+      "condicion_iva": "CF",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "Buenos Aires GBA",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "20-39280490-1",
+      "condicion_iva": "RI",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "DNI",
+      "numero_documento": "32507288",
+      "condicion_iva": "CF",
+      "provincia": "Buenos Aires",
+      "localidad": "Santa Fe Capital",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "27-37540408-2",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "33-64797898-9",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71526380-3",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71674724-3",
+      "condicion_iva": "MT",
+      "provincia": "Ciudad Autónoma de Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "30-71778240-9",
+      "condicion_iva": "MT",
+      "provincia": "Santa Fe",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    },
+    {
+      "nombre": "nan",
+      "tipo_documento": "CUIT",
+      "numero_documento": "33-70946564-9",
+      "condicion_iva": "MT",
+      "provincia": "Buenos Aires",
+      "localidad": "",
+      "cuenta_contable": "Deudores por ventas"
+    }
+  ],
+  "errores": []
+}

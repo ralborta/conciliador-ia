@@ -11,13 +11,11 @@ from traceback import format_exc
 
 try:
     from ..services.cliente_processor import ClienteProcessor
-    from ..services.transformador_archivos import TransformadorArchivos
     from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
     from ..models.schemas import ClienteImportResponse, ClienteImportJob
 except ImportError:
     # Fallback para imports directos
     from services.cliente_processor import ClienteProcessor
-    from services.transformador_archivos import TransformadorArchivos
     from services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
     from models.schemas import ClienteImportResponse, ClienteImportJob
 
@@ -26,7 +24,6 @@ router = APIRouter(tags=["carga-clientes"])
 
 # Inicializar servicios
 processor = ClienteProcessor()
-transformador = TransformadorArchivos()
 loader = CargaArchivos()
 
 # Almacenamiento temporal de jobs (en producción usar Redis o base de datos)
@@ -217,170 +214,6 @@ async def importar_clientes_underscore(
     """Alias para compatibilidad con underscore"""
     return await importar_clientes(empresa_id, archivo_portal, archivo_xubio, archivo_cliente, cuenta_contable_default)
 
-@router.post("/importar-solo-clientes")
-async def importar_solo_clientes(
-    archivo: UploadFile = File(...)
-):
-    """
-    Importa clientes desde UN SOLO archivo (para pruebas y casos simples)
-    """
-    try:
-        # Validar archivo
-        if not archivo or not archivo.filename:
-            raise HTTPException(status_code=400, detail="Archivo requerido")
-        
-        # Generar job_id único
-        job_id = str(uuid.uuid4())
-        
-        # Crear job
-        job = ClienteImportJob(
-            id=job_id,
-            empresa_id="default",
-            timestamp=datetime.now().isoformat(),
-            archivos=[archivo.filename],
-            estado="procesando",
-            progreso=0,
-            resultado=None,
-            errores=[]
-        )
-        jobs[job_id] = job
-        
-        # Guardar archivo temporalmente
-        archivo_path = Path(ENTRADA_DIR) / f"{job_id}_{archivo.filename}"
-        with open(archivo_path, "wb") as buffer:
-            content = await archivo.read()
-            buffer.write(content)
-        
-        # Procesar archivo
-        try:
-            df = pd.read_excel(archivo_path)
-            
-            # Crear mensajes detallados
-            mensajes_conversion = []
-            mensajes_conversion.append(f"📁 Archivo cargado: {archivo.filename}")
-            mensajes_conversion.append(f"📊 Filas detectadas: {len(df)}")
-            mensajes_conversion.append(f"📋 Columnas: {', '.join(df.columns.tolist())}")
-            
-            # DETECCIÓN AUTOMÁTICA DEL TIPO DE ARCHIVO
-            tipo_archivo = transformador.detectar_tipo_archivo(df)
-            mensajes_conversion.append(f"🔍 Tipo detectado: {tipo_archivo}")
-            
-            if tipo_archivo == "GH_IIBB_TANGO":
-                mensajes_conversion.append("🔄 Archivo de cliente detectado - iniciando transformación inteligente con IA")
-                
-                # TRANSFORMACIÓN INTELIGENTE CON IA
-                try:
-                    # Importar transformador inteligente
-                    from services.transformador_inteligente import TransformadorInteligente
-                    
-                    # Crear transformador inteligente
-                    transformador_ia = TransformadorInteligente()
-                    
-                    # Cargar maestros (por ahora vacíos, pero el sistema está preparado)
-                    df_portal_vacio = pd.DataFrame()
-                    df_xubio_vacio = pd.DataFrame()
-                    transformador_ia.cargar_maestros(df_portal_vacio, df_xubio_vacio)
-                    
-                    # Transformar con IA
-                    df_clientes_nuevos, clientes_existentes, errores_transformacion = transformador_ia.transformar_tango_a_clientes(df)
-                    
-                    mensajes_conversion.append(f"✅ Transformación IA completada: {len(df_clientes_nuevos)} clientes nuevos, {len(clientes_existentes)} existentes")
-                    
-                    # Usar el archivo transformado
-                    df = df_clientes_nuevos
-                    
-                except Exception as e:
-                    mensajes_conversion.append(f"⚠️ Error en transformación IA: {str(e)}")
-                    mensajes_conversion.append("🔄 Procesando archivo original...")
-                
-                # Procesar clientes (ahora con archivo transformado)
-                nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
-                
-                # GENERAR ARCHIVO DE SALIDA CON CLIENTES NUEVOS
-                if len(nuevos_clientes) > 0:
-                    try:
-                        from services.carga_info.exporter import ExportadorVentas
-                        exportador = ExportadorVentas()
-                        
-                        # Crear DataFrame con clientes nuevos
-                        df_clientes_nuevos = pd.DataFrame(nuevos_clientes)
-                        
-                        # Generar archivo Excel
-                        archivo_salida = f"data/salida/clientes_nuevos_{job_id}.xlsx"
-                        exportador.exportar_clientes(df_clientes_nuevos, archivo_salida)
-                        
-                        mensajes_conversion.append(f"📄 Archivo generado: {archivo_salida}")
-                        mensajes_conversion.append(f"💾 {len(nuevos_clientes)} clientes nuevos exportados")
-                        
-                    except Exception as e:
-                        mensajes_conversion.append(f"⚠️ Error generando archivo: {str(e)}")
-                else:
-                    mensajes_conversion.append("ℹ️ No se encontraron clientes nuevos para exportar")
-            elif tipo_archivo == "PORTAL_AFIP":
-                mensajes_conversion.append("🏛️ Archivo Portal AFIP detectado - procesando como maestro")
-                nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
-            elif tipo_archivo == "XUBIO_CLIENTES":
-                mensajes_conversion.append("💼 Archivo Xubio detectado - procesando como maestro")
-                nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
-            else:
-                mensajes_conversion.append("⚠️ Tipo de archivo no reconocido - procesando como cliente")
-                nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
-            
-            # Agregar mensajes de clientes procesados
-            for i, cliente in enumerate(nuevos_clientes[:10]):  # Solo primeros 10
-                mensaje = f"Cliente {i+1}: {cliente.get('nombre', 'Sin nombre')} ({cliente.get('tipo_documento', 'N/A')}: {cliente.get('numero_documento', 'N/A')}) - {cliente.get('provincia', 'N/A')}"
-                mensajes_conversion.append(mensaje)
-            
-            # Agregar mensajes de errores
-            for i, error in enumerate(errores[:5]):  # Solo primeros 5 errores
-                mensaje = f"Error {i+1}: {error.get('tipo_error', 'Error')} - {error.get('detalle', 'Sin detalle')}"
-                mensajes_conversion.append(mensaje)
-            
-            if len(nuevos_clientes) > 10:
-                mensajes_conversion.append(f"... y {len(nuevos_clientes) - 10} clientes más")
-            
-            if len(errores) > 5:
-                mensajes_conversion.append(f"... y {len(errores) - 5} errores más")
-            
-            # Crear respuesta
-            job.resultado = ClienteImportResponse(
-                job_id=job_id,
-                resumen={
-                    "total_filas": len(df),
-                    "clientes_nuevos": len(nuevos_clientes),
-                    "errores": len(errores)
-                },
-                descargas={
-                    "archivo_clientes": f"/api/v1/descargar/{job_id}/clientes_nuevos_{job_id}.xlsx" if nuevos_clientes else ""
-                },
-                logs_transformacion=mensajes_conversion
-            )
-            
-            job.estado = "completado"
-            job.progreso = 100
-            
-            # Limpiar archivo temporal
-            if archivo_path.exists():
-                archivo_path.unlink()
-            
-            return job.resultado
-            
-        except Exception as e:
-            logger.error(f"Error procesando archivo: {e}")
-            job.estado = "error"
-            job.progreso = 0
-            job.resultado = ClienteImportResponse(
-                job_id=job_id,
-                resumen={"error": 1},
-                descargas={},
-                logs_transformacion=[f"❌ Error procesando archivo: {str(e)}"]
-            )
-            return job.resultado
-            
-    except Exception as e:
-        logger.error(f"Error en importar_solo_clientes: {e}")
-        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
-
 @router.post("/validar")
 async def validar_archivos(
     archivo_portal: UploadFile = File(...),
@@ -533,32 +366,3 @@ async def eliminar_job(job_id: str):
     del jobs[job_id]
     
     return {"message": "Job eliminado correctamente"}
-
-
-@router.get("/descargar/{job_id}/{filename}")
-async def descargar_archivo(job_id: str, filename: str):
-    """
-    Descarga archivos generados por el procesamiento
-    """
-    try:
-        # Construir ruta del archivo
-        archivo_path = f"data/salida/{filename}"
-        
-        if not os.path.exists(archivo_path):
-            raise HTTPException(status_code=404, detail="Archivo no encontrado")
-        
-        # Verificar que el archivo pertenece al job
-        if not filename.startswith(f"clientes_nuevos_{job_id}"):
-            raise HTTPException(status_code=403, detail="Acceso denegado al archivo")
-        
-        return FileResponse(
-            path=archivo_path,
-            filename=filename,
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error descargando archivo {filename}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")

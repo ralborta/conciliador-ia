@@ -115,6 +115,13 @@ export default function CargaClientesPage() {
       const data = await response.json();
       
       // Mostrar mensajes detallados en la UI
+      if (data.logs_transformacion && data.logs_transformacion.length > 0) {
+        console.log("🔄 MENSAJES DE CONVERSIÓN:");
+        data.logs_transformacion.forEach((mensaje: string) => {
+          console.log(`   ${mensaje}`);
+        });
+      }
+      
       if (data.nuevos_clientes && data.nuevos_clientes.length > 0) {
         console.log(`📋 Clientes procesados: ${data.nuevos_clientes.length}`);
         data.nuevos_clientes.forEach((cliente: any, index: number) => {

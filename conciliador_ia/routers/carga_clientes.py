@@ -109,6 +109,25 @@ async def importar_clientes(
                 df_portal, df_xubio, df_cliente
             )
             
+            # Crear mensajes detallados para la respuesta
+            mensajes_conversion = []
+            
+            # Agregar mensajes de clientes procesados
+            for i, cliente in enumerate(nuevos_clientes[:10]):  # Solo primeros 10 para no saturar
+                mensaje = f"Cliente {i+1}: {cliente.get('nombre', 'Sin nombre')} ({cliente.get('tipo_documento', 'N/A')}: {cliente.get('numero_documento', 'N/A')}) - {cliente.get('provincia', 'N/A')}"
+                mensajes_conversion.append(mensaje)
+            
+            # Agregar mensajes de errores
+            for i, error in enumerate(errores[:5]):  # Solo primeros 5 errores
+                mensaje = f"Error {i+1}: {error.get('tipo_error', 'Error')} - {error.get('detalle', 'Sin detalle')}"
+                mensajes_conversion.append(mensaje)
+            
+            if len(nuevos_clientes) > 10:
+                mensajes_conversion.append(f"... y {len(nuevos_clientes) - 10} clientes más")
+            
+            if len(errores) > 5:
+                mensajes_conversion.append(f"... y {len(errores) - 5} errores más")
+            
             # Generar archivos de salida (siempre genera el de importación, aún vacío)
             archivo_modelo = processor.generar_archivo_importacion(
                 nuevos_clientes, SALIDA_DIR, cuenta_contable_default
@@ -134,7 +153,8 @@ async def importar_clientes(
                 descargas={
                     "archivo_modelo": f"/api/v1/documentos/clientes/descargar?filename={Path(archivo_modelo).name}",
                     "reporte_errores": f"/api/v1/documentos/clientes/descargar?filename={Path(archivo_errores).name}" if archivo_errores else ""
-                }
+                },
+                logs_transformacion=mensajes_conversion
             )
             
             # Limpiar archivos temporales

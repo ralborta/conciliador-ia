@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Upload, FileText, Users, Download, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { importarClientes, validarArchivos } from '@/lib/api';
+// import { importarClientes, validarArchivos } from '@/lib/api';
 
 interface ProcessingResult {
   job_id: string;
@@ -50,7 +50,17 @@ export default function CargaClientesPage() {
         formData.append('archivo_cliente', archivoCliente);
       }
 
-      const data = await validarArchivos(formData);
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/validar', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Error en la validación');
+      }
+
+      const data = await response.json();
       setValidationResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado en validación');
@@ -90,8 +100,19 @@ export default function CargaClientesPage() {
       });
 
       // Usar URL absoluta al backend Railway
-      const data = await importarClientes(formData);
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/importar-clientes', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ Error en importación:", response.status, errorText);
+        throw new Error(`Import falló (${response.status}): ${errorText}`);
+      }
+
       console.log("✅ Importación exitosa");
+      const data = await response.json();
       setResult(data);
     } catch (err) {
       console.error("❌ Error completo:", err);

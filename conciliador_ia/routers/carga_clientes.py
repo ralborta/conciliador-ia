@@ -214,6 +214,109 @@ async def importar_clientes_underscore(
     """Alias para compatibilidad con underscore"""
     return await importar_clientes(empresa_id, archivo_portal, archivo_xubio, archivo_cliente, cuenta_contable_default)
 
+@router.post("/importar-solo-clientes")
+async def importar_solo_clientes(
+    archivo: UploadFile = File(...)
+):
+    """
+    Importa clientes desde UN SOLO archivo (para pruebas y casos simples)
+    """
+    try:
+        # Validar archivo
+        if not archivo or not archivo.filename:
+            raise HTTPException(status_code=400, detail="Archivo requerido")
+        
+        # Generar job_id único
+        job_id = str(uuid.uuid4())
+        
+        # Crear job
+        job = ClienteImportJob(
+            job_id=job_id,
+            empresa_id="default",
+            archivo_portal=archivo.filename,
+            archivo_xubio="",
+            archivo_cliente="",
+            estado="procesando",
+            fecha_inicio=datetime.now(),
+            resultado=None
+        )
+        jobs[job_id] = job
+        
+        # Guardar archivo temporalmente
+        archivo_path = Path(ENTRADA_DIR) / f"{job_id}_{archivo.filename}"
+        with open(archivo_path, "wb") as buffer:
+            content = await archivo.read()
+            buffer.write(content)
+        
+        # Procesar archivo
+        try:
+            df = pd.read_excel(archivo_path)
+            
+            # Crear mensajes detallados
+            mensajes_conversion = []
+            mensajes_conversion.append(f"📁 Archivo cargado: {archivo.filename}")
+            mensajes_conversion.append(f"📊 Filas detectadas: {len(df)}")
+            mensajes_conversion.append(f"📋 Columnas: {', '.join(df.columns.tolist())}")
+            
+            # Procesar clientes
+            nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
+            
+            # Agregar mensajes de clientes procesados
+            for i, cliente in enumerate(nuevos_clientes[:10]):  # Solo primeros 10
+                mensaje = f"Cliente {i+1}: {cliente.get('nombre', 'Sin nombre')} ({cliente.get('tipo_documento', 'N/A')}: {cliente.get('numero_documento', 'N/A')}) - {cliente.get('provincia', 'N/A')}"
+                mensajes_conversion.append(mensaje)
+            
+            # Agregar mensajes de errores
+            for i, error in enumerate(errores[:5]):  # Solo primeros 5 errores
+                mensaje = f"Error {i+1}: {error.get('tipo_error', 'Error')} - {error.get('detalle', 'Sin detalle')}"
+                mensajes_conversion.append(mensaje)
+            
+            if len(nuevos_clientes) > 10:
+                mensajes_conversion.append(f"... y {len(nuevos_clientes) - 10} clientes más")
+            
+            if len(errores) > 5:
+                mensajes_conversion.append(f"... y {len(errores) - 5} errores más")
+            
+            # Crear respuesta
+            job.resultado = ClienteImportResponse(
+                job_id=job_id,
+                resumen={
+                    "total_filas": len(df),
+                    "clientes_nuevos": len(nuevos_clientes),
+                    "errores": len(errores),
+                    "archivo_procesado": archivo.filename
+                },
+                descargas={
+                    "archivo_clientes": f"/api/v1/descargar/{job_id}/clientes.xlsx" if nuevos_clientes else None
+                },
+                logs_transformacion=mensajes_conversion
+            )
+            
+            job.estado = "completado"
+            job.fecha_fin = datetime.now()
+            
+            # Limpiar archivo temporal
+            if archivo_path.exists():
+                archivo_path.unlink()
+            
+            return job.resultado
+            
+        except Exception as e:
+            logger.error(f"Error procesando archivo: {e}")
+            job.estado = "error"
+            job.fecha_fin = datetime.now()
+            job.resultado = ClienteImportResponse(
+                job_id=job_id,
+                resumen={"error": str(e)},
+                descargas={},
+                logs_transformacion=[f"❌ Error procesando archivo: {str(e)}"]
+            )
+            return job.resultado
+            
+    except Exception as e:
+        logger.error(f"Error en importar_solo_clientes: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
 @router.post("/validar")
 async def validar_archivos(
     archivo_portal: UploadFile = File(...),

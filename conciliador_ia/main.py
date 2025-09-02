@@ -81,7 +81,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Los routers se cargarán después del startup para evitar bloqueos
+# Cargar routers inmediatamente para Railway
+print("📦 Cargando routers...")
+try:
+    from routers import upload, conciliacion, compras, arca_xubio, carga_informacion, carga_clientes
+    try:
+        from routers import carga_documentos  # type: ignore
+    except Exception:
+        carga_documentos = None
+
+    # INCLUIR RUTAS
+    app.include_router(upload.router, prefix="/api/v1")
+    app.include_router(conciliacion.router, prefix="/api/v1")
+    app.include_router(compras.router, prefix="/api/v1")
+    app.include_router(arca_xubio.router, prefix="/api/v1")
+    app.include_router(carga_informacion.router, prefix="/api/v1")
+    app.include_router(carga_clientes.router, prefix="/api/v1")
+    if carga_documentos:
+        app.include_router(carga_documentos.router, prefix="/api/v1")
+    
+    print("✅ Routers cargados correctamente")
+    
+except Exception as e:
+    print(f"❌ Error cargando routers: {e}")
+    import traceback
+    print(f"Traceback: {traceback.format_exc()}")
 
 @app.on_event("startup")
 async def startup_event():
@@ -97,26 +121,7 @@ async def startup_event():
         os.makedirs("data/salida", exist_ok=True)
         os.makedirs("data/entrada", exist_ok=True)
         
-        # Cargar routers después del healthcheck
-        print("📦 Cargando routers...")
-        from routers import upload, conciliacion, compras, arca_xubio, carga_informacion, carga_clientes
-        try:
-            from routers import carga_documentos  # type: ignore
-        except Exception:
-            carga_documentos = None
-
-        # INCLUIR RUTAS
-        app.include_router(upload.router, prefix="/api/v1")
-        app.include_router(conciliacion.router, prefix="/api/v1")
-        app.include_router(compras.router, prefix="/api/v1")
-        app.include_router(arca_xubio.router, prefix="/api/v1")
-        app.include_router(carga_informacion.router, prefix="/api/v1")
-        app.include_router(carga_clientes.router, prefix="/api/v1")
-        if carga_documentos:
-            app.include_router(carga_documentos.router, prefix="/api/v1")
-        
         print("✅ Directorios creados correctamente")
-        print("✅ Routers cargados correctamente")
         print("✅ Conciliador IA iniciado correctamente")
         print(f"🚀 Servidor escuchando en puerto {os.getenv('PORT', 8000)}")
         

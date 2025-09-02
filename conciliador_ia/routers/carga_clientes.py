@@ -11,11 +11,13 @@ from traceback import format_exc
 
 try:
     from ..services.cliente_processor import ClienteProcessor
+    from ..services.transformador_archivos import TransformadorArchivos
     from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
     from ..models.schemas import ClienteImportResponse, ClienteImportJob
 except ImportError:
     # Fallback para imports directos
     from services.cliente_processor import ClienteProcessor
+    from services.transformador_archivos import TransformadorArchivos
     from services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
     from models.schemas import ClienteImportResponse, ClienteImportJob
 
@@ -24,6 +26,7 @@ router = APIRouter(tags=["carga-clientes"])
 
 # Inicializar servicios
 processor = ClienteProcessor()
+transformador = TransformadorArchivos()
 loader = CargaArchivos()
 
 # Almacenamiento temporal de jobs (en producción usar Redis o base de datos)
@@ -258,8 +261,24 @@ async def importar_solo_clientes(
             mensajes_conversion.append(f"📊 Filas detectadas: {len(df)}")
             mensajes_conversion.append(f"📋 Columnas: {', '.join(df.columns.tolist())}")
             
-            # Procesar clientes
-            nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
+            # DETECCIÓN AUTOMÁTICA DEL TIPO DE ARCHIVO
+            tipo_archivo = transformador.detectar_tipo_archivo(df)
+            mensajes_conversion.append(f"🔍 Tipo detectado: {tipo_archivo}")
+            
+            if tipo_archivo == "GH_IIBB_TANGO":
+                mensajes_conversion.append("🔄 Archivo de cliente detectado - iniciando comparación inteligente")
+                # Para archivos de cliente, necesitamos comparar contra maestros existentes
+                # Por ahora, procesamos como clientes nuevos
+                nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
+            elif tipo_archivo == "PORTAL_AFIP":
+                mensajes_conversion.append("🏛️ Archivo Portal AFIP detectado - procesando como maestro")
+                nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
+            elif tipo_archivo == "XUBIO_CLIENTES":
+                mensajes_conversion.append("💼 Archivo Xubio detectado - procesando como maestro")
+                nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
+            else:
+                mensajes_conversion.append("⚠️ Tipo de archivo no reconocido - procesando como cliente")
+                nuevos_clientes, errores = processor.detectar_nuevos_clientes(df, pd.DataFrame())
             
             # Agregar mensajes de clientes procesados
             for i, cliente in enumerate(nuevos_clientes[:10]):  # Solo primeros 10

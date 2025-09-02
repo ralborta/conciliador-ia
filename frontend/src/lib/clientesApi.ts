@@ -5,9 +5,33 @@
 
 import { useState } from 'react';
 
-// RAILWAY BACKEND: Usar URL de Railway directamente
-const API_BASE = 'https://conciliador-ia-production.up.railway.app/api/v1';
-const API = `${API_BASE}/documentos`;
+// Configuración de API con URL absoluta del backend Railway
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://conciliador-ia-production.up.railway.app/api/v1';
+
+// Helper para construir URLs correctamente
+function join(path: string) {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE}${p}`;
+}
+
+// Función para importar clientes usando URL absoluta
+export const importarClientesFD = async (fd: FormData) => {
+  const url = join("/documentos/clientes/importar"); // Usar la ruta correcta del backend
+  const r = await fetch(url, { method: "POST", body: fd });
+  if (!r.ok) throw new Error(`HTTP ${r.status} – ${await r.text()}`);
+  return r.json();
+};
+
+// Función para validar archivos usando URL absoluta
+export const validarArchivos = async (fd: FormData) => {
+  const url = join("/documentos/clientes/validar"); // Usar la ruta correcta del backend
+  const r = await fetch(url, { method: "POST", body: fd });
+  if (!r.ok) throw new Error(`HTTP ${r.status} – ${await r.text()}`);
+  return r.json();
+};
+
+// Exportar la base para compatibilidad
+export { API_BASE };
 
 export type ValidarArgs = {
   archivo_portal: File;
@@ -55,7 +79,7 @@ export async function validarClientes(args: ValidarArgs): Promise<ValidarRespons
   }
   formData.append('empresa_id', args.empresa_id ?? 'default');
 
-  const response = await fetch(`${API}/clientes/validar`, {
+  const response = await fetch(`${API_BASE}/documentos/clientes/validar`, {
     method: 'POST',
     body: formData,
     // NO setear Content-Type manualmente - el browser lo hace automáticamente para FormData
@@ -82,7 +106,7 @@ export async function importarClientes(empresa_id = 'default'): Promise<Importar
   const formData = new FormData();
   formData.append('empresa_id', empresa_id);
 
-  const response = await fetch(`${API}/clientes/importar`, {
+  const response = await fetch(`${API_BASE}/documentos/clientes/importar`, {
     method: 'POST',
     body: formData,
   });

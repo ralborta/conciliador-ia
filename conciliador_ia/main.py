@@ -7,43 +7,142 @@ from dotenv import load_dotenv
 import sys
 from pathlib import Path
 
-# Setup básico
+# Asegurar que los imports internos funcionen tanto localmente como en contenedor
 current_dir = Path(__file__).resolve().parent
 if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
 
+# Cargar variables de entorno
 load_dotenv()
 
-# Logging
-logging.basicConfig(level=logging.INFO)
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('conciliador_ia.log')
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
-# APP
-app = FastAPI(title="Conciliador IA", version="1.0.0")
+# Crear aplicación FastAPI
+app = FastAPI(
+    title="Conciliador IA",
+    description="Backend para conciliación automática de extractos bancarios con comprobantes usando IA",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
 
-# CORS
+# ENDPOINTS CRÍTICOS ANTES DE MIDDLEWARES - SÚPER SIMPLES
+@app.get("/health")
+async def health_check():
+    """Endpoint de health check para Railway - SÚPER SIMPLE, SIN DEPENDENCIAS"""
+    print("HEALTH CHECK PING - ", __name__)  # Log directo a stdout
+    return {"status": "healthy", "timestamp": "2025-07-24"}
+
+@app.head("/health")
+async def health_check_head():
+    """Health check HEAD para Railway"""
+    print("HEALTH HEAD PING - ", __name__)
+    return {"status": "healthy"}
+
+@app.get("/healthz")
+async def health_check_alt():
+    """Health check alternativo"""
+    print("HEALTHZ PING - ", __name__)
+    return {"status": "healthy", "timestamp": "2025-07-24"}
+
+@app.get("/")
+async def root():
+    """Endpoint raíz"""
+    return {
+        "message": "Conciliador IA - Backend para conciliación automática",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "status": "running",
+        "timestamp": "2025-07-24"
+    }
+
+# CONFIGURAR CORS DESPUÉS DE ENDPOINTS CRÍTICOS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # LIBERAR CORS COMPLETAMENTE
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# HEALTH CHECKS
-@app.get("/health")
-async def health():
-    return {"status": "healthy"}
+# Importar routers DESPUÉS de CORS
+from routers import upload, conciliacion, compras, arca_xubio, carga_informacion
+try:
+    from routers import carga_documentos  # type: ignore
+except Exception:
+    carga_documentos = None
 
-@app.get("/api/v1/health")
-async def health_v1():
-    return {"status": "healthy", "version": "v1"}
+# INCLUIR RUTAS DESPUÉS DE CORS
+app.include_router(upload.router, prefix="/api/v1")
+app.include_router(conciliacion.router, prefix="/api/v1")
+app.include_router(compras.router, prefix="/api/v1")
+app.include_router(arca_xubio.router, prefix="/api/v1")
+app.include_router(carga_informacion.router, prefix="/api/v1")
+if carga_documentos:
+    app.include_router(carga_documentos.router, prefix="/api/v1")
 
-@app.get("/")
-async def root():
-    return {"message": "Conciliador IA funcionando", "status": "ok"}
+@app.on_event("startup")
+async def startup_event():
+    """Evento de inicio de la aplicación"""
+    logger.info("=== INICIANDO CONCILIADOR IA ===")
+    logger.info(f"Directorio de trabajo: {os.getcwd()}")
+    logger.info(f"Variables de entorno PORT: {os.environ.get('PORT', 'NO_DEFINIDO')}")
+    logger.info(f"Variables de entorno HOST: {os.environ.get('HOST', 'NO_DEFINIDO')}")
+    
+    try:
+        # Verificar configuración
+        openai_key = os.getenv('OPENAI_API_KEY')
+        if not openai_key:
+            logger.warning("OpenAI API key no configurada. La funcionalidad de IA no estará disponible.")
+        
+        # Crear directorios necesarios
+        os.makedirs("data/uploads", exist_ok=True)
+        os.makedirs("data/salida", exist_ok=True)
+        os.makedirs("data/entrada", exist_ok=True)
+        
+        logger.info("✅ Directorios creados correctamente")
+        logger.info("✅ Conciliador IA iniciado correctamente")
+        logger.info(f"🚀 Servidor escuchando en puerto {os.getenv('PORT', 8000)}")
+        
+    except Exception as e:
+        logger.error(f"❌ Error durante el startup: {e}")
+        import traceback
+        logger.error(f"Traceback completo: {traceback.format_exc()}")
+        raise
 
-# DIAGNÓSTICO COMPLETO
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Evento de cierre de la aplicación"""
+    logger.info("Cerrando Conciliador IA...")
+
+@app.get("/test")
+async def test():
+    """Endpoint de prueba"""
+    return {"status": "ok", "message": "Backend funcionando correctamente"}
+
+@app.get("/debug")
+async def debug_info():
+    """Endpoint de debug para verificar configuración"""
+    import os
+    return {
+        "status": "debug",
+        "port": os.environ.get("PORT", "NO_DEFINIDO"),
+        "host": os.environ.get("HOST", "NO_DEFINIDO"),
+        "cwd": os.getcwd(),
+        "python_path": sys.path,
+        "app_name": __name__
+    }
+
 @app.get("/debug/filesystem")
 async def debug_filesystem():
     """Ver estructura de archivos"""
@@ -51,8 +150,8 @@ async def debug_filesystem():
         result = {
             "cwd": os.getcwd(),
             "files": {},
-            "routers_exists": os.path.exists("routers"),
-            "routers_is_dir": os.path.isdir("routers") if os.path.exists("routers") else False
+            "routers_exists": os.path.exists("conciliador_ia/routers"),
+            "routers_is_dir": os.path.isdir("conciliador_ia/routers") if os.path.exists("conciliador_ia/routers") else False
         }
         
         # Listar archivos raíz
@@ -65,10 +164,10 @@ async def debug_filesystem():
         result["root_files"] = root_files
         
         # Listar routers si existe
-        if os.path.exists("routers") and os.path.isdir("routers"):
+        if os.path.exists("conciliador_ia/routers") and os.path.isdir("conciliador_ia/routers"):
             router_files = []
-            for item in os.listdir("routers"):
-                size = os.path.getsize(f"routers/{item}") if os.path.isfile(f"routers/{item}") else 0
+            for item in os.listdir("conciliador_ia/routers"):
+                size = os.path.getsize(f"conciliador_ia/routers/{item}") if os.path.isfile(f"conciliador_ia/routers/{item}") else 0
                 router_files.append({"name": item, "size": size})
             result["router_files"] = router_files
         else:
@@ -83,8 +182,8 @@ async def debug_filesystem():
 async def debug_import_test():
     """Probar imports uno por uno"""
     results = {
-        "routers_dir_exists": os.path.exists("routers"),
-        "routers_init_exists": os.path.exists("routers/__init__.py"),
+        "routers_dir_exists": os.path.exists("conciliador_ia/routers"),
+        "routers_init_exists": os.path.exists("conciliador_ia/routers/__init__.py"),
         "import_tests": []
     }
     
@@ -102,7 +201,7 @@ async def debug_import_test():
     for router_name in routers_to_test:
         test_result = {
             "name": router_name,
-            "file_exists": os.path.exists(f"routers/{router_name}.py"),
+            "file_exists": os.path.exists(f"conciliador_ia/routers/{router_name}.py"),
             "import_success": False,
             "has_router": False,
             "error": None
@@ -111,7 +210,7 @@ async def debug_import_test():
         if test_result["file_exists"]:
             try:
                 # Intentar import
-                module = __import__(f"routers.{router_name}", fromlist=[router_name])
+                module = __import__(f"conciliador_ia.routers.{router_name}", fromlist=[router_name])
                 test_result["import_success"] = True
                 
                 # Verificar que tenga 'router'
@@ -129,37 +228,45 @@ async def debug_import_test():
     
     return results
 
-# ENDPOINTS TEMPORALES PARA QUE EL FRONTEND NO EXPLOTE
-@app.get("/api/v1/importar-clientes")
-async def temp_importar_clientes():
-    return {"success": True, "message": "Endpoint temporal - routers no cargados aún", "data": []}
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """Manejador global de excepciones"""
+    logger.error(f"Error no manejado: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error": "Error interno del servidor",
+            "details": str(exc) if os.getenv('DEBUG', 'False').lower() == 'true' else None
+        }
+    )
 
-@app.post("/api/v1/upload")
-async def temp_upload():
-    return {"success": True, "message": "Endpoint temporal - routers no cargados aún"}
-
-@app.get("/api/v1/test")
-async def temp_test():
-    return {"success": True, "message": "Endpoint temporal funcionando"}
-
-# STARTUP
-@app.on_event("startup")
-async def startup():
-    """Startup mínimo"""
-    print("🚀 CONCILIADOR IA INICIADO")
-    print(f"📁 Directorio: {os.getcwd()}")
-    
-    # Crear directorios
-    try:
-        os.makedirs("data/uploads", exist_ok=True)
-        os.makedirs("data/salida", exist_ok=True)
-        os.makedirs("data/entrada", exist_ok=True)
-        print("✅ Directorios creados")
-    except Exception as e:
-        print(f"❌ Error creando directorios: {e}")
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    """Manejador de excepciones HTTP"""
+    logger.error(f"Error HTTP {exc.status_code}: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error": exc.detail
+        }
+    )
 
 if __name__ == "__main__":
     import uvicorn
+    
+    # Configuración del servidor
     host = os.getenv('HOST', '0.0.0.0')
     port = int(os.getenv('PORT', 8000))
-    uvicorn.run("main:app", host=host, port=port, log_level="info")
+    debug = os.getenv('DEBUG', 'False').lower() == 'true'
+    
+    logger.info(f"Iniciando servidor en {host}:{port}")
+    
+    uvicorn.run(
+        "main:app",
+        host=host,
+        port=port,
+        reload=debug,
+        log_level="info"
+    ) # FORCE REDEPLOY - Tue Aug 26 01:23:06 -03 2025

@@ -56,8 +56,8 @@ async def debug_filesystem():
         result = {
             "cwd": os.getcwd(),
             "files": {},
-            "routers_exists": os.path.exists("routers"),
-            "routers_is_dir": os.path.isdir("routers") if os.path.exists("routers") else False
+            "routers_exists": os.path.exists("conciliador_ia/routers"),
+            "routers_is_dir": os.path.isdir("conciliador_ia/routers") if os.path.exists("conciliador_ia/routers") else False
         }
         
         # Listar archivos raíz
@@ -70,10 +70,10 @@ async def debug_filesystem():
         result["root_files"] = root_files
         
         # Listar routers si existe
-        if os.path.exists("routers") and os.path.isdir("routers"):
+        if os.path.exists("conciliador_ia/routers") and os.path.isdir("conciliador_ia/routers"):
             router_files = []
-            for item in os.listdir("routers"):
-                size = os.path.getsize(f"routers/{item}") if os.path.isfile(f"routers/{item}") else 0
+            for item in os.listdir("conciliador_ia/routers"):
+                size = os.path.getsize(f"conciliador_ia/routers/{item}") if os.path.isfile(f"conciliador_ia/routers/{item}") else 0
                 router_files.append({"name": item, "size": size})
             result["router_files"] = router_files
         else:
@@ -88,8 +88,8 @@ async def debug_filesystem():
 async def debug_import_test():
     """Probar imports uno por uno"""
     results = {
-        "routers_dir_exists": os.path.exists("routers"),
-        "routers_init_exists": os.path.exists("routers/__init__.py"),
+        "routers_dir_exists": os.path.exists("conciliador_ia/routers"),
+        "routers_init_exists": os.path.exists("conciliador_ia/routers/__init__.py"),
         "import_tests": []
     }
     
@@ -107,7 +107,7 @@ async def debug_import_test():
     for router_name in routers_to_test:
         test_result = {
             "name": router_name,
-            "file_exists": os.path.exists(f"routers/{router_name}.py"),
+            "file_exists": os.path.exists(f"conciliador_ia/routers/{router_name}.py"),
             "import_success": False,
             "has_router": False,
             "error": None
@@ -116,7 +116,7 @@ async def debug_import_test():
         if test_result["file_exists"]:
             try:
                 # Intentar import
-                module = __import__(f"routers.{router_name}", fromlist=[router_name])
+                module = __import__(f"conciliador_ia.routers.{router_name}", fromlist=[router_name])
                 test_result["import_success"] = True
                 
                 # Verificar que tenga 'router'
@@ -148,7 +148,7 @@ def mount_all(prefix: str):
     try:
         # Cargar upload router
         print(f"  🔄 Cargando upload router en {prefix}...")
-        from routers import upload
+        from conciliador_ia.routers import upload
         app.include_router(upload.router, prefix=prefix)
         print(f"  ✅ Upload router cargado en {prefix}")
         routers_loaded += 1
@@ -158,7 +158,7 @@ def mount_all(prefix: str):
     try:
         # Cargar conciliacion router
         print(f"  🔄 Cargando conciliacion router en {prefix}...")
-        from routers import conciliacion
+        from conciliador_ia.routers import conciliacion
         app.include_router(conciliacion.router, prefix=prefix)
         print(f"  ✅ Conciliacion router cargado en {prefix}")
         routers_loaded += 1
@@ -168,7 +168,7 @@ def mount_all(prefix: str):
     try:
         # Cargar compras router
         print(f"  🔄 Cargando compras router en {prefix}...")
-        from routers import compras
+        from conciliador_ia.routers import compras
         app.include_router(compras.router, prefix=prefix)
         print(f"  ✅ Compras router cargado en {prefix}")
         routers_loaded += 1
@@ -178,7 +178,7 @@ def mount_all(prefix: str):
     try:
         # Cargar arca_xubio router
         print(f"  🔄 Cargando arca_xubio router en {prefix}...")
-        from routers import arca_xubio
+        from conciliador_ia.routers import arca_xubio
         app.include_router(arca_xubio.router, prefix=prefix)
         print(f"  ✅ Arca_xubio router cargado en {prefix}")
         routers_loaded += 1
@@ -188,7 +188,7 @@ def mount_all(prefix: str):
     try:
         # Cargar carga_informacion router
         print(f"  🔄 Cargando carga_informacion router en {prefix}...")
-        from routers import carga_informacion
+        from conciliador_ia.routers import carga_informacion
         app.include_router(carga_informacion.router, prefix=prefix)
         print(f"  ✅ Carga_informacion router cargado en {prefix}")
         routers_loaded += 1
@@ -198,7 +198,7 @@ def mount_all(prefix: str):
     try:
         # Cargar carga_clientes router
         print(f"  🔄 Cargando carga_clientes router en {prefix}...")
-        from routers import carga_clientes
+        from conciliador_ia.routers import carga_clientes
         app.include_router(carga_clientes.router, prefix=prefix)
         print(f"  ✅ Carga_clientes router cargado en {prefix}")
         routers_loaded += 1
@@ -208,7 +208,7 @@ def mount_all(prefix: str):
     try:
         # Cargar carga_documentos router
         print(f"  🔄 Cargando carga_documentos router en {prefix}...")
-        from routers import carga_documentos
+        from conciliador_ia.routers import carga_documentos
         app.include_router(carga_documentos.router, prefix=prefix)
         print(f"  ✅ Carga_documentos router cargado en {prefix}")
         routers_loaded += 1

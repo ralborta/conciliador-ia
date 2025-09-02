@@ -234,14 +234,14 @@ async def importar_solo_clientes(
         
         # Crear job
         job = ClienteImportJob(
-            job_id=job_id,
+            id=job_id,
             empresa_id="default",
-            archivo_portal=archivo.filename,
-            archivo_xubio="",
-            archivo_cliente="",
+            timestamp=datetime.now().isoformat(),
+            archivos=[archivo.filename],
             estado="procesando",
-            fecha_inicio=datetime.now(),
-            resultado=None
+            progreso=0,
+            resultado=None,
+            errores=[]
         )
         jobs[job_id] = job
         
@@ -312,7 +312,7 @@ async def importar_solo_clientes(
             )
             
             job.estado = "completado"
-            job.fecha_fin = datetime.now()
+            job.progreso = 100
             
             # Limpiar archivo temporal
             if archivo_path.exists():
@@ -323,7 +323,7 @@ async def importar_solo_clientes(
         except Exception as e:
             logger.error(f"Error procesando archivo: {e}")
             job.estado = "error"
-            job.fecha_fin = datetime.now()
+            job.progreso = 0
             job.resultado = ClienteImportResponse(
                 job_id=job_id,
                 resumen={"error": str(e)},

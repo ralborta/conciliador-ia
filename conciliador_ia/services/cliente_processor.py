@@ -357,40 +357,40 @@ class ClienteProcessor:
             # Procesar cada fila del portal
             for idx, row in df_portal.iterrows():
                 try:
-                # Buscar columnas relevantes - Mapeo más flexible para archivos del portal
-                tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f', 'TIPO_DOC', 'Tipo Doc. Comprador'])
-                numero_doc_col = self._encontrar_columna(df_portal.columns, ['NUMERO_DOC', 'numero_doc', 'Numero de Documento', 'numero de documento', 'numero_documento', 'nro. doc. comprador', 'nro doc comprador', 'nro. doc comprador', 'dni', 'cuit', 'CUIT', 'NUMERO_DOC'])
-                nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE', 'denominaciÃ³n comprador', 'denominacion comprador', 'denominaciã³n comprador'])
-                
-                # DEBUG: Verificar qué columnas se encontraron
-                fila_num = idx[0] if isinstance(idx, tuple) else idx
-                logger.info(f"Fila {fila_num + 1}: tipo_doc_col='{tipo_doc_col}', numero_doc_col='{numero_doc_col}', nombre_col='{nombre_col}'")
-                
-                # FORZAR USO DE COLUMNAS CORRECTAS
-                if tipo_doc_col != 'Tipo Doc. Comprador':
-                    logger.warning(f"Fila {fila_num + 1}: Cambiando tipo_doc_col de '{tipo_doc_col}' a 'Tipo Doc. Comprador'")
-                    tipo_doc_col = 'Tipo Doc. Comprador'
-                
-                if not all([tipo_doc_col, numero_doc_col, nombre_col]):
-                    errores.append({
-                        'origen_fila': safe_join("Portal fila ", fila_num + 1),
-                        'tipo_error': 'Columnas faltantes',
-                        'detalle': safe_join('No se encontraron columnas: tipo_doc=', bool(tipo_doc_col), ', numero_doc=', bool(numero_doc_col), ', nombre=', bool(nombre_col)),
-                        'valor_original': str(row.to_dict())
-                    })
-                    continue
-                
-                # Extraer valores
-                tipo_doc_codigo = str(row[tipo_doc_col]).strip()
-                numero_doc = str(row[numero_doc_col]).strip()
-                nombre = str(row[nombre_col]).strip()
-                
-                # Mapear tipo de documento
-                tipo_documento = self.mapear_tipo_documento(tipo_doc_codigo)
-                if not tipo_documento:
-                    errores.append({
-                        'origen_fila': safe_join("Portal fila ", fila_num + 1),
-                        'tipo_error': 'Tipo de documento no reconocido',
+                    # Buscar columnas relevantes - Mapeo más flexible para archivos del portal
+                    tipo_doc_col = self._encontrar_columna(df_portal.columns, ['tipo_doc', 'tipo_documento', 'tipo', 'ct_kind0f', 'TIPO_DOC', 'Tipo Doc. Comprador'])
+                    numero_doc_col = self._encontrar_columna(df_portal.columns, ['NUMERO_DOC', 'numero_doc', 'Numero de Documento', 'numero de documento', 'numero_documento', 'nro. doc. comprador', 'nro doc comprador', 'nro. doc comprador', 'dni', 'cuit', 'CUIT', 'NUMERO_DOC'])
+                    nombre_col = self._encontrar_columna(df_portal.columns, ['nombre', 'razon_social', 'cliente', 'NOMBRE', 'denominaciÃ³n comprador', 'denominacion comprador', 'denominaciã³n comprador'])
+                    
+                    # DEBUG: Verificar qué columnas se encontraron
+                    fila_num = idx[0] if isinstance(idx, tuple) else idx
+                    logger.info(f"Fila {fila_num + 1}: tipo_doc_col='{tipo_doc_col}', numero_doc_col='{numero_doc_col}', nombre_col='{nombre_col}'")
+                    
+                    # FORZAR USO DE COLUMNAS CORRECTAS
+                    if tipo_doc_col != 'Tipo Doc. Comprador':
+                        logger.warning(f"Fila {fila_num + 1}: Cambiando tipo_doc_col de '{tipo_doc_col}' a 'Tipo Doc. Comprador'")
+                        tipo_doc_col = 'Tipo Doc. Comprador'
+                    
+                    if not all([tipo_doc_col, numero_doc_col, nombre_col]):
+                        errores.append({
+                            'origen_fila': safe_join("Portal fila ", fila_num + 1),
+                            'tipo_error': 'Columnas faltantes',
+                            'detalle': safe_join('No se encontraron columnas: tipo_doc=', bool(tipo_doc_col), ', numero_doc=', bool(numero_doc_col), ', nombre=', bool(nombre_col)),
+                            'valor_original': str(row.to_dict())
+                        })
+                        continue
+                    
+                    # Extraer valores
+                    tipo_doc_codigo = str(row[tipo_doc_col]).strip()
+                    numero_doc = str(row[numero_doc_col]).strip()
+                    nombre = str(row[nombre_col]).strip()
+                    
+                    # Mapear tipo de documento
+                    tipo_documento = self.mapear_tipo_documento(tipo_doc_codigo)
+                    if not tipo_documento:
+                        errores.append({
+                            'origen_fila': safe_join("Portal fila ", fila_num + 1),
+                            'tipo_error': 'Tipo de documento no reconocido',
                         'detalle': safe_join('Código ', tipo_doc_codigo, ' no mapeable'),
                         'valor_original': tipo_doc_codigo
                     })

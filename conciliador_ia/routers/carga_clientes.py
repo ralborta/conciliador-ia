@@ -539,16 +539,34 @@ async def transformar_archivo_cliente(
             logger.info("🔄 Iniciando transformación IIBB...")
             df_cliente_transformado, log_transformacion, stats = transformador.transformar_archivo_iibb(df_cliente, df_portal)
             
-            resultado = {
-                "archivo_original": archivo_cliente.filename,
-                "tipo_detectado": tipo_archivo,
-                "transformacion_exitosa": True,
-                "registros_originales": len(df_cliente),
-                "registros_transformados": len(df_cliente_transformado),
-                "mensaje": f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros",
-                "log_transformacion": log_transformacion,
-                "estadisticas": stats
-            }
+            # Para archivos grandes, limitar el payload de respuesta
+            if len(df_cliente) > 50:
+                # Solo enviar resumen para archivos grandes
+                resultado = {
+                    "archivo_original": archivo_cliente.filename,
+                    "tipo_detectado": tipo_archivo,
+                    "transformacion_exitosa": True,
+                    "registros_originales": len(df_cliente),
+                    "registros_transformados": len(df_cliente_transformado),
+                    "mensaje": f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros",
+                    "log_transformacion": log_transformacion[-5:],  # Solo últimos 5 logs
+                    "estadisticas": {
+                        "registros_parseados": stats.get("registros_parseados", 0),
+                        "registros_finales": stats.get("registros_finales", 0)
+                    }
+                }
+            else:
+                # Para archivos pequeños, enviar todo
+                resultado = {
+                    "archivo_original": archivo_cliente.filename,
+                    "tipo_detectado": tipo_archivo,
+                    "transformacion_exitosa": True,
+                    "registros_originales": len(df_cliente),
+                    "registros_transformados": len(df_cliente_transformado),
+                    "mensaje": f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros",
+                    "log_transformacion": log_transformacion,
+                    "estadisticas": stats
+                }
             
             logger.info(f"✅ Transformación completada: {resultado['mensaje']}")
             

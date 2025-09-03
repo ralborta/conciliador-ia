@@ -181,16 +181,16 @@ async def procesar_archivos_inmediato(
         if not any(comprobantes.filename.lower().endswith(ext) for ext in valid_comprobantes_extensions):
             return {"status": "error", "message": "Los comprobantes deben ser Excel (.xlsx, .xls) o CSV"}
         
-        # Validar tamaño de archivos (máximo 10MB cada uno)
-        max_size = 10 * 1024 * 1024  # 10MB
+        # Validar tamaño de archivos (máximo 50MB cada uno)
+        max_size = 50 * 1024 * 1024  # 50MB
         extracto_content = await extracto.read()
         comprobantes_content = await comprobantes.read()
         
         if len(extracto_content) > max_size:
-            return {"status": "error", "message": "El extracto es demasiado grande. Máximo 10MB permitido."}
+            return {"status": "error", "message": "El extracto es demasiado grande. Máximo 50MB permitido."}
         
         if len(comprobantes_content) > max_size:
-            return {"status": "error", "message": "Los comprobantes son demasiado grandes. Máximo 10MB permitido."}
+            return {"status": "error", "message": "Los comprobantes son demasiado grandes. Máximo 50MB permitido."}
         
         # Crear archivos temporales únicos
         import tempfile

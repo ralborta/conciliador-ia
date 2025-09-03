@@ -138,7 +138,15 @@ async def importar_clientes(
                     
                     # FORZAR TRANSFORMACIÓN SIEMPRE para archivos del cliente
                     logger.info("🔄 FORZANDO TRANSFORMACIÓN - Archivo del cliente detectado...")
+                    logger.info(f"🔍 DEBUG - ANTES de transformar: {len(df_cliente)} registros")
+                    logger.info(f"🔍 DEBUG - Columnas ANTES: {list(df_cliente.columns)}")
+                    
                     df_cliente_transformado, log_transformacion, stats = transformador.transformar_archivo_iibb(df_cliente, df_portal)
+                    
+                    logger.info(f"🔍 DEBUG - DESPUÉS de transformar: {len(df_cliente_transformado)} registros")
+                    logger.info(f"🔍 DEBUG - Columnas DESPUÉS: {list(df_cliente_transformado.columns)}")
+                    logger.info(f"🔍 DEBUG - Log de transformación: {log_transformacion}")
+                    
                     mensajes_conversion.extend(log_transformacion)
                     logger.info(f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros")
                     

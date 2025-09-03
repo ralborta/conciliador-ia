@@ -532,10 +532,10 @@ async def transformar_archivo_cliente(
         logger.info(f"📊 Archivos leídos - Cliente: {len(df_cliente)} filas, Portal: {len(df_portal)} filas")
         
         # Para archivos muy grandes, limitar el procesamiento
-        if len(df_cliente) > 500:
-            logger.warning(f"⚠️ Archivo muy grande ({len(df_cliente)} registros). Limitando a 500 registros para evitar timeout.")
-            df_cliente = df_cliente.head(500)
-            logger.info(f"📊 Procesando solo las primeras 500 filas de {len(df_cliente)} total")
+        if len(df_cliente) > 200:
+            logger.warning(f"⚠️ Archivo muy grande ({len(df_cliente)} registros). Limitando a 200 registros para evitar timeout.")
+            df_cliente = df_cliente.head(200)
+            logger.info(f"📊 Procesando solo las primeras 200 filas de {len(df_cliente)} total")
         
         # Detectar tipo de archivo
         tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
@@ -554,7 +554,7 @@ async def transformar_archivo_cliente(
                     "transformacion_exitosa": True,
                     "registros_originales": len(df_cliente),
                     "registros_transformados": len(df_cliente_transformado),
-                    "mensaje": f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros (procesando primeras 500 filas de archivo grande)",
+                    "mensaje": f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros (procesando primeras 200 filas de archivo grande)",
                     "log_transformacion": log_transformacion[-3:],  # Solo últimos 3 logs
                     "estadisticas": {
                         "registros_parseados": stats.get("registros_parseados", 0),

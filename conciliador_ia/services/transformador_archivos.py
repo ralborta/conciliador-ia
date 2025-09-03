@@ -436,8 +436,13 @@ class TransformadorArchivos:
                         'denominacion_afip': str(row[col_denominacion]).strip()
                     }
             
-            logger.debug(f"❌ No se encontró match para: {numero_factura}")
-            return {}
+            # Si no encuentra match, devolver datos por defecto para que no falle
+            logger.debug(f"⚠️ No se encontró match para {numero_factura}, usando datos por defecto")
+            return {
+                'tipo_doc_afip': '80',  # CUIT por defecto
+                'numero_doc_afip': numero_final,  # Usar el número parseado
+                'denominacion_afip': 'Cliente sin denominación'
+            }
         
         # Aplicar búsqueda
         resultados_afip = df_resultado['numero_factura_extraido'].apply(buscar_en_afip)
@@ -555,10 +560,17 @@ class TransformadorArchivos:
         # Copiar el DataFrame original
         df_final = df.copy()
         
-        # Agregar columnas básicas para el formato estándar
-        df_final['Tipo Doc. Comprador'] = '80'  # Valor por defecto para CUIT
-        df_final['Numero de Documento'] = df_final.get('CUIT', '')  # Usar CUIT si existe
-        df_final['denominación comprador'] = df_final.get('Razón social', 'Cliente sin nombre')
+        # Usar datos de AFIP si están disponibles, sino usar datos del cliente
+        if 'tipo_doc_afip' in df_final.columns and 'numero_doc_afip' in df_final.columns and 'denominacion_afip' in df_final.columns:
+            # Usar datos de AFIP (preferidos)
+            df_final['Tipo Doc. Comprador'] = df_final['tipo_doc_afip'].fillna('80')
+            df_final['Numero de Documento'] = df_final['numero_doc_afip'].fillna('')
+            df_final['denominación comprador'] = df_final['denominacion_afip'].fillna('Cliente sin denominación')
+        else:
+            # Usar datos del cliente como fallback
+            df_final['Tipo Doc. Comprador'] = '80'  # Valor por defecto para CUIT
+            df_final['Numero de Documento'] = df_final.get('CUIT', '')  # Usar CUIT si existe
+            df_final['denominación comprador'] = df_final.get('Razón social', 'Cliente sin nombre')
         
         # Asegurar que las columnas tengan los nombres exactos que espera ClienteProcessor
         if 'Tipo Doc. Comprador' not in df_final.columns:

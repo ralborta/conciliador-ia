@@ -330,6 +330,11 @@ class TransformadorArchivos:
         # Aplicar extracción
         df_copy['numero_factura_extraido'] = df_copy[col_descripcion].apply(extraer_numero_factura)
         
+        # AGREGAR COLUMNAS BÁSICAS PARA EL CLIENTEPROCESSOR
+        df_copy['Tipo Doc. Comprador'] = '80'  # Valor por defecto para CUIT
+        df_copy['Numero de Documento'] = df_copy.get('CUIT', '')  # Usar CUIT si existe
+        df_copy['denominación comprador'] = df_copy.get('Razón social', 'Cliente sin nombre')
+        
         # Log de resultados
         total_registros = len(df_copy)
         facturas_extraidas = len(df_copy[df_copy['numero_factura_extraido'] != ''])

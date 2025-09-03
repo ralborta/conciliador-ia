@@ -173,6 +173,11 @@ export default function CargaClientesPage() {
 
   // Función para analizar contexto del 3er archivo
   const handleAnalyzeContext = async () => {
+    if (!archivoCliente) {
+      setError('No hay archivo de cliente para analizar');
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
     setAnalysisResult(null);

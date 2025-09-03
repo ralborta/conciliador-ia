@@ -91,8 +91,12 @@ async def importar_clientes(
         
         # Guardar archivo cliente si existe
         if archivo_cliente:
+            logger.info(f"💾 Guardando 3er archivo: {archivo_cliente.filename}")
             content = await archivo_cliente.read()
             archivos_guardados["cliente"] = loader.save_uploaded_file(content, archivo_cliente.filename, ENTRADA_DIR)
+            logger.info(f"✅ 3er archivo guardado en: {archivos_guardados['cliente']}")
+        else:
+            logger.warning("⚠️ No se proporcionó archivo cliente")
         
         # Procesar archivos
         try:
@@ -102,7 +106,11 @@ async def importar_clientes(
             df_cliente = None
             
             if "cliente" in archivos_guardados:
+                logger.info(f"📁 Cargando 3er archivo: {archivos_guardados['cliente']}")
                 df_cliente = loader._read_any_table(archivos_guardados["cliente"])
+                logger.info(f"✅ 3er archivo cargado: {len(df_cliente)} filas")
+            else:
+                logger.warning("⚠️ No se encontró archivo cliente en archivos_guardados")
             
             # Asegurá que SALIDA_DIR exista (por si el loader no lo creó)
             SALIDA_DIR.mkdir(parents=True, exist_ok=True)

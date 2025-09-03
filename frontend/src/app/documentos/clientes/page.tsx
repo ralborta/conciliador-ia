@@ -193,25 +193,33 @@ export default function CargaClientesPage() {
     setAnalysisResult(null);
 
     try {
+      console.log('🔍 Iniciando análisis...');
       const formData = new FormData();
       formData.append('archivo_cliente', archivoCliente);
 
+      console.log('📤 Enviando request al backend...');
       const response = await fetch('/api/v1/analizar-contexto', {
         method: 'POST',
         body: formData,
       });
 
+      console.log('📥 Respuesta recibida:', response.status, response.ok);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ Error del backend:', errorData);
         throw new Error(errorData.detail || 'Error en el análisis');
       }
 
       const data = await response.json();
+      console.log('✅ Datos recibidos:', data);
       setAnalysisResult(data);
       setCurrentStep('analyze');
     } catch (err) {
+      console.error('❌ Error en análisis:', err);
       setError(err instanceof Error ? err.message : 'Error inesperado en análisis');
     } finally {
+      console.log('🏁 Finalizando análisis...');
       setIsAnalyzing(false);
     }
   };

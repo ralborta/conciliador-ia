@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// RAILWAY BACKEND: Using Railway URL (replace with your actual Railway URL)
-const API_BASE_URL = 'https://conciliador-ia-production.up.railway.app/api/v1';
+// VERCEL PROXY: Using Vercel proxy to avoid CORS issues
+const API_BASE_URL = '/api/v1';
 
 console.log('API URL:', API_BASE_URL); // Debug log - FORCE VERCEL DEPLOY V4 - IMPROVED LOGGING
 

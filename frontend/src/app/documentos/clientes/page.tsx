@@ -99,8 +99,8 @@ export default function CargaClientesPage() {
         empresa: empresaId
       });
 
-      // Usar URL absoluta al backend Railway
-      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/importar-clientes', {
+      // Usar proxy de Vercel para evitar problemas de CORS
+      const response = await fetch('/api/importar-clientes', {
         method: 'POST',
         body: formData,
       });

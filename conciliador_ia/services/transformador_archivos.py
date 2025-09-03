@@ -451,7 +451,11 @@ class TransformadorArchivos:
         """
         Genera el formato final que espera ClienteProcessor
         """
-        df_final = pd.DataFrame()
+        logger.info(f"🔍 DEBUG - DataFrame recibido: {len(df)} registros")
+        logger.info(f"🔍 DEBUG - Columnas disponibles: {list(df.columns)}")
+        
+        # CORRECCIÓN: Copiar el DataFrame original en lugar de crear uno vacío
+        df_final = df.copy()
         
         # Verificar que las columnas necesarias existan
         if 'tipo_doc_afip' not in df.columns:
@@ -466,12 +470,17 @@ class TransformadorArchivos:
             logger.warning("⚠️ Columna 'numero_doc_afip' no encontrada, usando valores vacíos")
             df_final['Numero de Documento'] = ''
         else:
+            logger.info(f"🔍 DEBUG - Columna 'numero_doc_afip' encontrada, valores no nulos: {df['numero_doc_afip'].notna().sum()}")
+            logger.info(f"🔍 DEBUG - Ejemplo numero_doc_afip: {df['numero_doc_afip'].iloc[0] if len(df) > 0 else 'N/A'}")
             df_final['Numero de Documento'] = df['numero_doc_afip']
         
         if 'denominacion_afip' not in df.columns:
             logger.warning("⚠️ Columna 'denominacion_afip' no encontrada, usando Razón social")
+            logger.info(f"🔍 DEBUG - Usando 'Razón social', valores no nulos: {df['Razón social'].notna().sum() if 'Razón social' in df.columns else 0}")
             df_final['denominación comprador'] = df['Razón social'] if 'Razón social' in df.columns else 'Cliente sin nombre'
         else:
+            logger.info(f"🔍 DEBUG - Columna 'denominacion_afip' encontrada, valores no nulos: {df['denominacion_afip'].notna().sum()}")
+            logger.info(f"🔍 DEBUG - Ejemplo denominacion_afip: {df['denominacion_afip'].iloc[0] if len(df) > 0 else 'N/A'}")
             df_final['denominación comprador'] = df['denominacion_afip'].fillna(
                 df['Razón social'] if 'Razón social' in df.columns else 'Cliente sin nombre'
             )

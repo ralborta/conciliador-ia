@@ -100,23 +100,58 @@ class TransformadorArchivos:
     
     def _es_archivo_gh_iibb_tango(self, df: pd.DataFrame, columnas: List[str]) -> bool:
         """
-        Detecta si es un archivo GH IIBB TANGO
+        Detecta si es un archivo GH IIBB TANGO (4 formatos distintos)
         """
-        # Verificar columnas características
-        columnas_requeridas = ["descripción", "razón social", "provincia", "localidad"]
-        columnas_encontradas = [col for col in columnas_requeridas if any(col in col_name for col_name in columnas)]
+        # FORMATO 1: Columnas estándar
+        columnas_requeridas_1 = ["descripción", "razón social", "provincia", "localidad"]
+        columnas_encontradas_1 = [col for col in columnas_requeridas_1 if any(col in col_name for col_name in columnas)]
         
-        if len(columnas_encontradas) >= 3:  # Al menos 3 de las 4 columnas
-            # Verificar contenido de la columna descripción
-            if "descripción" in [col.lower() for col in df.columns]:
-                col_descripcion = [col for col in df.columns if "descripción" in col.lower()][0]
-                # Verificar si contiene patrones de facturas
-                muestra = df[col_descripcion].head(5).astype(str)
-                patrones_factura = ["factura", "crédito", "venta", "0000"]
-                coincidencias = sum(1 for valor in muestra if any(patron in valor.lower() for patron in patrones_factura))
-                
-                if coincidencias >= 3:  # Al menos 3 de 5 muestras coinciden
-                    return True
+        # FORMATO 2: Columnas con "Unnamed" (archivos malformados)
+        columnas_unnamed = [col for col in df.columns if "unnamed" in col.lower()]
+        
+        # FORMATO 3: Columnas alternativas
+        columnas_requeridas_3 = ["descripcion", "razon social", "provincia", "localidad"]
+        columnas_encontradas_3 = [col for col in columnas_requeridas_3 if any(col in col_name for col_name in columnas)]
+        
+        # FORMATO 4: Columnas con acentos diferentes
+        columnas_requeridas_4 = ["descripciã³n", "razã³n social", "provincia", "localidad"]
+        columnas_encontradas_4 = [col for col in columnas_requeridas_4 if any(col in col_name for col_name in columnas)]
+        
+        # Verificar si cumple alguno de los 4 formatos
+        formatos_validos = [
+            len(columnas_encontradas_1) >= 3,  # Formato 1
+            len(columnas_unnamed) >= 2,        # Formato 2 (Unnamed)
+            len(columnas_encontradas_3) >= 3,  # Formato 3
+            len(columnas_encontradas_4) >= 3   # Formato 4
+        ]
+        
+        if any(formatos_validos):
+            # Verificar contenido de facturas en cualquier columna
+            patrones_factura = ["factura", "crédito", "venta", "0000", "00003-", "00004-", "00005-"]
+            
+            # Buscar en todas las columnas que podrían contener descripciones
+            columnas_descripcion = []
+            for col in df.columns:
+                col_lower = col.lower()
+                if any(palabra in col_lower for palabra in ["descrip", "concepto", "detalle", "observ"]):
+                    columnas_descripcion.append(col)
+            
+            # Si no encuentra columnas de descripción, buscar en columnas "Unnamed"
+            if not columnas_descripcion and columnas_unnamed:
+                columnas_descripcion = columnas_unnamed[:2]  # Tomar las primeras 2
+            
+            # Verificar contenido
+            for col_desc in columnas_descripcion:
+                try:
+                    muestra = df[col_desc].head(10).astype(str)
+                    coincidencias = sum(1 for valor in muestra if any(patron in valor.lower() for patron in patrones_factura))
+                    
+                    if coincidencias >= 3:  # Al menos 3 de 10 muestras coinciden
+                        logger.info(f"✅ Archivo TANGO detectado en columna: {col_desc}")
+                        return True
+                except Exception as e:
+                    logger.warning(f"Error verificando columna {col_desc}: {e}")
+                    continue
         
         return False
     
@@ -183,38 +218,73 @@ class TransformadorArchivos:
     
     def _parsear_descripcion_gh_iibb(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Parsea la columna descripción para extraer número de factura
+        Parsea la columna descripción para extraer número de factura (4 formatos distintos)
         """
         df_copy = df.copy()
         
-        # Encontrar columna descripción
-        col_descripcion = [col for col in df.columns if "descripción" in col.lower()][0]
+        # Encontrar columna descripción (más flexible)
+        col_descripcion = None
         
-        # Función para extraer número de factura
+        # Buscar en diferentes formatos
+        for col in df.columns:
+            col_lower = col.lower()
+            if any(palabra in col_lower for palabra in ["descrip", "concepto", "detalle", "observ"]):
+                col_descripcion = col
+                break
+        
+        # Si no encuentra, buscar en columnas "Unnamed"
+        if not col_descripcion:
+            columnas_unnamed = [col for col in df.columns if "unnamed" in col.lower()]
+            if columnas_unnamed:
+                col_descripcion = columnas_unnamed[0]  # Tomar la primera
+        
+        if not col_descripcion:
+            logger.error("No se encontró columna de descripción")
+            return df_copy
+        
+        logger.info(f"📝 Parseando columna: {col_descripcion}")
+        
+        # Función para extraer número de factura (más patrones)
         def extraer_numero_factura(descripcion: str) -> str:
             if pd.isna(descripcion):
                 return ""
             
             descripcion_str = str(descripcion)
             
-            # Buscar patrones como "B 00003-00000371" o "A 00003-00001818"
-            patron = r'[A-Z]\s+\d{5}-\d{8}'
-            match = re.search(patron, descripcion_str)
+            # PATRÓN 1: "B 00003-00000371" o "A 00003-00001818"
+            patron1 = r'[A-Z]\s+\d{5}-\d{8}'
+            match1 = re.search(patron1, descripcion_str)
+            if match1:
+                return match1.group()
             
-            if match:
-                return match.group()
+            # PATRÓN 2: Solo números "00003-00000371"
+            patron2 = r'\d{5}-\d{8}'
+            match2 = re.search(patron2, descripcion_str)
+            if match2:
+                return match2.group()
             
-            # Buscar solo números de factura
-            patron_simple = r'\d{5}-\d{8}'
-            match_simple = re.search(patron_simple, descripcion_str)
+            # PATRÓN 3: "00003-00000371" sin guión inicial
+            patron3 = r'\d{5}\d{8}'
+            match3 = re.search(patron3, descripcion_str)
+            if match3:
+                numero = match3.group()
+                return f"{numero[:5]}-{numero[5:]}"
             
-            if match_simple:
-                return match_simple.group()
+            # PATRÓN 4: Números más cortos "00003-371"
+            patron4 = r'\d{5}-\d{3,8}'
+            match4 = re.search(patron4, descripcion_str)
+            if match4:
+                return match4.group()
             
             return ""
         
         # Aplicar extracción
         df_copy['numero_factura_extraido'] = df_copy[col_descripcion].apply(extraer_numero_factura)
+        
+        # Log de resultados
+        total_registros = len(df_copy)
+        facturas_extraidas = len(df_copy[df_copy['numero_factura_extraido'] != ''])
+        logger.info(f"📊 Facturas extraídas: {facturas_extraidas}/{total_registros}")
         
         return df_copy
     

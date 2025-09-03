@@ -116,6 +116,9 @@ async def importar_clientes(
                     logger.info("🚀 CÓDIGO NUEVO EJECUTÁNDOSE - Versión 778582c")
                     logger.info(f"📊 Archivos recibidos - Portal: {len(df_portal)} filas, Xubio: {len(df_xubio)} filas, Cliente: {len(df_cliente)} filas")
                     logger.info("🔍 Intentando detectar tipo del 3er archivo (IIBB)...")
+                    logger.info(f"📋 Columnas del 3er archivo: {list(df_cliente.columns)}")
+                    logger.info(f"📋 Primeras 3 filas del 3er archivo:")
+                    logger.info(f"   {df_cliente.head(3).to_string()}")
                     tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
                     logger.info(f"✅ 3er archivo detectado como: {tipo_archivo}")
                     

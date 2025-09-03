@@ -136,19 +136,14 @@ async def importar_clientes(
                     tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
                     logger.info(f"✅ 3er archivo detectado como: {tipo_archivo}")
                     
-                    if tipo_archivo == "ARCHIVO_IIBB":
-                        logger.info("🔄 Archivo IIBB detectado - Intentando transformación...")
-                        df_cliente_transformado, log_transformacion, stats = transformador.transformar_archivo_iibb(df_cliente, df_portal)
-                        mensajes_conversion.extend(log_transformacion)
-                        logger.info(f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros")
-                        
-                        # Usar el archivo transformado para el procesamiento
-                        df_portal_final = df_cliente_transformado
-                    else:
-                        logger.info(f"📋 3er archivo tipo {tipo_archivo} - No requiere transformación")
-                        mensajes_conversion.append(f"📋 3er archivo detectado como {tipo_archivo} - Procesamiento estándar")
-                        # Usar el 3er archivo original para el procesamiento
-                        df_portal_final = df_cliente
+                    # FORZAR TRANSFORMACIÓN SIEMPRE para archivos del cliente
+                    logger.info("🔄 FORZANDO TRANSFORMACIÓN - Archivo del cliente detectado...")
+                    df_cliente_transformado, log_transformacion, stats = transformador.transformar_archivo_iibb(df_cliente, df_portal)
+                    mensajes_conversion.extend(log_transformacion)
+                    logger.info(f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros")
+                    
+                    # Usar el archivo transformado para el procesamiento
+                    df_portal_final = df_cliente_transformado
                 else:
                     logger.warning("⚠️ No se proporcionó 3er archivo - Procesando solo archivo Portal")
                     mensajes_conversion.append("⚠️ No se proporcionó 3er archivo - Procesando solo archivo Portal")

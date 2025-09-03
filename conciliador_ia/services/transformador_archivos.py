@@ -394,10 +394,14 @@ class TransformadorArchivos:
             if not numero_factura:
                 return {}
             
-            # Extraer solo el número final (después del guión) y quitar ceros a la izquierda
-            numero_final = numero_factura.split('-')[-1] if '-' in numero_factura else numero_factura
-            # Quitar ceros a la izquierda para hacer match con números como 371, 372, etc.
-            numero_final = str(int(numero_final)) if numero_final.isdigit() else numero_final
+            # Extraer el número de factura (después del guión) sin ceros a la izquierda
+            if '-' in numero_factura:
+                # Para formato "B 00003-00000371", tomar solo la parte después del guión
+                numero_factura_solo = numero_factura.split('-')[-1]
+                # Quitar ceros a la izquierda para obtener el número real
+                numero_final = str(int(numero_factura_solo)) if numero_factura_solo.isdigit() else numero_factura_solo
+            else:
+                numero_final = numero_factura
             
             logger.debug(f"🔍 Buscando factura: {numero_factura} -> {numero_final}")
             

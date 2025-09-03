@@ -277,242 +277,6 @@ async def importar_clientes_underscore(
     """Alias para compatibilidad con underscore"""
     return await importar_clientes(empresa_id, archivo_portal, archivo_xubio, archivo_cliente, cuenta_contable_default)
 
-@router.post("/analizar-contexto")
-async def analizar_contexto_archivo(
-    archivo_cliente: UploadFile = File(...)
-):
-    """
-    Analiza el contexto del 3er archivo para determinar si necesita transformación
-    """
-    try:
-        # Guardar archivo temporalmente
-        content = await archivo_cliente.read()
-        archivo_guardado = loader.save_uploaded_file(content, archivo_cliente.filename, ENTRADA_DIR)
-        
-        # Cargar DataFrame
-        df_cliente = loader._read_any_table(archivo_guardado)
-        
-        # Analizar contexto con IA
-        resultado_analisis = {
-            "archivo": archivo_cliente.filename,
-            "filas": len(df_cliente),
-            "columnas": list(df_cliente.columns),
-            "muestra": df_cliente.head(3).to_dict(orient="records")
-        }
-        
-        # Detectar tipo de archivo
-        tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
-        resultado_analisis["tipo_detectado"] = tipo_archivo
-        resultado_analisis["descripcion_tipo"] = transformador.tipos_archivo.get(tipo_archivo, "Desconocido")
-        
-        # Determinar si necesita transformación
-        necesita_transformacion = tipo_archivo == "ARCHIVO_IIBB"
-        resultado_analisis["necesita_transformacion"] = necesita_transformacion
-        
-        if necesita_transformacion:
-            resultado_analisis["mensaje"] = "🎯 Este archivo requiere transformación inteligente para extraer datos de clientes"
-            resultado_analisis["accion_recomendada"] = "transformar"
-        else:
-            resultado_analisis["mensaje"] = "✅ Este archivo está listo para procesamiento directo"
-            resultado_analisis["accion_recomendada"] = "procesar"
-        
-        # Limpiar archivo temporal
-        try:
-            os.remove(archivo_guardado)
-        except:
-            pass
-        
-        return resultado_analisis
-        
-    except Exception as e:
-        logger.error(f"Error analizando contexto: {e}")
-        raise HTTPException(status_code=500, detail=f"Error analizando archivo: {str(e)}")
-
-@router.post("/transformar-archivo")
-async def transformar_archivo(
-    archivo_cliente: UploadFile = File(...),
-    archivo_portal: UploadFile = File(...)
-):
-    """
-    Transforma el 3er archivo usando IA contextual
-    """
-    try:
-        # Log de archivos recibidos
-        logger.info(f"🔄 TRANSFORMACIÓN - Archivos recibidos:")
-        logger.info(f"   Cliente: {archivo_cliente.filename} ({archivo_cliente.size} bytes)")
-        logger.info(f"   Portal: {archivo_portal.filename} ({archivo_portal.size} bytes)")
-        
-        # Guardar archivos temporalmente
-        content_cliente = await archivo_cliente.read()
-        logger.info(f"📥 Contenido cliente leído: {len(content_cliente)} bytes")
-        archivo_cliente_guardado = loader.save_uploaded_file(content_cliente, archivo_cliente.filename, ENTRADA_DIR)
-        logger.info(f"💾 Archivo cliente guardado en: {archivo_cliente_guardado}")
-        
-        content_portal = await archivo_portal.read()
-        logger.info(f"📥 Contenido portal leído: {len(content_portal)} bytes")
-        archivo_portal_guardado = loader.save_uploaded_file(content_portal, archivo_portal.filename, ENTRADA_DIR)
-        logger.info(f"💾 Archivo portal guardado en: {archivo_portal_guardado}")
-        
-        # Cargar DataFrames
-        logger.info("📊 Cargando DataFrames...")
-        df_cliente = loader._read_any_table(archivo_cliente_guardado)
-        df_portal = loader._read_any_table(archivo_portal_guardado)
-        logger.info(f"✅ DataFrames cargados - Cliente: {len(df_cliente)} filas, Portal: {len(df_portal)} filas")
-        logger.info(f"📋 Columnas cliente: {list(df_cliente.columns)}")
-        logger.info(f"📋 Columnas portal: {list(df_portal.columns)}")
-        
-        # Detectar tipo y transformar
-        logger.info("🔍 Detectando tipo de archivo...")
-        tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
-        logger.info(f"✅ Tipo detectado: {tipo_archivo}")
-        
-        if tipo_archivo == "ARCHIVO_IIBB":
-            # Transformar archivo IIBB
-            df_transformado, log_transformacion, estadisticas = transformador.transformar_archivo_iibb(df_cliente, df_portal)
-            
-            resultado = {
-                "archivo_original": archivo_cliente.filename,
-                "tipo_detectado": tipo_archivo,
-                "transformacion_exitosa": True,
-                "registros_originales": len(df_cliente),
-                "registros_transformados": len(df_transformado),
-                "log_transformacion": log_transformacion,
-                "estadisticas": estadisticas,
-                "archivo_transformado": df_transformado.to_dict(orient="records"),
-                "mensaje": f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_transformado)} registros"
-            }
-        else:
-            # No necesita transformación
-            resultado = {
-                "archivo_original": archivo_cliente.filename,
-                "tipo_detectado": tipo_archivo,
-                "transformacion_exitosa": False,
-                "registros_originales": len(df_cliente),
-                "registros_transformados": len(df_cliente),
-                "mensaje": f"ℹ️ Archivo tipo {tipo_archivo} - No requiere transformación",
-                "archivo_transformado": df_cliente.to_dict(orient="records")
-            }
-        
-        # Limpiar archivos temporales
-        try:
-            os.remove(archivo_cliente_guardado)
-            os.remove(archivo_portal_guardado)
-        except:
-            pass
-        
-        return resultado
-        
-    except Exception as e:
-        logger.error(f"Error transformando archivo: {e}")
-        raise HTTPException(status_code=500, detail=f"Error transformando archivo: {str(e)}")
-
-@router.post("/procesar-clientes")
-async def procesar_clientes_final(
-    empresa_id: Optional[str] = Form("default"),
-    archivo_portal: UploadFile = File(...),
-    archivo_xubio: UploadFile = File(...),
-    archivo_cliente: Optional[UploadFile] = File(None),
-    cuenta_contable_default: Optional[str] = Form("Deudores por ventas")
-):
-    """
-    Procesa clientes finales (archivos ya transformados si es necesario)
-    """
-    try:
-        # Validar empresa_id
-        if not empresa_id or empresa_id.strip() == "":
-            empresa_id = "default"
-        
-        # Crear job ID
-        job_id = str(uuid.uuid4())
-        
-        # Crear job
-        job = ClienteImportJob(
-            id=job_id,
-            empresa_id=empresa_id,
-            timestamp=datetime.now().isoformat(),
-            archivos=[archivo_portal.filename, archivo_xubio.filename],
-            estado="procesando"
-        )
-        
-        if archivo_cliente:
-            job.archivos.append(archivo_cliente.filename)
-        
-        jobs[job_id] = job
-        
-        # Guardar archivos
-        archivos_guardados = {}
-        
-        # Guardar archivo portal
-        content = await archivo_portal.read()
-        archivos_guardados["portal"] = loader.save_uploaded_file(content, archivo_portal.filename, ENTRADA_DIR)
-        
-        # Guardar archivo Xubio
-        content = await archivo_xubio.read()
-        archivos_guardados["xubio"] = loader.save_uploaded_file(content, archivo_xubio.filename, ENTRADA_DIR)
-        
-        # Guardar archivo cliente si existe
-        if archivo_cliente:
-            content = await archivo_cliente.read()
-            archivos_guardados["cliente"] = loader.save_uploaded_file(content, archivo_cliente.filename, ENTRADA_DIR)
-        
-        # Cargar DataFrames
-        df_portal = loader._read_any_table(archivos_guardados["portal"])
-        df_xubio = loader._read_any_table(archivos_guardados["xubio"])
-        df_cliente = None
-        
-        if "cliente" in archivos_guardados:
-            df_cliente = loader._read_any_table(archivos_guardados["cliente"])
-        
-        # Asegurar que SALIDA_DIR exista
-        SALIDA_DIR.mkdir(parents=True, exist_ok=True)
-        
-        # Procesar clientes (sin transformación automática)
-        logger.info("👥 Procesando clientes finales...")
-        nuevos_clientes, errores = processor.detectar_nuevos_clientes(
-            df_portal, df_xubio, df_cliente
-        )
-        
-        # Generar archivos de salida
-        archivo_modelo = processor.generar_archivo_importacion(
-            nuevos_clientes, SALIDA_DIR, cuenta_contable_default
-        )
-        
-        archivo_errores = ""
-        if errores:
-            archivo_errores = processor.generar_reporte_errores(errores, SALIDA_DIR)
-        
-        # Actualizar job
-        job.estado = "completado"
-        job.progreso = 100
-        job.resultado = ClienteImportResponse(
-            job_id=job_id,
-            resumen={
-                "total_portal": len(df_portal),
-                "total_xubio": len(df_xubio),
-                "total_cliente": len(df_cliente) if df_cliente is not None else 0,
-                "nuevos_detectados": len(nuevos_clientes),
-                "errores": len(errores)
-            },
-            descargas={
-                "archivo_modelo": f"/api/v1/documentos/clientes/descargar?filename={Path(archivo_modelo).name}",
-                "reporte_errores": f"/api/v1/documentos/clientes/descargar?filename={Path(archivo_errores).name}" if archivo_errores else ""
-            },
-            logs_transformacion=[f"✅ Procesamiento final completado: {len(nuevos_clientes)} clientes nuevos detectados"]
-        )
-        
-        # Limpiar archivos temporales
-        for archivo_path in archivos_guardados.values():
-            try:
-                os.remove(archivo_path)
-            except:
-                pass
-        
-        return job.resultado
-        
-    except Exception as e:
-        logger.error(f"Error procesando clientes: {e}")
-        raise HTTPException(status_code=500, detail=f"Error procesando clientes: {str(e)}")
-
 @router.post("/validar")
 async def validar_archivos(
     archivo_portal: UploadFile = File(...),
@@ -665,3 +429,75 @@ async def eliminar_job(job_id: str):
     del jobs[job_id]
     
     return {"message": "Job eliminado correctamente"}
+
+@router.post("/analizar-contexto")
+async def analizar_contexto_archivo(
+    archivo_cliente: UploadFile = File(...)
+):
+    """
+    Analiza el contexto del 3er archivo para determinar si necesita transformación
+    VERSIÓN SIMPLIFICADA - Sin IA para evitar colgadas
+    """
+    try:
+        logger.info(f"🔍 ANÁLISIS RÁPIDO - Archivo: {archivo_cliente.filename}")
+        
+        # Guardar archivo temporalmente
+        content = await archivo_cliente.read()
+        archivo_guardado = loader.save_uploaded_file(content, archivo_cliente.filename, ENTRADA_DIR)
+        
+        # Cargar DataFrame con límite de filas para evitar colgadas
+        df_cliente = loader._read_any_table(archivo_guardado)
+        
+        # Limitar a las primeras 100 filas para análisis rápido
+        if len(df_cliente) > 100:
+            df_cliente = df_cliente.head(100)
+            logger.info(f"📊 Limitando análisis a primeras 100 filas de {len(df_cliente)} total")
+        
+        # Análisis básico sin IA
+        resultado_analisis = {
+            "archivo": archivo_cliente.filename,
+            "filas": len(df_cliente),
+            "columnas": list(df_cliente.columns),
+            "muestra": df_cliente.head(3).to_dict(orient="records")
+        }
+        
+        # Detección simple por columnas (sin IA)
+        columnas_lower = [col.lower() for col in df_cliente.columns]
+        
+        # Detectar si es archivo IIBB por patrones simples
+        patrones_iibb = ["descripción", "descipción", "razón social", "provincia", "localidad"]
+        patrones_encontrados = [patron for patron in patrones_iibb if any(patron in col for col in columnas_lower)]
+        
+        if len(patrones_encontrados) >= 3:
+            tipo_archivo = "ARCHIVO_IIBB"
+            necesita_transformacion = True
+            mensaje = "🎯 Este archivo requiere transformación inteligente para extraer datos de clientes"
+            accion = "transformar"
+        else:
+            tipo_archivo = "PORTAL_AFIP"
+            necesita_transformacion = False
+            mensaje = "✅ Este archivo está listo para procesamiento directo"
+            accion = "procesar"
+        
+        resultado_analisis.update({
+            "tipo_detectado": tipo_archivo,
+            "descripcion_tipo": transformador.tipos_archivo.get(tipo_archivo, "Desconocido"),
+            "necesita_transformacion": necesita_transformacion,
+            "mensaje": mensaje,
+            "accion_recomendada": accion,
+            "patrones_encontrados": patrones_encontrados
+        })
+        
+        logger.info(f"✅ Análisis completado: {tipo_archivo} - {mensaje}")
+        
+        # Limpiar archivo temporal
+        try:
+            os.remove(archivo_guardado)
+        except:
+            pass
+        
+        return resultado_analisis
+        
+    except Exception as e:
+        logger.error(f"Error analizando contexto: {e}")
+        raise HTTPException(status_code=500, detail=f"Error analizando archivo: {str(e)}")

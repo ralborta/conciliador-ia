@@ -178,6 +178,16 @@ export default function CargaClientesPage() {
       return;
     }
 
+    // Validar tipo de archivo
+    const fileName = archivoCliente.name.toLowerCase();
+    const validExtensions = ['.csv', '.xlsx', '.xls'];
+    const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!hasValidExtension) {
+      setError(`Tipo de archivo no válido. Solo se permiten archivos: ${validExtensions.join(', ')}`);
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
     setAnalysisResult(null);

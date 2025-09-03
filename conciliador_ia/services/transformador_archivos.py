@@ -492,18 +492,40 @@ class TransformadorArchivos:
         # Filtrar solo registros válidos (solo si hay datos)
         if len(df_final) > 0:
             logger.info(f"🔍 DEBUG - Antes del filtro: {len(df_final)} registros")
+            
+            # Verificar tipos de datos
+            logger.info(f"🔍 DEBUG - Tipo de 'Numero de Documento': {type(df_final['Numero de Documento'].iloc[0]) if len(df_final) > 0 else 'N/A'}")
+            logger.info(f"🔍 DEBUG - Tipo de 'denominación comprador': {type(df_final['denominación comprador'].iloc[0]) if len(df_final) > 0 else 'N/A'}")
+            
+            # Verificar valores específicos
             logger.info(f"🔍 DEBUG - Numero de Documento no vacío: {(df_final['Numero de Documento'].str.len() > 0).sum()}")
             logger.info(f"🔍 DEBUG - denominación comprador no vacío: {(df_final['denominación comprador'].str.len() > 0).sum()}")
             
             # Mostrar algunos ejemplos de datos
             if len(df_final) > 0:
-                logger.info(f"🔍 DEBUG - Ejemplo Numero de Documento: {df_final['Numero de Documento'].iloc[0]}")
-                logger.info(f"🔍 DEBUG - Ejemplo denominación comprador: {df_final['denominación comprador'].iloc[0]}")
+                logger.info(f"🔍 DEBUG - Ejemplo Numero de Documento: '{df_final['Numero de Documento'].iloc[0]}'")
+                logger.info(f"🔍 DEBUG - Ejemplo denominación comprador: '{df_final['denominación comprador'].iloc[0]}'")
+                
+                # Mostrar más ejemplos
+                for i in range(min(3, len(df_final))):
+                    logger.info(f"🔍 DEBUG - Registro {i+1}: Doc='{df_final['Numero de Documento'].iloc[i]}', Nombre='{df_final['denominación comprador'].iloc[i]}'")
             
-            df_final = df_final[
-                (df_final['Numero de Documento'].str.len() > 0) &
-                (df_final['denominación comprador'].str.len() > 0)
-            ]
+            # Aplicar filtro paso a paso
+            logger.info("🔍 DEBUG - Aplicando filtro paso a paso...")
+            
+            # Filtro 1: Numero de Documento no vacío
+            filtro_doc = df_final['Numero de Documento'].str.len() > 0
+            logger.info(f"🔍 DEBUG - Filtro Numero de Documento: {filtro_doc.sum()} registros pasan")
+            
+            # Filtro 2: denominación comprador no vacío
+            filtro_nombre = df_final['denominación comprador'].str.len() > 0
+            logger.info(f"🔍 DEBUG - Filtro denominación comprador: {filtro_nombre.sum()} registros pasan")
+            
+            # Filtro combinado
+            filtro_combinado = filtro_doc & filtro_nombre
+            logger.info(f"🔍 DEBUG - Filtro combinado: {filtro_combinado.sum()} registros pasan")
+            
+            df_final = df_final[filtro_combinado]
             
             logger.info(f"🔍 DEBUG - Después del filtro: {len(df_final)} registros")
         

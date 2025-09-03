@@ -39,6 +39,8 @@ export default function CargaClientesPage() {
   const [transformationResult, setTransformationResult] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState<'upload' | 'analyze' | 'transform' | 'process'>('upload');
 
+
+
   const handleValidation = async () => {
     if (!archivoPortal || !archivoXubio) {
       setError('Por favor complete todos los campos requeridos para validar');
@@ -218,6 +220,13 @@ export default function CargaClientesPage() {
     setTransformationResult(null);
 
     try {
+      // Verificar tamaño del archivo
+      if (archivoCliente.size > 2 * 1024 * 1024) { // 2MB
+        setError(`Archivo demasiado grande (${(archivoCliente.size / 1024 / 1024).toFixed(1)}MB). Por favor use un archivo más pequeño o divida en lotes.`);
+        setIsTransforming(false);
+        return;
+      }
+
       const formData = new FormData();
       formData.append('archivo_cliente', archivoCliente);
       formData.append('archivo_portal', archivoPortal);

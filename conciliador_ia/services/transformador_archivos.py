@@ -531,9 +531,6 @@ class TransformadorArchivos:
         Genera el formato final que espera ClienteProcessor
         SOLO TRANSFORMACIÓN DE FORMATO - Sin búsquedas en AFIP
         """
-        logger.info(f"🔍 DEBUG - DataFrame recibido: {len(df)} registros")
-        logger.info(f"🔍 DEBUG - Columnas disponibles: {list(df.columns)}")
-        
         # Copiar el DataFrame original
         df_final = df.copy()
         
@@ -542,27 +539,22 @@ class TransformadorArchivos:
         df_final['Numero de Documento'] = df_final.get('CUIT', '')  # Usar CUIT si existe
         df_final['denominación comprador'] = df_final.get('Razón social', 'Cliente sin nombre')
         
+        # Asegurar que las columnas tengan los nombres exactos que espera ClienteProcessor
+        if 'Tipo Doc. Comprador' not in df_final.columns:
+            df_final['Tipo Doc. Comprador'] = '80'
+        if 'Numero de Documento' not in df_final.columns:
+            df_final['Numero de Documento'] = df_final.get('CUIT', '')
+        if 'denominación comprador' not in df_final.columns:
+            df_final['denominación comprador'] = df_final.get('Razón social', 'Cliente sin nombre')
+        
         # Agregar provincia si existe
         if 'Provincia' in df.columns:
             df_final['provincia'] = df['Provincia']
         
         # Filtrar solo registros válidos (solo si hay datos)
         if len(df_final) > 0:
-            logger.info(f"🔍 DEBUG - Antes del filtro: {len(df_final)} registros")
-            
-            # Verificar valores específicos
-            logger.info(f"🔍 DEBUG - Numero de Documento no vacío: {(df_final['Numero de Documento'].str.len() > 0).sum()}")
-            logger.info(f"🔍 DEBUG - denominación comprador no vacío: {(df_final['denominación comprador'].str.len() > 0).sum()}")
-            
-            # Mostrar algunos ejemplos de datos
-            if len(df_final) > 0:
-                logger.info(f"🔍 DEBUG - Ejemplo Numero de Documento: '{df_final['Numero de Documento'].iloc[0]}'")
-                logger.info(f"🔍 DEBUG - Ejemplo denominación comprador: '{df_final['denominación comprador'].iloc[0]}'")
-            
             # Filtro más permisivo - solo requiere que tenga nombre
             df_final = df_final[df_final['denominación comprador'].str.len() > 0]
-            
-            logger.info(f"🔍 DEBUG - Después del filtro: {len(df_final)} registros")
         
         return df_final
     

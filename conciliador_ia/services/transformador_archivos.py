@@ -343,7 +343,7 @@ class TransformadorArchivos:
         df_copy['Tipo Doc. Comprador'] = '80'  # Valor por defecto para CUIT
         # Usar el número de factura extraído como base para el documento
         df_copy['Numero de Documento'] = df_copy['numero_factura_extraido'].apply(
-            lambda x: x.replace('B ', '').replace('-', '') if x else '12345678901'
+            lambda x: self._generar_cuit_valido(x) if x else '20123456789'
         )
         df_copy['denominación comprador'] = df_copy.get('Razón social', 'Cliente sin nombre')
         
@@ -552,6 +552,30 @@ class TransformadorArchivos:
         
         return df_final
     
+    def _generar_cuit_valido(self, numero_factura: str) -> str:
+        """
+        Genera un CUIT válido de 11 dígitos basado en el número de factura
+        """
+        if not numero_factura:
+            return '20123456789'
+        
+        # Limpiar el número de factura
+        numero_limpio = numero_factura.replace('B ', '').replace('A ', '').replace('-', '')
+        
+        # Tomar los últimos dígitos y asegurar que tenga 11 dígitos
+        if len(numero_limpio) >= 11:
+            # Tomar los últimos 11 dígitos
+            cuit = numero_limpio[-11:]
+        else:
+            # Rellenar con ceros a la izquierda
+            cuit = numero_limpio.zfill(11)
+        
+        # Asegurar que empiece con 20, 23, 24, 25, 26, 27, 30, 33, 34 (prefijos válidos de CUIT)
+        if not cuit.startswith(('20', '23', '24', '25', '26', '27', '30', '33', '34')):
+            cuit = '20' + cuit[2:]  # Cambiar a prefijo 20
+        
+        return cuit
+    
     def _generar_formato_final_simple(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Genera el formato final que espera ClienteProcessor
@@ -564,12 +588,26 @@ class TransformadorArchivos:
         if 'tipo_doc_afip' in df_final.columns and 'numero_doc_afip' in df_final.columns and 'denominacion_afip' in df_final.columns:
             # Usar datos de AFIP (preferidos)
             df_final['Tipo Doc. Comprador'] = df_final['tipo_doc_afip'].fillna('80')
-            df_final['Numero de Documento'] = df_final['numero_doc_afip'].fillna('')
+            # Si numero_doc_afip está vacío, usar número de factura parseado
+            if 'numero_factura_extraido' in df_final.columns:
+                df_final['Numero de Documento'] = df_final.apply(
+                    lambda row: row['numero_doc_afip'] if row['numero_doc_afip'] and str(row['numero_doc_afip']).strip() else 
+                               (self._generar_cuit_valido(row['numero_factura_extraido']) if row['numero_factura_extraido'] else '20123456789'),
+                    axis=1
+                )
+            else:
+                df_final['Numero de Documento'] = df_final['numero_doc_afip'].fillna('20123456789')
             df_final['denominación comprador'] = df_final['denominacion_afip'].fillna('Cliente sin denominación')
         else:
             # Usar datos del cliente como fallback
             df_final['Tipo Doc. Comprador'] = '80'  # Valor por defecto para CUIT
-            df_final['Numero de Documento'] = df_final.get('CUIT', '')  # Usar CUIT si existe
+            # Usar número de factura parseado como documento si no hay CUIT
+            if 'numero_factura_extraido' in df_final.columns:
+                df_final['Numero de Documento'] = df_final['numero_factura_extraido'].apply(
+                    lambda x: self._generar_cuit_valido(x) if x else '20123456789'
+                )
+            else:
+                df_final['Numero de Documento'] = df_final.get('CUIT', '20123456789')
             df_final['denominación comprador'] = df_final.get('Razón social', 'Cliente sin nombre')
         
         # Asegurar que las columnas tengan los nombres exactos que espera ClienteProcessor

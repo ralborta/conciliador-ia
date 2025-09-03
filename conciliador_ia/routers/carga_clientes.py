@@ -501,3 +501,76 @@ async def analizar_contexto_archivo(
     except Exception as e:
         logger.error(f"Error analizando contexto: {e}")
         raise HTTPException(status_code=500, detail=f"Error analizando archivo: {str(e)}")
+
+
+@router.post("/transformar-archivo")
+async def transformar_archivo_cliente(
+    archivo_cliente: UploadFile = File(...),
+    archivo_portal: UploadFile = File(...)
+):
+    """
+    Transforma el archivo del cliente usando la lógica de transformación inteligente
+    """
+    try:
+        logger.info(f"🔄 TRANSFORMACIÓN - Cliente: {archivo_cliente.filename}, Portal: {archivo_portal.filename}")
+        
+        # Leer archivos
+        content_cliente = await archivo_cliente.read()
+        content_portal = await archivo_portal.read()
+        
+        # Guardar archivos temporales
+        archivo_cliente_guardado = loader.save_uploaded_file(content_cliente, archivo_cliente.filename, ENTRADA_DIR)
+        archivo_portal_guardado = loader.save_uploaded_file(content_portal, archivo_portal.filename, ENTRADA_DIR)
+        
+        # Leer DataFrames
+        df_cliente = loader._read_any_table(archivo_cliente_guardado)
+        df_portal = loader._read_any_table(archivo_portal_guardado)
+        
+        logger.info(f"📊 Archivos leídos - Cliente: {len(df_cliente)} filas, Portal: {len(df_portal)} filas")
+        
+        # Detectar tipo de archivo
+        tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
+        logger.info(f"🔍 Tipo detectado: {tipo_archivo}")
+        
+        if tipo_archivo == "ARCHIVO_IIBB":
+            logger.info("🔄 Iniciando transformación IIBB...")
+            df_cliente_transformado, log_transformacion, stats = transformador.transformar_archivo_iibb(df_cliente, df_portal)
+            
+            resultado = {
+                "archivo_original": archivo_cliente.filename,
+                "tipo_detectado": tipo_archivo,
+                "transformacion_exitosa": True,
+                "registros_originales": len(df_cliente),
+                "registros_transformados": len(df_cliente_transformado),
+                "mensaje": f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros",
+                "log_transformacion": log_transformacion,
+                "estadisticas": stats
+            }
+            
+            logger.info(f"✅ Transformación completada: {resultado['mensaje']}")
+            
+        else:
+            logger.info("ℹ️ No se requiere transformación")
+            resultado = {
+                "archivo_original": archivo_cliente.filename,
+                "tipo_detectado": tipo_archivo,
+                "transformacion_exitosa": False,
+                "registros_originales": len(df_cliente),
+                "registros_transformados": len(df_cliente),
+                "mensaje": "ℹ️ Este archivo no requiere transformación",
+                "log_transformacion": ["Archivo ya está en formato correcto"],
+                "estadisticas": {}
+            }
+        
+        # Limpiar archivos temporales
+        try:
+            os.remove(archivo_cliente_guardado)
+            os.remove(archivo_portal_guardado)
+        except:
+            pass
+        
+        return resultado
+        
+    except Exception as e:
+        logger.error(f"Error en transformación: {e}")
+        raise HTTPException(status_code=500, detail=f"Error transformando archivo: {str(e)}")

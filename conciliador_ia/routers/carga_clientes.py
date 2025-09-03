@@ -116,15 +116,15 @@ async def importar_clientes(
                 tipo_archivo = transformador.detectar_tipo_archivo(df_portal)
                 logger.info(f"✅ Archivo detectado como: {tipo_archivo}")
                 
-                if tipo_archivo == "GH_IIBB_TANGO":
-                    logger.info("🔄 Archivo GH IIBB TANGO detectado - Intentando transformación...")
+                if tipo_archivo == "ARCHIVO_IIBB":
+                    logger.info("🔄 Archivo IIBB detectado - Intentando transformación...")
                     if df_cliente is not None:
-                        df_portal_final, log_transformacion, stats = transformador.transformar_gh_iibb(df_portal, df_cliente)
+                        df_portal_final, log_transformacion, stats = transformador.transformar_archivo_iibb(df_portal, df_cliente)
                         mensajes_conversion.extend(log_transformacion)
                         logger.info(f"✅ Transformación exitosa: {len(df_portal)} → {len(df_portal_final)} registros")
                     else:
                         logger.warning("⚠️ Archivo AFIP no proporcionado - Procesando sin transformación")
-                        mensajes_conversion.append("⚠️ Archivo GH IIBB TANGO detectado pero sin archivo AFIP - Procesando en formato original")
+                        mensajes_conversion.append("⚠️ Archivo IIBB detectado pero sin archivo AFIP - Procesando en formato original")
                 else:
                     logger.info(f"📋 Archivo tipo {tipo_archivo} - No requiere transformación")
                     mensajes_conversion.append(f"📋 Archivo detectado como {tipo_archivo} - Procesamiento estándar")

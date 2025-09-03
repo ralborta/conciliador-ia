@@ -57,7 +57,7 @@ export default function CargaClientesPage() {
         formData.append('archivo_cliente', archivoCliente);
       }
 
-      const response = await fetch('/api/v1/validar', {
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/validar', {
         method: 'POST',
         body: formData,
       });
@@ -155,7 +155,7 @@ export default function CargaClientesPage() {
   const downloadFile = async (url: string, filename: string) => {
     try {
       // Convertir URL relativa a absoluta si es necesario
-      const fullUrl = url.startsWith('http') ? url : `${url}`;
+      const fullUrl = url.startsWith('http') ? url : `https://conciliador-ia-production.up.railway.app${url}`;
       const response = await fetch(fullUrl);
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
@@ -173,53 +173,30 @@ export default function CargaClientesPage() {
 
   // Función para analizar contexto del 3er archivo
   const handleAnalyzeContext = async () => {
-    if (!archivoCliente) {
-      setError('Por favor seleccione el archivo del cliente para analizar');
-      return;
-    }
-
-    // Validar tipo de archivo
-    const fileName = archivoCliente.name.toLowerCase();
-    const validExtensions = ['.csv', '.xlsx', '.xls'];
-    const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
-    
-    if (!hasValidExtension) {
-      setError(`Tipo de archivo no válido. Solo se permiten archivos: ${validExtensions.join(', ')}`);
-      return;
-    }
-
     setIsAnalyzing(true);
     setError(null);
     setAnalysisResult(null);
 
     try {
-      console.log('🔍 Iniciando análisis...');
       const formData = new FormData();
       formData.append('archivo_cliente', archivoCliente);
 
-      console.log('📤 Enviando request al backend...');
-      const response = await fetch('/api/v1/analizar-contexto', {
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/analizar-contexto', {
         method: 'POST',
         body: formData,
       });
 
-      console.log('📥 Respuesta recibida:', response.status, response.ok);
-
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ Error del backend:', errorData);
         throw new Error(errorData.detail || 'Error en el análisis');
       }
 
       const data = await response.json();
-      console.log('✅ Datos recibidos:', data);
       setAnalysisResult(data);
       setCurrentStep('analyze');
     } catch (err) {
-      console.error('❌ Error en análisis:', err);
       setError(err instanceof Error ? err.message : 'Error inesperado en análisis');
     } finally {
-      console.log('🏁 Finalizando análisis...');
       setIsAnalyzing(false);
     }
   };
@@ -240,7 +217,7 @@ export default function CargaClientesPage() {
       formData.append('archivo_cliente', archivoCliente);
       formData.append('archivo_portal', archivoPortal);
 
-      const response = await fetch('/api/v1/transformar-archivo', {
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/transformar-archivo', {
         method: 'POST',
         body: formData,
       });

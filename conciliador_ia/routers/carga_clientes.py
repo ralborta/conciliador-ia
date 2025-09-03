@@ -165,6 +165,13 @@ async def importar_clientes(
 
             # 🔄 PASO 2: Detectar clientes nuevos con archivo final
             logger.info("👥 Detectando clientes nuevos...")
+            
+            # Para archivos muy grandes, limitar el procesamiento
+            if len(df_portal_final) > 100:
+                logger.warning(f"⚠️ Archivo muy grande ({len(df_portal_final)} registros). Limitando a 100 registros para evitar timeout.")
+                df_portal_final = df_portal_final.head(100)
+                logger.info(f"📊 Procesando solo las primeras 100 filas de {len(df_portal_final)} total")
+            
             try:
                 nuevos_clientes, errores = processor.detectar_nuevos_clientes(
                     df_portal_final, df_xubio, df_portal_final  # Usar el archivo transformado

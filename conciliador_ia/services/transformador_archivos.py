@@ -453,26 +453,39 @@ class TransformadorArchivos:
         """
         df_final = pd.DataFrame()
         
-        # Mapear columnas al formato esperado por ClienteProcessor
-        df_final['Tipo Doc. Comprador'] = df['tipo_doc_afip'].apply(
-            lambda x: '80' if x == '80' else '96' if x == '96' else '80'
-        )
+        # Verificar que las columnas necesarias existan
+        if 'tipo_doc_afip' not in df.columns:
+            logger.warning("⚠️ Columna 'tipo_doc_afip' no encontrada, usando valores por defecto")
+            df_final['Tipo Doc. Comprador'] = '80'  # Valor por defecto
+        else:
+            df_final['Tipo Doc. Comprador'] = df['tipo_doc_afip'].apply(
+                lambda x: '80' if x == '80' else '96' if x == '96' else '80'
+            )
         
-        df_final['Numero de Documento'] = df['numero_doc_afip']
+        if 'numero_doc_afip' not in df.columns:
+            logger.warning("⚠️ Columna 'numero_doc_afip' no encontrada, usando valores vacíos")
+            df_final['Numero de Documento'] = ''
+        else:
+            df_final['Numero de Documento'] = df['numero_doc_afip']
         
-        df_final['denominación comprador'] = df['denominacion_afip'].fillna(
-            df['Razón social'] if 'Razón social' in df.columns else 'Cliente sin nombre'
-        )
+        if 'denominacion_afip' not in df.columns:
+            logger.warning("⚠️ Columna 'denominacion_afip' no encontrada, usando Razón social")
+            df_final['denominación comprador'] = df['Razón social'] if 'Razón social' in df.columns else 'Cliente sin nombre'
+        else:
+            df_final['denominación comprador'] = df['denominacion_afip'].fillna(
+                df['Razón social'] if 'Razón social' in df.columns else 'Cliente sin nombre'
+            )
         
         # Agregar provincia si existe
         if 'Provincia' in df.columns:
             df_final['provincia'] = df['Provincia']
         
-        # Filtrar solo registros válidos
-        df_final = df_final[
-            (df_final['Numero de Documento'].str.len() > 0) &
-            (df_final['denominación comprador'].str.len() > 0)
-        ]
+        # Filtrar solo registros válidos (solo si hay datos)
+        if len(df_final) > 0:
+            df_final = df_final[
+                (df_final['Numero de Documento'].str.len() > 0) &
+                (df_final['denominación comprador'].str.len() > 0)
+            ]
         
         return df_final
     

@@ -114,6 +114,7 @@ async def importar_clientes(
             try:
                 if df_cliente is not None:
                     logger.info("🚀 CÓDIGO NUEVO EJECUTÁNDOSE - Versión 778582c")
+                    logger.info(f"📊 Archivos recibidos - Portal: {len(df_portal)} filas, Xubio: {len(df_xubio)} filas, Cliente: {len(df_cliente)} filas")
                     logger.info("🔍 Intentando detectar tipo del 3er archivo (IIBB)...")
                     tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
                     logger.info(f"✅ 3er archivo detectado como: {tipo_archivo}")
@@ -137,14 +138,22 @@ async def importar_clientes(
                     
             except Exception as e:
                 logger.error(f"❌ Error en detección/transformación del 3er archivo: {e}")
+                logger.error(f"❌ Tipo de error: {type(e).__name__}")
+                logger.error(f"❌ Detalles del error: {str(e)}")
                 mensajes_conversion.append(f"❌ Error en detección: {str(e)} - Procesando archivo Portal original")
                 df_portal_final = df_portal
 
             # 🔄 PASO 2: Detectar clientes nuevos con archivo final
             logger.info("👥 Detectando clientes nuevos...")
-            nuevos_clientes, errores = processor.detectar_nuevos_clientes(
-                df_portal_final, df_xubio, df_cliente
-            )
+            try:
+                nuevos_clientes, errores = processor.detectar_nuevos_clientes(
+                    df_portal_final, df_xubio, df_cliente
+                )
+                logger.info(f"✅ Procesamiento exitoso: {len(nuevos_clientes)} clientes nuevos detectados")
+            except Exception as e:
+                logger.error(f"❌ Error en detección de clientes: {e}")
+                logger.error(f"❌ Tipo de error: {type(e).__name__}")
+                raise e
             
             # Agregar mensajes de clientes procesados
             

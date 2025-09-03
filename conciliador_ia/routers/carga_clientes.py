@@ -127,7 +127,7 @@ async def importar_clientes(
             
             try:
                 if df_cliente is not None:
-                    logger.info("🚀 CÓDIGO NUEVO EJECUTÁNDOSE - Versión 778582c")
+                    logger.info("🚀 CÓDIGO NUEVO EJECUTÁNDOSE - Versión 7e3a389 - CORRECCIÓN TIPO")
                     logger.info(f"📊 Archivos recibidos - Portal: {len(df_portal)} filas, Xubio: {len(df_xubio)} filas, Cliente: {len(df_cliente)} filas")
                     logger.info("🔍 Intentando detectar tipo del 3er archivo (IIBB)...")
                     logger.info(f"📋 Columnas del 3er archivo: {list(df_cliente.columns)}")

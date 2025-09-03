@@ -84,17 +84,17 @@ class TransformadorArchivos:
         """
         columnas = [col.lower() for col in df.columns]
         
-        # Detectar archivo IIBB (cualquier nombre)
+        # PRIORIDAD 1: Detectar archivo IIBB (cualquier nombre) - MÁS ESPECÍFICO
         if self._es_archivo_iibb(df, columnas):
             return "ARCHIVO_IIBB"
         
-        # Detectar archivo Portal AFIP estándar
-        if self._es_archivo_portal_afip(df, columnas):
-            return "PORTAL_AFIP"
-        
-        # Detectar archivo Xubio Clientes
+        # PRIORIDAD 2: Detectar archivo Xubio Clientes
         if self._es_archivo_xubio_clientes(df, columnas):
             return "XUBIO_CLIENTES"
+        
+        # PRIORIDAD 3: Detectar archivo Portal AFIP estándar - MÁS GENÉRICO
+        if self._es_archivo_portal_afip(df, columnas):
+            return "PORTAL_AFIP"
         
         return "DESCONOCIDO"
     
@@ -117,12 +117,17 @@ class TransformadorArchivos:
         columnas_requeridas_4 = ["descripciã³n", "razã³n social", "provincia", "localidad"]
         columnas_encontradas_4 = [col for col in columnas_requeridas_4 if any(col in col_name for col_name in columnas)]
         
-        # Verificar si cumple alguno de los 4 formatos
+        # FORMATO 5: Archivo mixto (tiene columnas Portal AFIP pero también contenido IIBB)
+        columnas_portal_afip = ["tipo doc. comprador", "numero de documento", "denominación comprador"]
+        columnas_portal_encontradas = [col for col in columnas_portal_afip if any(col in col_name for col_name in columnas)]
+        
+        # Verificar si cumple alguno de los 5 formatos
         formatos_validos = [
             len(columnas_encontradas_1) >= 3,  # Formato 1
             len(columnas_unnamed) >= 2,        # Formato 2 (Unnamed)
             len(columnas_encontradas_3) >= 3,  # Formato 3
-            len(columnas_encontradas_4) >= 3   # Formato 4
+            len(columnas_encontradas_4) >= 3,  # Formato 4
+            len(columnas_portal_encontradas) >= 2  # Formato 5 (mixto)
         ]
         
         if any(formatos_validos):
@@ -133,12 +138,16 @@ class TransformadorArchivos:
             columnas_descripcion = []
             for col in df.columns:
                 col_lower = col.lower()
-                if any(palabra in col_lower for palabra in ["descrip", "concepto", "detalle", "observ"]):
+                if any(palabra in col_lower for palabra in ["descrip", "concepto", "detalle", "observ", "denominación", "denominacion"]):
                     columnas_descripcion.append(col)
             
             # Si no encuentra columnas de descripción, buscar en columnas "Unnamed"
             if not columnas_descripcion and columnas_unnamed:
                 columnas_descripcion = columnas_unnamed[:2]  # Tomar las primeras 2
+            
+            # Si no encuentra columnas de descripción, buscar en TODAS las columnas
+            if not columnas_descripcion:
+                columnas_descripcion = list(df.columns)[:3]  # Tomar las primeras 3 columnas
             
             # Verificar contenido
             for col_desc in columnas_descripcion:
@@ -146,8 +155,8 @@ class TransformadorArchivos:
                     muestra = df[col_desc].head(10).astype(str)
                     coincidencias = sum(1 for valor in muestra if any(patron in valor.lower() for patron in patrones_factura))
                     
-                    if coincidencias >= 3:  # Al menos 3 de 10 muestras coinciden
-                        logger.info(f"✅ Archivo IIBB detectado en columna: {col_desc}")
+                    if coincidencias >= 2:  # Reducido a 2 de 10 muestras para ser más flexible
+                        logger.info(f"✅ Archivo IIBB detectado en columna: {col_desc} ({coincidencias}/10 coincidencias)")
                         return True
                 except Exception as e:
                     logger.warning(f"Error verificando columna {col_desc}: {e}")

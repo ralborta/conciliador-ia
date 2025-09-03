@@ -107,31 +107,36 @@ async def importar_clientes(
             # Asegurá que SALIDA_DIR exista (por si el loader no lo creó)
             SALIDA_DIR.mkdir(parents=True, exist_ok=True)
 
-            # 🔄 PASO 1: Intentar detectar y transformar archivo portal
+            # 🔄 PASO 1: Intentar detectar y transformar el 3er archivo (IIBB)
             df_portal_final = df_portal
             mensajes_conversion = []
             
             try:
-                logger.info("🔍 Intentando detectar tipo de archivo portal...")
-                tipo_archivo = transformador.detectar_tipo_archivo(df_portal)
-                logger.info(f"✅ Archivo detectado como: {tipo_archivo}")
-                
-                if tipo_archivo == "ARCHIVO_IIBB":
-                    logger.info("🔄 Archivo IIBB detectado - Intentando transformación...")
-                    if df_cliente is not None:
-                        df_portal_final, log_transformacion, stats = transformador.transformar_archivo_iibb(df_portal, df_cliente)
+                if df_cliente is not None:
+                    logger.info("🔍 Intentando detectar tipo del 3er archivo (IIBB)...")
+                    tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
+                    logger.info(f"✅ 3er archivo detectado como: {tipo_archivo}")
+                    
+                    if tipo_archivo == "ARCHIVO_IIBB":
+                        logger.info("🔄 Archivo IIBB detectado - Intentando transformación...")
+                        df_cliente_transformado, log_transformacion, stats = transformador.transformar_archivo_iibb(df_cliente, df_portal)
                         mensajes_conversion.extend(log_transformacion)
-                        logger.info(f"✅ Transformación exitosa: {len(df_portal)} → {len(df_portal_final)} registros")
+                        logger.info(f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros")
+                        
+                        # Usar el archivo transformado para el procesamiento
+                        df_portal_final = df_cliente_transformado
                     else:
-                        logger.warning("⚠️ Archivo AFIP no proporcionado - Procesando sin transformación")
-                        mensajes_conversion.append("⚠️ Archivo IIBB detectado pero sin archivo AFIP - Procesando en formato original")
+                        logger.info(f"📋 3er archivo tipo {tipo_archivo} - No requiere transformación")
+                        mensajes_conversion.append(f"📋 3er archivo detectado como {tipo_archivo} - Procesamiento estándar")
+                        # Usar el 3er archivo original para el procesamiento
+                        df_portal_final = df_cliente
                 else:
-                    logger.info(f"📋 Archivo tipo {tipo_archivo} - No requiere transformación")
-                    mensajes_conversion.append(f"📋 Archivo detectado como {tipo_archivo} - Procesamiento estándar")
+                    logger.warning("⚠️ No se proporcionó 3er archivo - Procesando solo archivo Portal")
+                    mensajes_conversion.append("⚠️ No se proporcionó 3er archivo - Procesando solo archivo Portal")
                     
             except Exception as e:
-                logger.error(f"❌ Error en detección/transformación: {e}")
-                mensajes_conversion.append(f"❌ Error en detección: {str(e)} - Procesando archivo original")
+                logger.error(f"❌ Error en detección/transformación del 3er archivo: {e}")
+                mensajes_conversion.append(f"❌ Error en detección: {str(e)} - Procesando archivo Portal original")
                 df_portal_final = df_portal
 
             # 🔄 PASO 2: Detectar clientes nuevos con archivo final

@@ -12,11 +12,13 @@ from traceback import format_exc
 try:
     from ..services.cliente_processor import ClienteProcessor
     from ..services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
+    from ..services.transformador_archivos import TransformadorArchivos
     from ..models.schemas import ClienteImportResponse, ClienteImportJob
 except ImportError:
     # Fallback para imports directos
     from services.cliente_processor import ClienteProcessor
     from services.carga_info.loader import CargaArchivos, ENTRADA_DIR, SALIDA_DIR
+    from services.transformador_archivos import TransformadorArchivos
     from models.schemas import ClienteImportResponse, ClienteImportJob
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ router = APIRouter(tags=["carga-clientes"])
 # Inicializar servicios
 processor = ClienteProcessor()
 loader = CargaArchivos()
+transformador = TransformadorArchivos()
 
 # Almacenamiento temporal de jobs (en producción usar Redis o base de datos)
 jobs: Dict[str, ClienteImportJob] = {}
@@ -104,13 +107,40 @@ async def importar_clientes(
             # Asegurá que SALIDA_DIR exista (por si el loader no lo creó)
             SALIDA_DIR.mkdir(parents=True, exist_ok=True)
 
-            # Detectar clientes nuevos
+            # 🔄 PASO 1: Intentar detectar y transformar archivo portal
+            df_portal_final = df_portal
+            mensajes_conversion = []
+            
+            try:
+                logger.info("🔍 Intentando detectar tipo de archivo portal...")
+                tipo_archivo = transformador.detectar_tipo_archivo(df_portal)
+                logger.info(f"✅ Archivo detectado como: {tipo_archivo}")
+                
+                if tipo_archivo == "GH_IIBB_TANGO":
+                    logger.info("🔄 Archivo GH IIBB TANGO detectado - Intentando transformación...")
+                    if df_cliente is not None:
+                        df_portal_final, log_transformacion, stats = transformador.transformar_gh_iibb(df_portal, df_cliente)
+                        mensajes_conversion.extend(log_transformacion)
+                        logger.info(f"✅ Transformación exitosa: {len(df_portal)} → {len(df_portal_final)} registros")
+                    else:
+                        logger.warning("⚠️ Archivo AFIP no proporcionado - Procesando sin transformación")
+                        mensajes_conversion.append("⚠️ Archivo GH IIBB TANGO detectado pero sin archivo AFIP - Procesando en formato original")
+                else:
+                    logger.info(f"📋 Archivo tipo {tipo_archivo} - No requiere transformación")
+                    mensajes_conversion.append(f"📋 Archivo detectado como {tipo_archivo} - Procesamiento estándar")
+                    
+            except Exception as e:
+                logger.error(f"❌ Error en detección/transformación: {e}")
+                mensajes_conversion.append(f"❌ Error en detección: {str(e)} - Procesando archivo original")
+                df_portal_final = df_portal
+
+            # 🔄 PASO 2: Detectar clientes nuevos con archivo final
+            logger.info("👥 Detectando clientes nuevos...")
             nuevos_clientes, errores = processor.detectar_nuevos_clientes(
-                df_portal, df_xubio, df_cliente
+                df_portal_final, df_xubio, df_cliente
             )
             
-            # Crear mensajes detallados para la respuesta
-            mensajes_conversion = []
+            # Agregar mensajes de clientes procesados
             
             # Agregar mensajes de clientes procesados
             for i, cliente in enumerate(nuevos_clientes[:10]):  # Solo primeros 10 para no saturar
@@ -144,6 +174,7 @@ async def importar_clientes(
                 job_id=job_id,
                 resumen={
                     "total_portal": len(df_portal),
+                    "total_portal_final": len(df_portal_final),
                     "total_xubio": len(df_xubio),
                     "nuevos_detectados": len(nuevos_clientes),
                     "con_provincia": len(nuevos_clientes),

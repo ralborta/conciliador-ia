@@ -337,19 +337,34 @@ async def transformar_archivo(
     Transforma el 3er archivo usando IA contextual
     """
     try:
+        # Log de archivos recibidos
+        logger.info(f"🔄 TRANSFORMACIÓN - Archivos recibidos:")
+        logger.info(f"   Cliente: {archivo_cliente.filename} ({archivo_cliente.size} bytes)")
+        logger.info(f"   Portal: {archivo_portal.filename} ({archivo_portal.size} bytes)")
+        
         # Guardar archivos temporalmente
         content_cliente = await archivo_cliente.read()
+        logger.info(f"📥 Contenido cliente leído: {len(content_cliente)} bytes")
         archivo_cliente_guardado = loader.save_uploaded_file(content_cliente, archivo_cliente.filename, ENTRADA_DIR)
+        logger.info(f"💾 Archivo cliente guardado en: {archivo_cliente_guardado}")
         
         content_portal = await archivo_portal.read()
+        logger.info(f"📥 Contenido portal leído: {len(content_portal)} bytes")
         archivo_portal_guardado = loader.save_uploaded_file(content_portal, archivo_portal.filename, ENTRADA_DIR)
+        logger.info(f"💾 Archivo portal guardado en: {archivo_portal_guardado}")
         
         # Cargar DataFrames
+        logger.info("📊 Cargando DataFrames...")
         df_cliente = loader._read_any_table(archivo_cliente_guardado)
         df_portal = loader._read_any_table(archivo_portal_guardado)
+        logger.info(f"✅ DataFrames cargados - Cliente: {len(df_cliente)} filas, Portal: {len(df_portal)} filas")
+        logger.info(f"📋 Columnas cliente: {list(df_cliente.columns)}")
+        logger.info(f"📋 Columnas portal: {list(df_portal.columns)}")
         
         # Detectar tipo y transformar
+        logger.info("🔍 Detectando tipo de archivo...")
         tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
+        logger.info(f"✅ Tipo detectado: {tipo_archivo}")
         
         if tipo_archivo == "ARCHIVO_IIBB":
             # Transformar archivo IIBB

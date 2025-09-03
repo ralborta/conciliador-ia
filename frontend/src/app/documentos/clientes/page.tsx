@@ -57,7 +57,7 @@ export default function CargaClientesPage() {
         formData.append('archivo_cliente', archivoCliente);
       }
 
-      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/validar', {
+      const response = await fetch('/api/v1/validar', {
         method: 'POST',
         body: formData,
       });
@@ -155,7 +155,7 @@ export default function CargaClientesPage() {
   const downloadFile = async (url: string, filename: string) => {
     try {
       // Convertir URL relativa a absoluta si es necesario
-      const fullUrl = url.startsWith('http') ? url : `https://conciliador-ia-production.up.railway.app${url}`;
+      const fullUrl = url.startsWith('http') ? url : `${url}`;
       const response = await fetch(fullUrl);
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
@@ -186,7 +186,7 @@ export default function CargaClientesPage() {
       const formData = new FormData();
       formData.append('archivo_cliente', archivoCliente);
 
-      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/analizar-contexto', {
+      const response = await fetch('/api/v1/analizar-contexto', {
         method: 'POST',
         body: formData,
       });
@@ -222,7 +222,7 @@ export default function CargaClientesPage() {
       formData.append('archivo_cliente', archivoCliente);
       formData.append('archivo_portal', archivoPortal);
 
-      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/transformar-archivo', {
+      const response = await fetch('/api/v1/transformar-archivo', {
         method: 'POST',
         body: formData,
       });

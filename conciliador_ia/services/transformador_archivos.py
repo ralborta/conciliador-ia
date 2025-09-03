@@ -102,8 +102,8 @@ class TransformadorArchivos:
         """
         Detecta si es un archivo IIBB (cualquier nombre, 4 formatos distintos)
         """
-        # FORMATO 1: Columnas estándar
-        columnas_requeridas_1 = ["descripción", "razón social", "provincia", "localidad"]
+        # FORMATO 1: Columnas estándar (incluyendo errores de tipeo)
+        columnas_requeridas_1 = ["descripción", "descipción", "razón social", "provincia", "localidad"]
         columnas_encontradas_1 = [col for col in columnas_requeridas_1 if any(col in col_name for col_name in columnas)]
         
         # FORMATO 2: Columnas con "Unnamed" (archivos malformados)

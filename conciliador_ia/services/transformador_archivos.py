@@ -232,10 +232,11 @@ class TransformadorArchivos:
     def transformar_archivo_iibb(
         self, 
         df_gh: pd.DataFrame, 
-        df_afip: pd.DataFrame
+        df_afip: pd.DataFrame = None
     ) -> Tuple[pd.DataFrame, List[str], Dict[str, Any]]:
         """
         Transforma archivo IIBB (cualquier nombre) al formato que espera ClienteProcessor
+        SOLO TRANSFORMACIÓN DE FORMATO - Sin búsquedas en AFIP
         """
         log_transformacion = []
         estadisticas = {}
@@ -246,20 +247,14 @@ class TransformadorArchivos:
             df_parsed = self._parsear_descripcion_iibb(df_gh)
             log_transformacion.append(f"✅ Parseo completado: {len(df_parsed)} registros procesados")
             
-            # Paso 2: Buscar facturas en datos AFIP
-            log_transformacion.append("🔍 Paso 2: Buscando facturas en datos AFIP...")
-            df_con_afip = self._buscar_facturas_afip(df_parsed, df_afip)
-            log_transformacion.append(f"✅ Búsqueda AFIP completada: {len(df_con_afip)} coincidencias encontradas")
-            
-            # Paso 3: Generar formato final
-            log_transformacion.append("⚙️ Paso 3: Generando formato final...")
-            df_final = self._generar_formato_final(df_con_afip)
+            # Paso 2: Generar formato final (SIN búsqueda en AFIP)
+            log_transformacion.append("⚙️ Paso 2: Generando formato final...")
+            df_final = self._generar_formato_final_simple(df_parsed)
             log_transformacion.append(f"✅ Formato final generado: {len(df_final)} registros válidos")
             
             # Estadísticas
             estadisticas.update({
                 "registros_parseados": len(df_parsed),
-                "coincidencias_afip": len(df_con_afip),
                 "registros_finales": len(df_final)
             })
             
@@ -526,6 +521,46 @@ class TransformadorArchivos:
             logger.info(f"🔍 DEBUG - Filtro combinado: {filtro_combinado.sum()} registros pasan")
             
             df_final = df_final[filtro_combinado]
+            
+            logger.info(f"🔍 DEBUG - Después del filtro: {len(df_final)} registros")
+        
+        return df_final
+    
+    def _generar_formato_final_simple(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Genera el formato final que espera ClienteProcessor
+        SOLO TRANSFORMACIÓN DE FORMATO - Sin búsquedas en AFIP
+        """
+        logger.info(f"🔍 DEBUG - DataFrame recibido: {len(df)} registros")
+        logger.info(f"🔍 DEBUG - Columnas disponibles: {list(df.columns)}")
+        
+        # Copiar el DataFrame original
+        df_final = df.copy()
+        
+        # Agregar columnas básicas para el formato estándar
+        df_final['Tipo Doc. Comprador'] = '80'  # Valor por defecto para CUIT
+        df_final['Numero de Documento'] = df_final.get('CUIT', '')  # Usar CUIT si existe
+        df_final['denominación comprador'] = df_final.get('Razón social', 'Cliente sin nombre')
+        
+        # Agregar provincia si existe
+        if 'Provincia' in df.columns:
+            df_final['provincia'] = df['Provincia']
+        
+        # Filtrar solo registros válidos (solo si hay datos)
+        if len(df_final) > 0:
+            logger.info(f"🔍 DEBUG - Antes del filtro: {len(df_final)} registros")
+            
+            # Verificar valores específicos
+            logger.info(f"🔍 DEBUG - Numero de Documento no vacío: {(df_final['Numero de Documento'].str.len() > 0).sum()}")
+            logger.info(f"🔍 DEBUG - denominación comprador no vacío: {(df_final['denominación comprador'].str.len() > 0).sum()}")
+            
+            # Mostrar algunos ejemplos de datos
+            if len(df_final) > 0:
+                logger.info(f"🔍 DEBUG - Ejemplo Numero de Documento: '{df_final['Numero de Documento'].iloc[0]}'")
+                logger.info(f"🔍 DEBUG - Ejemplo denominación comprador: '{df_final['denominación comprador'].iloc[0]}'")
+            
+            # Filtro más permisivo - solo requiere que tenga nombre
+            df_final = df_final[df_final['denominación comprador'].str.len() > 0]
             
             logger.info(f"🔍 DEBUG - Después del filtro: {len(df_final)} registros")
         

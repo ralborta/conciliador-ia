@@ -164,7 +164,7 @@ async def importar_clientes(
             logger.info("👥 Detectando clientes nuevos...")
             try:
                 nuevos_clientes, errores = processor.detectar_nuevos_clientes(
-                    df_portal_final, df_xubio, df_cliente
+                    df_portal_final, df_xubio, df_portal_final  # Usar el archivo transformado
                 )
                 logger.info(f"✅ Procesamiento exitoso: {len(nuevos_clientes)} clientes nuevos detectados")
             except Exception as e:

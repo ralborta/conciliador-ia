@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, FileText, Users, Download, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, Users, Download, AlertCircle, CheckCircle, Loader2, Brain, Settings, Play } from 'lucide-react';
 // import { importarClientes, validarArchivos } from '@/lib/api';
 
 interface ProcessingResult {
@@ -31,6 +31,13 @@ export default function CargaClientesPage() {
   const [error, setError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<any>(null);
+  
+  // Estados para el flujo paso a paso
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isTransforming, setIsTransforming] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [transformationResult, setTransformationResult] = useState<any>(null);
+  const [currentStep, setCurrentStep] = useState<'upload' | 'analyze' | 'transform' | 'process'>('upload');
 
   const handleValidation = async () => {
     if (!archivoPortal || !archivoXubio) {
@@ -164,6 +171,118 @@ export default function CargaClientesPage() {
     }
   };
 
+  // Función para analizar contexto del 3er archivo
+  const handleAnalyzeContext = async () => {
+    if (!archivoCliente) {
+      setError('Por favor seleccione el archivo del cliente para analizar');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setError(null);
+    setAnalysisResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('archivo_cliente', archivoCliente);
+
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/analizar-contexto', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Error en el análisis');
+      }
+
+      const data = await response.json();
+      setAnalysisResult(data);
+      setCurrentStep('analyze');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado en análisis');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Función para transformar archivo
+  const handleTransformFile = async () => {
+    if (!archivoCliente || !archivoPortal) {
+      setError('Por favor seleccione los archivos necesarios para transformar');
+      return;
+    }
+
+    setIsTransforming(true);
+    setError(null);
+    setTransformationResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('archivo_cliente', archivoCliente);
+      formData.append('archivo_portal', archivoPortal);
+
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/transformar-archivo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Error en la transformación');
+      }
+
+      const data = await response.json();
+      setTransformationResult(data);
+      setCurrentStep('transform');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado en transformación');
+    } finally {
+      setIsTransforming(false);
+    }
+  };
+
+  // Función para procesar clientes finales
+  const handleProcessClients = async () => {
+    if (!empresaId || !archivoPortal || !archivoXubio) {
+      setError('Por favor complete todos los campos requeridos');
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('empresa_id', empresaId);
+      formData.append('archivo_portal', archivoPortal);
+      formData.append('archivo_xubio', archivoXubio);
+      if (archivoCliente) {
+        formData.append('archivo_cliente', archivoCliente);
+      }
+      formData.append('cuenta_contable_default', cuentaContableDefault);
+
+      const response = await fetch('/api/importar-clientes', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Procesamiento falló (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      setResult(data);
+      setCurrentStep('process');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const resetForm = () => {
     setEmpresaId('');
     setArchivoPortal(null);
@@ -172,6 +291,9 @@ export default function CargaClientesPage() {
     setCuentaContableDefault('Deudores por ventas');
     setResult(null);
     setError(null);
+    setAnalysisResult(null);
+    setTransformationResult(null);
+    setCurrentStep('upload');
   };
 
   return (
@@ -291,57 +413,218 @@ export default function CargaClientesPage() {
               </select>
             </div>
 
-            {/* Botones */}
-            <div className="flex items-center space-x-4 pt-4">
-              <button
-                type="button"
-                onClick={handleValidation}
-                disabled={isValidating}
-                className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isValidating ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Validando...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-5 h-5" />
-                    <span>Validar Archivos</span>
-                  </>
-                )}
-              </button>
+            {/* Botones Paso a Paso */}
+            <div className="space-y-4 pt-4">
+              {/* Paso 1: Analizar Contexto */}
+              {archivoCliente && (
+                <div className="border border-gray-200 rounded-lg p-4 bg-blue-50">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">🤖 Paso 1: Análisis Inteligente</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Analiza el archivo del cliente para detectar si necesita transformación
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAnalyzeContext}
+                    disabled={isAnalyzing}
+                    className="flex items-center space-x-2 px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Analizando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="w-5 h-5" />
+                        <span>🧠 Analizar Contexto</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
-              <button
-                type="submit"
-                disabled={isProcessing}
-                className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Procesando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-5 h-5" />
-                    <span>Procesar Archivos</span>
-                  </>
-                )}
-              </button>
+              {/* Paso 2: Transformar (solo si es necesario) */}
+              {analysisResult?.necesita_transformacion && (
+                <div className="border border-gray-200 rounded-lg p-4 bg-yellow-50">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">⚙️ Paso 2: Transformación Inteligente</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {analysisResult.mensaje}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleTransformFile}
+                    disabled={isTransforming}
+                    className="flex items-center space-x-2 px-6 py-3 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isTransforming ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Transformando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Settings className="w-5 h-5" />
+                        <span>⚙️ Transformar Inteligentemente</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
-              {result && (
+              {/* Paso 3: Procesar Clientes */}
+              <div className="border border-gray-200 rounded-lg p-4 bg-green-50">
+                <h3 className="text-lg font-medium text-gray-900 mb-3">👥 Paso 3: Procesar Clientes</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  Procesa todos los archivos y genera el resultado final
+                </p>
                 <button
                   type="button"
-                  onClick={resetForm}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  onClick={handleProcessClients}
+                  disabled={isProcessing}
+                  className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Nuevo Proceso
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Procesando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5" />
+                      <span>👥 Procesar Clientes</span>
+                    </>
+                  )}
                 </button>
-              )}
+              </div>
+
+              {/* Botones adicionales */}
+              <div className="flex items-center space-x-4 pt-4">
+                <button
+                  type="button"
+                  onClick={handleValidation}
+                  disabled={isValidating}
+                  className="flex items-center space-x-2 px-6 py-3 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isValidating ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Validando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      <span>Validar Archivos</span>
+                    </>
+                  )}
+                </button>
+
+                {result && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    Nuevo Proceso
+                  </button>
+                )}
+              </div>
             </div>
           </form>
         </div>
+
+        {/* Resultados de Análisis */}
+        {analysisResult && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex items-center space-x-3 mb-6">
+              <Brain className="w-8 h-8 text-purple-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Análisis Inteligente Completado</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">{analysisResult.filas}</div>
+                  <div className="text-sm text-purple-700">Registros en el archivo</div>
+                </div>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{analysisResult.tipo_detectado}</div>
+                  <div className="text-sm text-blue-700">Tipo detectado</div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium text-gray-900 mb-2">📋 Información del Archivo</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Archivo:</strong> {analysisResult.archivo}
+                </p>
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Tipo:</strong> {analysisResult.descripcion_tipo}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Mensaje:</strong> {analysisResult.mensaje}
+                </p>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium text-gray-900 mb-2">📊 Columnas Detectadas</h3>
+                <div className="flex flex-wrap gap-2">
+                  {analysisResult.columnas?.map((col: string, idx: number) => (
+                    <span key={idx} className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs">
+                      {col}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Resultados de Transformación */}
+        {transformationResult && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex items-center space-x-3 mb-6">
+              <Settings className="w-8 h-8 text-orange-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Transformación Completada</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-orange-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600">{transformationResult.registros_originales}</div>
+                  <div className="text-sm text-orange-700">Registros originales</div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">{transformationResult.registros_transformados}</div>
+                  <div className="text-sm text-green-700">Registros transformados</div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium text-gray-900 mb-2">📋 Resultado de Transformación</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Archivo:</strong> {transformationResult.archivo_original}
+                </p>
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Estado:</strong> {transformationResult.transformacion_exitosa ? '✅ Exitosa' : 'ℹ️ No requerida'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Mensaje:</strong> {transformationResult.mensaje}
+                </p>
+              </div>
+
+              {transformationResult.log_transformacion && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-medium text-gray-900 mb-2">📝 Log de Transformación</h3>
+                  <div className="space-y-1">
+                    {transformationResult.log_transformacion.map((log: string, idx: number) => (
+                      <p key={idx} className="text-sm text-gray-600">{log}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Resultados de Validación */}
         {validationResult && (

@@ -112,4 +112,5 @@ class ExportadorVentas(Exporter):
         return self.export_to_excel(data, filename)
 
 # Constante para compatibilidad
-ueden tener cualquie nombre eso es lo de menos...ner uier nombnotraotrivamente es de portal como te dije debe hacerlo con el 3er archivo...
+
+e

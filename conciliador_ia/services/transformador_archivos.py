@@ -6,6 +6,12 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Importar IA para detección inteligente
+try:
+    from .cliente_processor_inteligente import ClienteProcessorInteligente
+except ImportError:
+    ClienteProcessorInteligente = None
+
 class TransformadorArchivos:
     """
     Clase para detectar automáticamente el tipo de archivo y transformarlo
@@ -19,6 +25,9 @@ class TransformadorArchivos:
             "XUBIO_CLIENTES": "Archivo Xubio Clientes (maestro)",
             "DESCONOCIDO": "Formato no reconocido"
         }
+        
+        # Inicializar IA para detección inteligente
+        self.ia_processor = ClienteProcessorInteligente() if ClienteProcessorInteligente else None
     
     def procesar_archivo_completo(
         self, 
@@ -62,7 +71,13 @@ class TransformadorArchivos:
             else:
                 log_proceso.append(f"⚠️ Archivo de tipo {tipo_archivo} - Procesamiento estándar")
             
-            # Paso 3: Preparar datos para ClienteProcessor
+            # Paso 3: Aplicar parsers inteligentes si es necesario
+            if self.ia_processor and tipo_archivo in ["ARCHIVO_IIBB", "DESCONOCIDO"]:
+                log_proceso.append("🤖 Aplicando parsers inteligentes de IA...")
+                df_portal = self.usar_parsers_inteligentes(df_portal)
+                log_proceso.append("✅ Parsers inteligentes aplicados")
+            
+            # Paso 4: Preparar datos para ClienteProcessor
             log_proceso.append(f"📊 Archivo listo para procesamiento: {len(df_portal)} registros")
             
             return {
@@ -80,8 +95,38 @@ class TransformadorArchivos:
     
     def detectar_tipo_archivo(self, df: pd.DataFrame) -> str:
         """
-        Detecta automáticamente el tipo de archivo basado en sus columnas y contenido
+        Detecta automáticamente el tipo de archivo usando IA contextual
         """
+        # Usar IA si está disponible
+        if self.ia_processor:
+            try:
+                resultado_ia = self.ia_processor.validar_tipo_archivo(df)
+                tipo_detectado = resultado_ia.get('tipo_archivo_detectado', 'desconocido')
+                confianza = resultado_ia.get('confianza', 0.0)
+                
+                logger.info(f"🤖 IA detectó: {tipo_detectado} (confianza: {confianza:.2f})")
+                
+                # Mapear tipos de IA a tipos del transformador
+                mapeo_tipos = {
+                    'portal_afip': 'PORTAL_AFIP',
+                    'xubio_maestro': 'XUBIO_CLIENTES',
+                    'facturas_sin_documento': 'ARCHIVO_IIBB',
+                    'formato_mixto': 'ARCHIVO_IIBB',
+                    'desconocido': 'DESCONOCIDO'
+                }
+                
+                tipo_mapeado = mapeo_tipos.get(tipo_detectado, 'DESCONOCIDO')
+                
+                # Si la IA tiene alta confianza, usar su resultado
+                if confianza >= 0.7:
+                    return tipo_mapeado
+                
+                logger.warning(f"⚠️ IA con baja confianza ({confianza:.2f}), usando detección tradicional")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Error en IA, usando detección tradicional: {e}")
+        
+        # Fallback a detección tradicional
         columnas = [col.lower() for col in df.columns]
         
         # PRIORIDAD 1: Detectar archivo IIBB (cualquier nombre) - MÁS ESPECÍFICO
@@ -411,3 +456,47 @@ class TransformadorArchivos:
         ]
         
         return df_final
+    
+    def usar_parsers_inteligentes(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Usa los parsers inteligentes de la IA para procesar campos complejos
+        """
+        if not self.ia_processor:
+            logger.warning("⚠️ IA no disponible, usando procesamiento estándar")
+            return df
+        
+        try:
+            logger.info("🤖 Aplicando parsers inteligentes de IA...")
+            df_procesado = df.copy()
+            
+            # Analizar campos complejos con IA
+            resultado_ia = self.ia_processor.validar_tipo_archivo(df)
+            campos_complejos = resultado_ia.get('campos_complejos', {})
+            
+            for col, info_campo in campos_complejos.items():
+                if info_campo.get('necesita_parsing', False):
+                    tipo_campo = info_campo.get('tipo', '')
+                    logger.info(f"🔧 Procesando campo complejo: {col} (tipo: {tipo_campo})")
+                    
+                    # Aplicar parser inteligente según el tipo
+                    if tipo_campo == 'numero_factura' and 'numero_factura' in self.ia_processor.parsers_inteligentes:
+                        df_procesado[f'{col}_parsed'] = df_procesado[col].apply(
+                            lambda x: self.ia_processor.parsers_inteligentes['numero_factura'](x)
+                        )
+                    
+                    elif tipo_campo == 'cuit_documento' and 'cuit_documento' in self.ia_processor.parsers_inteligentes:
+                        df_procesado[f'{col}_parsed'] = df_procesado[col].apply(
+                            lambda x: self.ia_processor.parsers_inteligentes['cuit_documento'](x)
+                        )
+                    
+                    elif tipo_campo == 'numero_comprobante' and 'numero_comprobante' in self.ia_processor.parsers_inteligentes:
+                        df_procesado[f'{col}_parsed'] = df_procesado[col].apply(
+                            lambda x: self.ia_processor.parsers_inteligentes['numero_comprobante'](x)
+                        )
+            
+            logger.info("✅ Parsers inteligentes aplicados exitosamente")
+            return df_procesado
+            
+        except Exception as e:
+            logger.error(f"❌ Error aplicando parsers inteligentes: {e}")
+            return df

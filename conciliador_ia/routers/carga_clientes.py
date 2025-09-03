@@ -531,12 +531,6 @@ async def transformar_archivo_cliente(
         
         logger.info(f"📊 Archivos leídos - Cliente: {len(df_cliente)} filas, Portal: {len(df_portal)} filas")
         
-        # Para archivos muy grandes, limitar el procesamiento
-        if len(df_cliente) > 50:
-            logger.warning(f"⚠️ Archivo muy grande ({len(df_cliente)} registros). Limitando a 50 registros para evitar timeout.")
-            df_cliente = df_cliente.head(50)
-            logger.info(f"📊 Procesando solo las primeras 50 filas de {len(df_cliente)} total")
-        
         # Detectar tipo de archivo
         tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
         logger.info(f"🔍 Tipo detectado: {tipo_archivo}")
@@ -545,14 +539,21 @@ async def transformar_archivo_cliente(
             logger.info("🔄 Iniciando transformación IIBB...")
             df_cliente_transformado, log_transformacion, stats = transformador.transformar_archivo_iibb(df_cliente, df_portal)
             
+            # Para archivos muy grandes, limitar DESPUÉS de la transformación
+            registros_originales = len(df_cliente)
+            if len(df_cliente_transformado) > 100:
+                logger.warning(f"⚠️ Archivo transformado muy grande ({len(df_cliente_transformado)} registros). Limitando a 100 registros para evitar timeout.")
+                df_cliente_transformado = df_cliente_transformado.head(100)
+                logger.info(f"📊 Procesando solo las primeras 100 filas transformadas de {len(df_cliente_transformado)} total")
+            
             # Respuesta mínima para evitar error 413
             resultado = {
                 "archivo_original": archivo_cliente.filename,
                 "tipo_detectado": tipo_archivo,
                 "transformacion_exitosa": True,
-                "registros_originales": len(df_cliente),
+                "registros_originales": registros_originales,
                 "registros_transformados": len(df_cliente_transformado),
-                "mensaje": f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros"
+                "mensaje": f"✅ Transformación exitosa: {registros_originales} → {len(df_cliente_transformado)} registros"
             }
             
             logger.info(f"✅ Transformación completada: {resultado['mensaje']}")

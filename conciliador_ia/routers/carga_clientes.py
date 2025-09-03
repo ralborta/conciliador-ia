@@ -44,6 +44,12 @@ async def importar_clientes(
     Importa clientes nuevos desde archivos del portal y Xubio
     """
     try:
+        # Log de archivos recibidos
+        logger.info(f"📥 Archivos recibidos:")
+        logger.info(f"   Portal: {archivo_portal.filename}")
+        logger.info(f"   Xubio: {archivo_xubio.filename}")
+        logger.info(f"   Cliente: {archivo_cliente.filename if archivo_cliente else 'No proporcionado'}")
+        logger.info(f"   Empresa: {empresa_id}")
         # Validar empresa_id (ahora opcional)
         if not empresa_id or empresa_id.strip() == "":
             empresa_id = "default"

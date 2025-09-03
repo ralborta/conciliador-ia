@@ -335,6 +335,10 @@ class TransformadorArchivos:
         df_copy['Numero de Documento'] = df_copy.get('CUIT', '')  # Usar CUIT si existe
         df_copy['denominación comprador'] = df_copy.get('Razón social', 'Cliente sin nombre')
         
+        # Asegurar que la columna de nombre tenga el nombre exacto que busca ClienteProcessor
+        if 'denominación comprador' not in df_copy.columns:
+            df_copy['denominación comprador'] = df_copy.get('Razón social', 'Cliente sin nombre')
+        
         # Log de resultados
         total_registros = len(df_copy)
         facturas_extraidas = len(df_copy[df_copy['numero_factura_extraido'] != ''])

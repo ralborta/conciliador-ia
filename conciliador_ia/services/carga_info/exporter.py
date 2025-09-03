@@ -112,4 +112,4 @@ class ExportadorVentas(Exporter):
         return self.export_to_excel(data, filename)
 
 # Constante para compatibilidad
-SALIDA_DIR = "data/salida"
+ueden tener cualquie nombre eso es lo de menos...ner uier nombnotraotr

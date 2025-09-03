@@ -14,7 +14,7 @@ class TransformadorArchivos:
     
     def __init__(self):
         self.tipos_archivo = {
-            "GH_IIBB_TANGO": "Archivo IIBB TANGO (requiere transformación)",
+            "ARCHIVO_IIBB": "Archivo IIBB (requiere transformación)",
             "PORTAL_AFIP": "Archivo Portal AFIP (formato estándar)",
             "XUBIO_CLIENTES": "Archivo Xubio Clientes (maestro)",
             "DESCONOCIDO": "Formato no reconocido"
@@ -40,13 +40,13 @@ class TransformadorArchivos:
             estadisticas["registros_originales"] = len(df_portal)
             
             # Paso 2: Transformar si es necesario
-            if tipo_archivo == "GH_IIBB_TANGO":
+            if tipo_archivo == "ARCHIVO_IIBB":
                 if df_afip is None:
                     log_proceso.append("⚠️ Archivo AFIP no proporcionado - No se puede transformar")
                     log_proceso.append("📝 El archivo se procesará en formato original")
                     estadisticas["error_transformacion"] = "Archivo AFIP requerido"
                 else:
-                    df_portal_transformado, log_transformacion, stats_transformacion = self.transformar_gh_iibb(
+                    df_portal_transformado, log_transformacion, stats_transformacion = self.transformar_archivo_iibb(
                         df_portal, df_afip
                     )
                     log_proceso.extend(log_transformacion)
@@ -70,7 +70,7 @@ class TransformadorArchivos:
                 "tipo_archivo_detectado": tipo_archivo,
                 "log_proceso": log_proceso,
                 "estadisticas": estadisticas,
-                "requiere_transformacion": tipo_archivo == "GH_IIBB_TANGO"
+                "requiere_transformacion": tipo_archivo == "ARCHIVO_IIBB"
             }
             
         except Exception as e:
@@ -84,9 +84,9 @@ class TransformadorArchivos:
         """
         columnas = [col.lower() for col in df.columns]
         
-        # Detectar archivo GH IIBB TANGO
-        if self._es_archivo_gh_iibb_tango(df, columnas):
-            return "GH_IIBB_TANGO"
+        # Detectar archivo IIBB (cualquier nombre)
+        if self._es_archivo_iibb(df, columnas):
+            return "ARCHIVO_IIBB"
         
         # Detectar archivo Portal AFIP estándar
         if self._es_archivo_portal_afip(df, columnas):
@@ -98,9 +98,9 @@ class TransformadorArchivos:
         
         return "DESCONOCIDO"
     
-    def _es_archivo_gh_iibb_tango(self, df: pd.DataFrame, columnas: List[str]) -> bool:
+    def _es_archivo_iibb(self, df: pd.DataFrame, columnas: List[str]) -> bool:
         """
-        Detecta si es un archivo GH IIBB TANGO (4 formatos distintos)
+        Detecta si es un archivo IIBB (cualquier nombre, 4 formatos distintos)
         """
         # FORMATO 1: Columnas estándar
         columnas_requeridas_1 = ["descripción", "razón social", "provincia", "localidad"]
@@ -147,7 +147,7 @@ class TransformadorArchivos:
                     coincidencias = sum(1 for valor in muestra if any(patron in valor.lower() for patron in patrones_factura))
                     
                     if coincidencias >= 3:  # Al menos 3 de 10 muestras coinciden
-                        logger.info(f"✅ Archivo TANGO detectado en columna: {col_desc}")
+                        logger.info(f"✅ Archivo IIBB detectado en columna: {col_desc}")
                         return True
                 except Exception as e:
                     logger.warning(f"Error verificando columna {col_desc}: {e}")
@@ -175,13 +175,13 @@ class TransformadorArchivos:
         
         return len(columnas_encontradas) >= 2
     
-    def transformar_gh_iibb(
+    def transformar_archivo_iibb(
         self, 
         df_gh: pd.DataFrame, 
         df_afip: pd.DataFrame
     ) -> Tuple[pd.DataFrame, List[str], Dict[str, Any]]:
         """
-        Transforma archivo GH IIBB TANGO al formato que espera ClienteProcessor
+        Transforma archivo IIBB (cualquier nombre) al formato que espera ClienteProcessor
         """
         log_transformacion = []
         estadisticas = {}
@@ -189,7 +189,7 @@ class TransformadorArchivos:
         try:
             # Paso 1: Parsear columna descripción
             log_transformacion.append("📝 Paso 1: Parseando columna 'descripción'...")
-            df_parsed = self._parsear_descripcion_gh_iibb(df_gh)
+            df_parsed = self._parsear_descripcion_iibb(df_gh)
             log_transformacion.append(f"✅ Parseo completado: {len(df_parsed)} registros procesados")
             
             # Paso 2: Buscar facturas en datos AFIP
@@ -212,11 +212,11 @@ class TransformadorArchivos:
             return df_final, log_transformacion, estadisticas
             
         except Exception as e:
-            logger.error(f"Error en transformar_gh_iibb: {e}")
+            logger.error(f"Error en transformar_archivo_iibb: {e}")
             log_transformacion.append(f"❌ Error en transformación: {str(e)}")
             raise
     
-    def _parsear_descripcion_gh_iibb(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _parsear_descripcion_iibb(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Parsea la columna descripción para extraer número de factura (4 formatos distintos)
         """
@@ -300,7 +300,7 @@ class TransformadorArchivos:
         col_numero_doc = [col for col in df_afip.columns if "nro. doc. receptor" in col.lower()][0]
         col_denominacion = [col for col in df_afip.columns if "denominaciã³n receptor" in col.lower() or "denominación receptor" in col.lower()][0]
         
-        # Función para buscar en AFIP
+        # Función para buscar en AFIP (más robusta)
         def buscar_en_afip(numero_factura: str) -> Dict[str, Any]:
             if not numero_factura:
                 return {}
@@ -310,16 +310,44 @@ class TransformadorArchivos:
             # Quitar ceros a la izquierda para hacer match con números como 371, 372, etc.
             numero_final = str(int(numero_final)) if numero_final.isdigit() else numero_final
             
-            # Buscar en AFIP
+            logger.debug(f"🔍 Buscando factura: {numero_factura} -> {numero_final}")
+            
+            # Buscar en AFIP con múltiples estrategias
             for _, row in df_afip.iterrows():
                 numero_afip = str(row[col_numero_desde]).strip()
+                
+                # Estrategia 1: Match exacto
                 if numero_afip == numero_final:
+                    logger.debug(f"✅ Match exacto encontrado: {numero_afip}")
+                    return {
+                        'tipo_doc_afip': str(row[col_tipo_doc]).strip(),
+                        'numero_doc_afip': str(row[col_numero_doc]).strip(),
+                        'denominacion_afip': str(row[col_denominacion]).strip()
+                    }
+                
+                # Estrategia 2: Match sin ceros a la izquierda
+                try:
+                    numero_afip_sin_ceros = str(int(numero_afip)) if numero_afip.isdigit() else numero_afip
+                    if numero_afip_sin_ceros == numero_final:
+                        logger.debug(f"✅ Match sin ceros encontrado: {numero_afip} -> {numero_afip_sin_ceros}")
+                        return {
+                            'tipo_doc_afip': str(row[col_tipo_doc]).strip(),
+                            'numero_doc_afip': str(row[col_numero_doc]).strip(),
+                            'denominacion_afip': str(row[col_denominacion]).strip()
+                        }
+                except ValueError:
+                    continue
+                
+                # Estrategia 3: Match parcial (últimos dígitos)
+                if len(numero_final) >= 3 and numero_afip.endswith(numero_final):
+                    logger.debug(f"✅ Match parcial encontrado: {numero_afip} termina en {numero_final}")
                     return {
                         'tipo_doc_afip': str(row[col_tipo_doc]).strip(),
                         'numero_doc_afip': str(row[col_numero_doc]).strip(),
                         'denominacion_afip': str(row[col_denominacion]).strip()
                     }
             
+            logger.debug(f"❌ No se encontró match para: {numero_factura}")
             return {}
         
         # Aplicar búsqueda
@@ -329,6 +357,20 @@ class TransformadorArchivos:
         df_resultado['tipo_doc_afip'] = resultados_afip.apply(lambda x: x.get('tipo_doc_afip', ''))
         df_resultado['numero_doc_afip'] = resultados_afip.apply(lambda x: x.get('numero_doc_afip', ''))
         df_resultado['denominacion_afip'] = resultados_afip.apply(lambda x: x.get('denominacion_afip', ''))
+        
+        # Log de estadísticas de búsqueda
+        total_facturas = len(df_resultado[df_resultado['numero_factura_extraido'] != ''])
+        facturas_encontradas = len(df_resultado[df_resultado['numero_doc_afip'] != ''])
+        logger.info(f"📊 Búsqueda AFIP: {facturas_encontradas}/{total_facturas} facturas encontradas")
+        
+        # Mostrar muestra de facturas no encontradas
+        facturas_no_encontradas = df_resultado[
+            (df_resultado['numero_factura_extraido'] != '') & 
+            (df_resultado['numero_doc_afip'] == '')
+        ]['numero_factura_extraido'].head(5).tolist()
+        
+        if facturas_no_encontradas:
+            logger.warning(f"⚠️ Facturas no encontradas en AFIP: {facturas_no_encontradas}")
         
         return df_resultado
     

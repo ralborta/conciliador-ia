@@ -531,6 +531,12 @@ async def transformar_archivo_cliente(
         
         logger.info(f"📊 Archivos leídos - Cliente: {len(df_cliente)} filas, Portal: {len(df_portal)} filas")
         
+        # Para archivos muy grandes, limitar el procesamiento
+        if len(df_cliente) > 500:
+            logger.warning(f"⚠️ Archivo muy grande ({len(df_cliente)} registros). Limitando a 500 registros para evitar timeout.")
+            df_cliente = df_cliente.head(500)
+            logger.info(f"📊 Procesando solo las primeras 500 filas de {len(df_cliente)} total")
+        
         # Detectar tipo de archivo
         tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
         logger.info(f"🔍 Tipo detectado: {tipo_archivo}")
@@ -540,7 +546,22 @@ async def transformar_archivo_cliente(
             df_cliente_transformado, log_transformacion, stats = transformador.transformar_archivo_iibb(df_cliente, df_portal)
             
             # Para archivos grandes, limitar el payload de respuesta
-            if len(df_cliente) > 50:
+            if len(df_cliente) > 100:
+                # Solo enviar resumen mínimo para archivos muy grandes
+                resultado = {
+                    "archivo_original": archivo_cliente.filename,
+                    "tipo_detectado": tipo_archivo,
+                    "transformacion_exitosa": True,
+                    "registros_originales": len(df_cliente),
+                    "registros_transformados": len(df_cliente_transformado),
+                    "mensaje": f"✅ Transformación exitosa: {len(df_cliente)} → {len(df_cliente_transformado)} registros (procesando primeras 500 filas de archivo grande)",
+                    "log_transformacion": log_transformacion[-3:],  # Solo últimos 3 logs
+                    "estadisticas": {
+                        "registros_parseados": stats.get("registros_parseados", 0),
+                        "registros_finales": stats.get("registros_finales", 0)
+                    }
+                }
+            elif len(df_cliente) > 50:
                 # Solo enviar resumen para archivos grandes
                 resultado = {
                     "archivo_original": archivo_cliente.filename,

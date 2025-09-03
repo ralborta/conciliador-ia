@@ -113,6 +113,7 @@ async def importar_clientes(
             
             try:
                 if df_cliente is not None:
+                    logger.info("🚀 CÓDIGO NUEVO EJECUTÁNDOSE - Versión 778582c")
                     logger.info("🔍 Intentando detectar tipo del 3er archivo (IIBB)...")
                     tipo_archivo = transformador.detectar_tipo_archivo(df_cliente)
                     logger.info(f"✅ 3er archivo detectado como: {tipo_archivo}")

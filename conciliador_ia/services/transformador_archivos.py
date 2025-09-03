@@ -247,9 +247,18 @@ class TransformadorArchivos:
             df_parsed = self._parsear_descripcion_iibb(df_gh)
             log_transformacion.append(f"✅ Parseo completado: {len(df_parsed)} registros procesados")
             
-            # Paso 2: Generar formato final (SIN búsqueda en AFIP)
-            log_transformacion.append("⚙️ Paso 2: Generando formato final...")
-            df_final = self._generar_formato_final_simple(df_parsed)
+            # Paso 2: Buscar facturas en datos AFIP (si se proporciona)
+            if df_afip is not None:
+                log_transformacion.append("🔍 Paso 2: Buscando facturas en datos AFIP...")
+                df_con_afip = self._buscar_facturas_afip(df_parsed, df_afip)
+                log_transformacion.append(f"✅ Búsqueda AFIP completada: {len(df_con_afip)} coincidencias encontradas")
+            else:
+                log_transformacion.append("⚠️ Paso 2: No se proporcionó archivo AFIP - Usando datos del cliente")
+                df_con_afip = df_parsed
+            
+            # Paso 3: Generar formato final
+            log_transformacion.append("⚙️ Paso 3: Generando formato final...")
+            df_final = self._generar_formato_final_simple(df_con_afip)
             log_transformacion.append(f"✅ Formato final generado: {len(df_final)} registros válidos")
             
             # Estadísticas
@@ -277,7 +286,7 @@ class TransformadorArchivos:
         # Buscar en diferentes formatos
         for col in df.columns:
             col_lower = col.lower()
-            if any(palabra in col_lower for palabra in ["descrip", "concepto", "detalle", "observ"]):
+            if any(palabra in col_lower for palabra in ["descrip", "descip", "concepto", "detalle", "observ"]):
                 col_descripcion = col
                 break
         
@@ -332,7 +341,10 @@ class TransformadorArchivos:
         
         # AGREGAR COLUMNAS BÁSICAS PARA EL CLIENTEPROCESSOR
         df_copy['Tipo Doc. Comprador'] = '80'  # Valor por defecto para CUIT
-        df_copy['Numero de Documento'] = df_copy.get('CUIT', '')  # Usar CUIT si existe
+        # Usar el número de factura extraído como base para el documento
+        df_copy['Numero de Documento'] = df_copy['numero_factura_extraido'].apply(
+            lambda x: x.replace('B ', '').replace('-', '') if x else '12345678901'
+        )
         df_copy['denominación comprador'] = df_copy.get('Razón social', 'Cliente sin nombre')
         
         # Asegurar que la columna de nombre tenga el nombre exacto que busca ClienteProcessor

@@ -482,10 +482,21 @@ class TransformadorArchivos:
         
         # Filtrar solo registros válidos (solo si hay datos)
         if len(df_final) > 0:
+            logger.info(f"🔍 DEBUG - Antes del filtro: {len(df_final)} registros")
+            logger.info(f"🔍 DEBUG - Numero de Documento no vacío: {(df_final['Numero de Documento'].str.len() > 0).sum()}")
+            logger.info(f"🔍 DEBUG - denominación comprador no vacío: {(df_final['denominación comprador'].str.len() > 0).sum()}")
+            
+            # Mostrar algunos ejemplos de datos
+            if len(df_final) > 0:
+                logger.info(f"🔍 DEBUG - Ejemplo Numero de Documento: {df_final['Numero de Documento'].iloc[0]}")
+                logger.info(f"🔍 DEBUG - Ejemplo denominación comprador: {df_final['denominación comprador'].iloc[0]}")
+            
             df_final = df_final[
                 (df_final['Numero de Documento'].str.len() > 0) &
                 (df_final['denominación comprador'].str.len() > 0)
             ]
+            
+            logger.info(f"🔍 DEBUG - Después del filtro: {len(df_final)} registros")
         
         return df_final
     

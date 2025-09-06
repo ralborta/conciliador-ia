@@ -111,7 +111,8 @@ Si no puedes determinar el banco, responde "Banco no identificado".
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1,
-                max_tokens=50
+                max_tokens=50,
+                timeout=15  # Timeout de 15 segundos
             )
             
             banco = response.choices[0].message.content.strip()
@@ -209,34 +210,12 @@ Si no puedes determinar el banco, responde "Banco no identificado".
         """Extrae datos usando IA"""
         try:
             prompt = f"""
-Analiza este extracto bancario del banco {banco} y extrae todos los movimientos bancarios.
+Extrae movimientos bancarios de este texto:
 
-TEXTO DEL EXTRACTO:
-{texto[:4000]}
+{texto[:2000]}
 
-FORMATO DE RESPUESTA REQUERIDO (JSON):
-{{
-  "movimientos": [
-    {{
-      "fecha": "DD/MM/YYYY",
-      "concepto": "Descripción del movimiento",
-      "monto": 1234.56,
-      "tipo": "crédito" o "débito",
-      "saldo": 5678.90
-    }}
-  ]
-}}
-
-REGLAS IMPORTANTES:
-1. Extrae TODOS los movimientos encontrados
-2. Fechas en formato DD/MM/YYYY
-3. Montos siempre positivos (absoluto)
-4. Tipo: "crédito" para ingresos, "débito" para egresos
-5. Saldo es opcional, solo si está disponible
-6. Responde ÚNICAMENTE con JSON válido
-7. Si no encuentras movimientos, devuelve: {{"movimientos": []}}
-
-IMPORTANTE: Responde SOLO con el JSON, sin texto adicional.
+Responde SOLO con JSON:
+{{"movimientos": [{{"fecha": "DD/MM/YYYY", "concepto": "texto", "monto": 123.45, "tipo": "crédito"}}]}}
 """
             
             response = self.client.chat.completions.create(
@@ -246,7 +225,8 @@ IMPORTANTE: Responde SOLO con el JSON, sin texto adicional.
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1,
-                max_tokens=4000
+                max_tokens=2000,  # Reducido para velocidad
+                timeout=30  # Timeout de 30 segundos
             )
             
             respuesta_texto = response.choices[0].message.content.strip()

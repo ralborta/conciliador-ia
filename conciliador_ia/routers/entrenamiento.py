@@ -62,6 +62,11 @@ async def entrenar_extracto(
 ):
     """Entrena un nuevo extracto bancario"""
     try:
+        logger.info(f"=== INICIO ENTRENAMIENTO ===")
+        logger.info(f"Archivo: {archivo.filename}")
+        logger.info(f"Tamaño: {archivo.size}")
+        logger.info(f"Banco: {banco}")
+        logger.info(f"Forzar IA: {forzar_ia}")
         # Validar archivo
         if not archivo.filename.lower().endswith('.pdf'):
             raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")

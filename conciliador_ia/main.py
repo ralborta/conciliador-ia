@@ -227,6 +227,16 @@ def mount_all(prefix: str):
     except Exception as e:
         print(f"  ❌ Error cargando carga_documentos router en {prefix}: {e}")
 
+    try:
+        # Cargar entrenamiento router
+        print(f"  🔄 Cargando entrenamiento router en {prefix}...")
+        from routers import entrenamiento
+        app.include_router(entrenamiento.router, prefix=prefix)
+        print(f"  ✅ Entrenamiento router cargado en {prefix}")
+        routers_loaded += 1
+    except Exception as e:
+        print(f"  ❌ Error cargando entrenamiento router en {prefix}: {e}")
+
 # Montar routers en ambos prefijos
 print(f"📦 Montando routers en {API_PREFIX}...")
 mount_all(API_PREFIX)

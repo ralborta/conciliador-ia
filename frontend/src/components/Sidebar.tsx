@@ -14,7 +14,8 @@ import {
   Receipt,
   FileCheck,
   FileInput,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Brain
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -65,6 +66,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       icon: Upload,
       label: 'Nueva Conciliación',
       href: '/nueva-conciliacion'
+    },
+    {
+      icon: Brain,
+      label: 'Entrenar Extractos',
+      href: '/entrenar-extractos'
     },
     {
       icon: FileInput,

@@ -1,0 +1,356 @@
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi.responses import JSONResponse
+import logging
+import os
+from pathlib import Path
+from typing import Optional, Dict, Any, List
+import uuid
+from datetime import datetime
+
+from services.patron_manager import PatronManager
+from services.extractor_inteligente import ExtractorInteligente
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/entrenamiento", tags=["entrenamiento"])
+
+# Inicializar servicios
+patron_manager = PatronManager()
+extractor_inteligente = ExtractorInteligente()
+
+@router.get("/bancos")
+async def listar_bancos_entrenados():
+    """Lista todos los bancos con patrones entrenados"""
+    try:
+        bancos = patron_manager.listar_bancos()
+        estadisticas = patron_manager.obtener_estadisticas_globales()
+        
+        return {
+            "success": True,
+            "bancos": bancos,
+            "estadisticas": estadisticas,
+            "total_bancos": len(bancos)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error listando bancos: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.get("/bancos/{banco_id}")
+async def obtener_banco(banco_id: str):
+    """Obtiene información detallada de un banco específico"""
+    try:
+        banco = patron_manager.obtener_banco(banco_id)
+        if not banco:
+            raise HTTPException(status_code=404, detail=f"Banco {banco_id} no encontrado")
+        
+        return {
+            "success": True,
+            "banco": banco
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error obteniendo banco {banco_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.post("/entrenar")
+async def entrenar_extracto(
+    archivo: UploadFile = File(...),
+    banco: Optional[str] = Form(None),
+    forzar_ia: bool = Form(False)
+):
+    """Entrena un nuevo extracto bancario"""
+    try:
+        # Validar archivo
+        if not archivo.filename.lower().endswith('.pdf'):
+            raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
+        
+        if archivo.size > 10 * 1024 * 1024:  # 10MB
+            raise HTTPException(status_code=400, detail="El archivo es demasiado grande (máximo 10MB)")
+        
+        # Guardar archivo temporal
+        archivo_id = str(uuid.uuid4())
+        archivo_path = f"data/extractos_ejemplo/{archivo_id}_{archivo.filename}"
+        
+        # Crear directorio si no existe
+        Path(archivo_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(archivo_path, "wb") as buffer:
+            content = await archivo.read()
+            buffer.write(content)
+        
+        logger.info(f"Archivo guardado: {archivo_path}")
+        
+        try:
+            # Extraer datos
+            if forzar_ia:
+                logger.info("Forzando extracción con IA")
+                resultado = extractor_inteligente._extraer_con_ia(
+                    extractor_inteligente._extraer_texto_pdf(archivo_path),
+                    banco or "Banco no identificado"
+                )
+            else:
+                resultado = extractor_inteligente.extraer_datos(archivo_path, banco)
+            
+            if not resultado or not resultado.get("movimientos"):
+                raise HTTPException(
+                    status_code=400, 
+                    detail="No se pudieron extraer movimientos del archivo"
+                )
+            
+            # Calcular precisión estimada
+            total_movimientos = len(resultado["movimientos"])
+            precision_estimada = resultado.get("precision_estimada", 0.9)
+            
+            # Actualizar estadísticas del banco
+            banco_id = resultado.get("banco_id", "banco_no_identificado")
+            patron_manager.actualizar_precision(banco_id, precision_estimada, True)
+            
+            return {
+                "success": True,
+                "message": "Extracto entrenado exitosamente",
+                "resultado": {
+                    "banco": resultado.get("banco"),
+                    "banco_id": banco_id,
+                    "metodo": resultado.get("metodo"),
+                    "total_movimientos": total_movimientos,
+                    "precision_estimada": precision_estimada,
+                    "archivo": archivo.filename,
+                    "archivo_id": archivo_id
+                },
+                "movimientos_muestra": resultado["movimientos"][:5]  # Primeros 5 movimientos
+            }
+            
+        except Exception as e:
+            # Limpiar archivo en caso de error
+            if os.path.exists(archivo_path):
+                os.remove(archivo_path)
+            raise e
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error entrenando extracto: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.post("/entrenar/lote")
+async def entrenar_lote_extractos(
+    archivos: List[UploadFile] = File(...),
+    banco: Optional[str] = Form(None)
+):
+    """Entrena múltiples extractos en lote"""
+    try:
+        if len(archivos) > 10:
+            raise HTTPException(status_code=400, detail="Máximo 10 archivos por lote")
+        
+        resultados = []
+        errores = []
+        
+        for i, archivo in enumerate(archivos):
+            try:
+                # Validar archivo
+                if not archivo.filename.lower().endswith('.pdf'):
+                    errores.append(f"Archivo {i+1}: Solo se permiten PDFs")
+                    continue
+                
+                # Guardar archivo temporal
+                archivo_id = str(uuid.uuid4())
+                archivo_path = f"data/extractos_ejemplo/{archivo_id}_{archivo.filename}"
+                
+                Path(archivo_path).parent.mkdir(parents=True, exist_ok=True)
+                
+                with open(archivo_path, "wb") as buffer:
+                    content = await archivo.read()
+                    buffer.write(content)
+                
+                # Extraer datos
+                resultado = extractor_inteligente.extraer_datos(archivo_path, banco)
+                
+                if resultado and resultado.get("movimientos"):
+                    resultados.append({
+                        "archivo": archivo.filename,
+                        "banco": resultado.get("banco"),
+                        "total_movimientos": len(resultado["movimientos"]),
+                        "metodo": resultado.get("metodo"),
+                        "precision": resultado.get("precision_estimada", 0.0)
+                    })
+                    
+                    # Actualizar estadísticas
+                    banco_id = resultado.get("banco_id", "banco_no_identificado")
+                    patron_manager.actualizar_precision(banco_id, resultado.get("precision_estimada", 0.9), True)
+                else:
+                    errores.append(f"Archivo {i+1}: No se pudieron extraer movimientos")
+                
+                # Limpiar archivo temporal
+                if os.path.exists(archivo_path):
+                    os.remove(archivo_path)
+                    
+            except Exception as e:
+                errores.append(f"Archivo {i+1}: {str(e)}")
+                continue
+        
+        return {
+            "success": True,
+            "message": f"Procesados {len(archivos)} archivos",
+            "resultados": resultados,
+            "errores": errores,
+            "total_exitosos": len(resultados),
+            "total_errores": len(errores)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error en entrenamiento por lote: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.put("/bancos/{banco_id}/patron")
+async def actualizar_patron_banco(banco_id: str, patron_data: Dict[str, Any]):
+    """Actualiza el patrón de un banco específico"""
+    try:
+        banco_actual = patron_manager.obtener_banco(banco_id)
+        if not banco_actual:
+            raise HTTPException(status_code=404, detail=f"Banco {banco_id} no encontrado")
+        
+        # Actualizar datos del banco
+        banco_actual.update(patron_data)
+        banco_actual["estadisticas"]["ultima_actualizacion"] = datetime.now().isoformat()
+        
+        patron_manager.guardar_banco(banco_id, banco_actual)
+        
+        return {
+            "success": True,
+            "message": f"Patrón del banco {banco_id} actualizado exitosamente",
+            "banco": banco_actual
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error actualizando patrón del banco {banco_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.delete("/bancos/{banco_id}")
+async def eliminar_banco(banco_id: str):
+    """Elimina un banco del sistema de entrenamiento"""
+    try:
+        banco = patron_manager.obtener_banco(banco_id)
+        if not banco:
+            raise HTTPException(status_code=404, detail=f"Banco {banco_id} no encontrado")
+        
+        if patron_manager.eliminar_banco(banco_id):
+            return {
+                "success": True,
+                "message": f"Banco {banco_id} eliminado exitosamente"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Error eliminando banco")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error eliminando banco {banco_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.get("/estadisticas")
+async def obtener_estadisticas():
+    """Obtiene estadísticas globales del sistema de entrenamiento"""
+    try:
+        estadisticas = patron_manager.obtener_estadisticas_globales()
+        bancos = patron_manager.listar_bancos()
+        
+        # Estadísticas adicionales
+        bancos_activos = len([b for b in bancos if b.get("activo", True)])
+        precision_promedio = sum(b.get("precision", 0) for b in bancos) / len(bancos) if bancos else 0
+        
+        return {
+            "success": True,
+            "estadisticas": {
+                **estadisticas,
+                "bancos_activos": bancos_activos,
+                "precision_promedio": round(precision_promedio, 3),
+                "fecha_consulta": datetime.now().isoformat()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo estadísticas: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.post("/exportar")
+async def exportar_patrones(banco_id: Optional[str] = None):
+    """Exporta patrones para backup"""
+    try:
+        patrones = patron_manager.exportar_patrones(banco_id)
+        
+        return {
+            "success": True,
+            "message": "Patrones exportados exitosamente",
+            "patrones": patrones,
+            "fecha_exportacion": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error exportando patrones: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.post("/importar")
+async def importar_patrones(patrones_data: Dict[str, Any]):
+    """Importa patrones desde un backup"""
+    try:
+        if patron_manager.importar_patrones(patrones_data):
+            return {
+                "success": True,
+                "message": "Patrones importados exitosamente"
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Error importando patrones")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error importando patrones: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.post("/test-extractor")
+async def test_extractor(
+    archivo: UploadFile = File(...),
+    banco: Optional[str] = Form(None)
+):
+    """Prueba el extractor sin guardar patrones"""
+    try:
+        # Validar archivo
+        if not archivo.filename.lower().endswith('.pdf'):
+            raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
+        
+        # Guardar archivo temporal
+        archivo_id = str(uuid.uuid4())
+        archivo_path = f"data/temp/{archivo_id}_{archivo.filename}"
+        
+        Path(archivo_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(archivo_path, "wb") as buffer:
+            content = await archivo.read()
+            buffer.write(content)
+        
+        try:
+            # Extraer datos
+            resultado = extractor_inteligente.extraer_datos(archivo_path, banco)
+            
+            return {
+                "success": True,
+                "message": "Extracción de prueba completada",
+                "resultado": resultado
+            }
+            
+        finally:
+            # Limpiar archivo temporal
+            if os.path.exists(archivo_path):
+                os.remove(archivo_path)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error en test del extractor: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")

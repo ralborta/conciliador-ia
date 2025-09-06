@@ -258,6 +258,45 @@ async def eliminar_banco(banco_id: str):
         logger.error(f"Error eliminando banco {banco_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
+@router.get("/monitor")
+async def monitor_entrenamiento():
+    """Endpoint de monitoreo para ver el estado del sistema"""
+    try:
+        # Verificar estado de servicios
+        estado_servicios = {
+            "patron_manager": "ok",
+            "extractor_ia": "ok" if extractor_inteligente.client else "error",
+            "openai_key": "ok" if os.getenv('OPENAI_API_KEY') else "error"
+        }
+        
+        # Verificar directorios
+        directorios = {
+            "patrones_dir": str(patron_manager.patrones_dir),
+            "patrones_exists": patron_manager.patrones_dir.exists(),
+            "extractos_dir": str(patron_manager.extractos_dir),
+            "extractos_exists": patron_manager.extractos_dir.exists()
+        }
+        
+        # Estadísticas actuales
+        estadisticas = patron_manager.obtener_estadisticas_globales()
+        
+        return {
+            "success": True,
+            "timestamp": datetime.now().isoformat(),
+            "servicios": estado_servicios,
+            "directorios": directorios,
+            "estadisticas": estadisticas,
+            "version": "1.0.0"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error en monitor: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
 @router.get("/estadisticas")
 async def obtener_estadisticas():
     """Obtiene estadísticas globales del sistema de entrenamiento"""

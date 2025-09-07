@@ -15,7 +15,18 @@ router = APIRouter(prefix="/entrenamiento", tags=["entrenamiento"])
 
 # Inicializar servicios
 patron_manager = PatronManager()
-extractor_inteligente = ExtractorInteligente()
+extractor_inteligente = None
+
+# Inicializar extractor solo si hay API key
+try:
+    if os.getenv('OPENAI_API_KEY'):
+        extractor_inteligente = ExtractorInteligente()
+        logger.info("Extractor Inteligente inicializado correctamente")
+    else:
+        logger.warning("OPENAI_API_KEY no configurada - funcionalidad de IA deshabilitada")
+except Exception as e:
+    logger.error(f"Error inicializando ExtractorInteligente: {e}")
+    extractor_inteligente = None
 
 @router.get("/bancos")
 async def listar_bancos_entrenados():
@@ -93,23 +104,22 @@ async def entrenar_extracto(
         logger.info(f"Archivo guardado: {archivo_path}")
         
         try:
-            # Simular extracción exitosa para prueba
-            logger.info("Simulando extracción exitosa")
-            resultado = {
-                "banco": banco or "Banco no identificado",
-                "banco_id": "banco_test",
-                "metodo": "simulado",
-                "movimientos": [
-                    {
-                        "fecha": "2024-01-15",
-                        "concepto": "Movimiento de prueba",
-                        "monto": 1000.0,
-                        "tipo": "crédito"
-                    }
-                ],
-                "total_movimientos": 1,
-                "precision_estimada": 0.9
-            }
+            # Verificar si hay extractor disponible
+            if not extractor_inteligente:
+                raise HTTPException(
+                    status_code=503, 
+                    detail="Servicio de IA no disponible. Verifique la configuración de OPENAI_API_KEY."
+                )
+            
+            # Extraer datos usando el extractor inteligente
+            logger.info("Iniciando extracción con IA")
+            resultado = extractor_inteligente.extraer_datos(archivo_path, banco)
+            
+            if not resultado:
+                raise HTTPException(
+                    status_code=422, 
+                    detail="No se pudieron extraer datos del archivo PDF"
+                )
             
             # Calcular precisión estimada
             total_movimientos = len(resultado["movimientos"])
@@ -175,6 +185,11 @@ async def entrenar_lote_extractos(
                 with open(archivo_path, "wb") as buffer:
                     content = await archivo.read()
                     buffer.write(content)
+                
+                # Verificar si hay extractor disponible
+                if not extractor_inteligente:
+                    errores.append(f"Archivo {i+1}: Servicio de IA no disponible")
+                    continue
                 
                 # Extraer datos
                 resultado = extractor_inteligente.extraer_datos(archivo_path, banco)
@@ -386,6 +401,13 @@ async def test_extractor(
             buffer.write(content)
         
         try:
+            # Verificar si hay extractor disponible
+            if not extractor_inteligente:
+                raise HTTPException(
+                    status_code=503, 
+                    detail="Servicio de IA no disponible. Verifique la configuración de OPENAI_API_KEY."
+                )
+            
             # Extraer datos
             resultado = extractor_inteligente.extraer_datos(archivo_path, banco)
             

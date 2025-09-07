@@ -36,7 +36,7 @@ export default function EntrenarExtractosPage() {
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/v1/entrenamiento/bancos');
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/entrenamiento/bancos');
       const data = await response.json();
       
       if (data.success) {
@@ -80,7 +80,7 @@ export default function EntrenarExtractosPage() {
       }
       formData.append('forzar_ia', forzarIA.toString());
 
-      const response = await fetch('/api/v1/entrenamiento/entrenar', {
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/entrenamiento/entrenar', {
         method: 'POST',
         body: formData,
       });
@@ -108,7 +108,7 @@ export default function EntrenarExtractosPage() {
     }
 
     try {
-      const response = await fetch(`/api/v1/entrenamiento/bancos/${bancoId}`, {
+      const response = await fetch(`https://conciliador-ia-production.up.railway.app/api/v1/entrenamiento/bancos/${bancoId}`, {
         method: 'DELETE',
       });
 
@@ -128,7 +128,7 @@ export default function EntrenarExtractosPage() {
 
   const exportarPatrones = async () => {
     try {
-      const response = await fetch('/api/v1/entrenamiento/exportar', {
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/entrenamiento/exportar', {
         method: 'POST',
       });
 

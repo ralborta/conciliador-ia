@@ -210,18 +210,50 @@ Si no puedes determinar el banco, responde "Banco no identificado".
         """Extrae datos usando IA"""
         try:
             prompt = f"""
-Extrae movimientos bancarios de este texto:
+Eres un experto en extraer datos de extractos bancarios de CUALQUIER banco del mundo.
 
-{texto[:2000]}
+INSTRUCCIONES CRÍTICAS:
+1. Analiza el texto completo del extracto bancario
+2. Identifica TODOS los movimientos/transacciones
+3. Extrae fecha, descripción, importe y tipo de cada movimiento
+4. Los importes pueden estar en diferentes formatos (con/sin decimales, con/sin separadores)
+5. Las fechas pueden estar en diferentes formatos (DD/MM/YYYY, MM/DD/YYYY, etc.)
+6. Los créditos pueden ser positivos o negativos según el banco
+7. Busca patrones como: fecha + descripción + importe + saldo
 
-Responde SOLO con JSON:
-{{"movimientos": [{{"fecha": "DD/MM/YYYY", "concepto": "texto", "monto": 123.45, "tipo": "crédito"}}]}}
+TEXTO DEL EXTRACTO:
+{texto[:3000]}
+
+FORMATO DE RESPUESTA (JSON VÁLIDO):
+{{
+  "titular": "Nombre del titular si está visible",
+  "cuenta": "Número de cuenta si está visible", 
+  "periodo": "Período del extracto si está visible",
+  "saldo_inicial": 0.0,
+  "saldo_final": 0.0,
+  "movimientos": [
+    {{
+      "fecha": "YYYY-MM-DD",
+      "descripcion": "Descripción completa de la transacción",
+      "importe": 123.45,
+      "tipo": "ingreso|egreso",
+      "saldo": 1234.56
+    }}
+  ],
+  "resumen": {{
+    "total_ingresos": 0.0,
+    "total_egresos": 0.0,
+    "cantidad_transacciones": 0
+  }}
+}}
+
+IMPORTANTE: Responde ÚNICAMENTE con JSON válido, sin texto adicional.
 """
             
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "Eres un experto en extraer datos de extractos bancarios. Responde únicamente con JSON válido."},
+                    {"role": "system", "content": "Eres un experto en extraer datos de extractos bancarios de CUALQUIER banco del mundo. Puedes identificar patrones de fechas, importes y transacciones en cualquier formato. Responde únicamente con JSON válido."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1,
@@ -232,9 +264,17 @@ Responde SOLO con JSON:
             respuesta_texto = response.choices[0].message.content.strip()
             logger.info(f"Respuesta de IA: {respuesta_texto[:200]}...")
             
-            # Parsear JSON
+            # Parsear JSON - intentar limpiar respuesta primero
             try:
-                datos = json.loads(respuesta_texto)
+                # Limpiar respuesta de posibles caracteres extra
+                respuesta_limpia = respuesta_texto.strip()
+                if respuesta_limpia.startswith('```json'):
+                    respuesta_limpia = respuesta_limpia[7:]
+                if respuesta_limpia.endswith('```'):
+                    respuesta_limpia = respuesta_limpia[:-3]
+                respuesta_limpia = respuesta_limpia.strip()
+                
+                datos = json.loads(respuesta_limpia)
                 movimientos = datos.get("movimientos", [])
                 
                 # Validar y limpiar movimientos
@@ -246,7 +286,13 @@ Responde SOLO con JSON:
                     "metodo": "ia",
                     "movimientos": movimientos_limpios,
                     "total_movimientos": len(movimientos_limpios),
-                    "precision_estimada": 0.9  # IA tiene alta precisión
+                    "precision_estimada": 0.9,  # IA tiene alta precisión
+                    "titular": datos.get("titular", ""),
+                    "cuenta": datos.get("cuenta", ""),
+                    "periodo": datos.get("periodo", ""),
+                    "saldo_inicial": datos.get("saldo_inicial", 0.0),
+                    "saldo_final": datos.get("saldo_final", 0.0),
+                    "resumen": datos.get("resumen", {})
                 }
                 
             except json.JSONDecodeError as e:

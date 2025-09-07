@@ -221,7 +221,7 @@ export default function CargaClientesPage() {
 
     try {
       // Verificar tamaño del archivo
-      if (archivoCliente.size > 2 * 1024 * 1024) { // 2MB
+      if (archivoCliente.size > 5 * 1024 * 1024) { // 5MB
         setError(`Archivo demasiado grande (${(archivoCliente.size / 1024 / 1024).toFixed(1)}MB). Por favor use un archivo más pequeño o divida en lotes.`);
         setIsTransforming(false);
         return;

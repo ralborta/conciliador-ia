@@ -240,3 +240,4 @@ class PatronManager:
         except Exception as e:
             logger.error(f"Error importando patrones: {e}")
             return False
+

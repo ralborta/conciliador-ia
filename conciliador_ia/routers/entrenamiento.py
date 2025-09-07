@@ -13,20 +13,42 @@ from services.extractor_inteligente import ExtractorInteligente
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/entrenamiento", tags=["entrenamiento"])
 
-# Inicializar servicios
-patron_manager = PatronManager()
-extractor_inteligente = None
+# Verificación de servicios al inicio
+def verificar_servicios():
+    """Verifica disponibilidad de servicios críticos"""
+    estado = {
+        "patron_manager": False,
+        "extractor_ia": False,
+        "openai_configured": bool(os.getenv('OPENAI_API_KEY'))
+    }
+    
+    try:
+        global patron_manager
+        patron_manager = PatronManager()
+        estado["patron_manager"] = True
+        logger.info("PatronManager inicializado correctamente")
+    except Exception as e:
+        logger.error(f"PatronManager no disponible: {e}")
+        patron_manager = None
+    
+    try:
+        if estado["openai_configured"]:
+            global extractor_inteligente
+            extractor_inteligente = ExtractorInteligente()
+            estado["extractor_ia"] = True
+            logger.info("Extractor Inteligente inicializado correctamente")
+        else:
+            logger.warning("OPENAI_API_KEY no configurada - funcionalidad de IA deshabilitada")
+            extractor_inteligente = None
+    except Exception as e:
+        logger.error(f"ExtractorInteligente no disponible: {e}")
+        extractor_inteligente = None
+    
+    return estado
 
-# Inicializar extractor solo si hay API key
-try:
-    if os.getenv('OPENAI_API_KEY'):
-        extractor_inteligente = ExtractorInteligente()
-        logger.info("Extractor Inteligente inicializado correctamente")
-    else:
-        logger.warning("OPENAI_API_KEY no configurada - funcionalidad de IA deshabilitada")
-except Exception as e:
-    logger.error(f"Error inicializando ExtractorInteligente: {e}")
-    extractor_inteligente = None
+# Ejecutar verificación
+SERVICIOS_DISPONIBLES = verificar_servicios()
+logger.info(f"Estado de servicios: {SERVICIOS_DISPONIBLES}")
 
 @router.get("/bancos")
 async def listar_bancos_entrenados():
@@ -78,6 +100,19 @@ async def entrenar_extracto(
         logger.info(f"Tamaño: {archivo.size}")
         logger.info(f"Banco: {banco}")
         logger.info(f"Forzar IA: {forzar_ia}")
+        
+        # Verificación temprana de servicios
+        if not SERVICIOS_DISPONIBLES["patron_manager"]:
+            raise HTTPException(
+                status_code=503,
+                detail="Servicio PatronManager no disponible"
+            )
+        
+        if forzar_ia and not SERVICIOS_DISPONIBLES["extractor_ia"]:
+            raise HTTPException(
+                status_code=503,
+                detail="Servicio de IA solicitado pero no disponible"
+            )
         
         # Validar archivo básico
         if not archivo.filename:

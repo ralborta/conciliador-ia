@@ -8,10 +8,13 @@ import sys
 from pathlib import Path
 import traceback
 
-# Setup básico
-current_dir = Path(__file__).resolve().parent
-if str(current_dir) not in sys.path:
-    sys.path.insert(0, str(current_dir))
+# Setup paths - SIMPLIFICADO Y CONSISTENTE
+root_dir = Path(__file__).resolve().parent
+conciliador_dir = root_dir / "conciliador_ia"
+
+# Agregar SOLO el directorio raíz al path
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
 
 load_dotenv()
 
@@ -33,16 +36,52 @@ app.add_middleware(
 
 # HEALTH CHECKS
 @app.get("/health")
-async def health():
-    return {"status": "healthy"}
+async def health_check():
+    """Health check completo del sistema"""
+    from datetime import datetime
+    
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "services": {},
+        "routers": {},
+        "routers_loaded": routers_loaded
+    }
+    
+    # Verificar routers cargados
+    for route in app.routes:
+        if hasattr(route, "path"):
+            path = str(route.path)
+            if "/entrenamiento" in path:
+                health_status["routers"]["entrenamiento"] = "loaded"
+            elif "/upload" in path:
+                health_status["routers"]["upload"] = "loaded"
+            elif "/conciliacion" in path:
+                health_status["routers"]["conciliacion"] = "loaded"
+            elif "/compras" in path:
+                health_status["routers"]["compras"] = "loaded"
+    
+    # Verificar servicios (si están disponibles)
+    try:
+        from conciliador_ia.services.patron_manager import PatronManager
+        pm = PatronManager()
+        health_status["services"]["patron_manager"] = "available"
+    except:
+        health_status["services"]["patron_manager"] = "unavailable"
+    
+    # Determinar estado general
+    if not health_status["routers"]:
+        health_status["status"] = "degraded"
+    
+    return health_status
 
 @app.get("/api/v1/health")
 async def health_v1():
-    return {"status": "healthy", "version": "v1"}
+    return await health_check()
 
 @app.get("/api/health")
 async def health_legacy():
-    return {"status": "healthy", "version": "legacy"}
+    return await health_check()
 
 @app.get("/")
 async def root():
@@ -246,30 +285,7 @@ mount_all(API_PREFIX_LEGACY)  # ← **acepta /api/...** (sin /v1)
 
 print(f"📊 Total de routers montados: {routers_loaded}")
 
-# ENDPOINTS TEMPORALES PARA QUE EL FRONTEND NO EXPLOTE
-@app.get("/api/v1/importar-clientes")
-async def temp_importar_clientes_v1():
-    return {"success": True, "message": "Endpoint temporal v1 - routers no cargados aún", "data": []}
-
-@app.get("/api/importar-clientes")
-async def temp_importar_clientes_legacy():
-    return {"success": True, "message": "Endpoint temporal legacy - routers no cargados aún", "data": []}
-
-@app.post("/api/v1/upload")
-async def temp_upload_v1():
-    return {"success": True, "message": "Endpoint temporal v1 - routers no cargados aún"}
-
-@app.post("/api/upload")
-async def temp_upload_legacy():
-    return {"success": True, "message": "Endpoint temporal legacy - routers no cargados aún"}
-
-@app.get("/api/v1/test")
-async def temp_test_v1():
-    return {"success": True, "message": "Endpoint temporal v1 funcionando"}
-
-@app.get("/api/test")
-async def temp_test_legacy():
-    return {"success": True, "message": "Endpoint temporal legacy funcionando"}
+# Endpoints temporales eliminados - los routers ya están cargados correctamente
 
 # STARTUP
 @app.on_event("startup")

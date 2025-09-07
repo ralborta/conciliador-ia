@@ -87,6 +87,27 @@ async def health_legacy():
 async def root():
     return {"message": "Conciliador IA funcionando", "status": "ok"}
 
+@app.get("/debug/routes")
+async def debug_routes():
+    """Lista todas las rutas registradas"""
+    routes = []
+    for route in app.routes:
+        if hasattr(route, "methods") and hasattr(route, "path"):
+            routes.append({
+                "path": str(route.path),
+                "methods": list(route.methods),
+                "name": route.name
+            })
+    
+    # Filtrar rutas de entrenamiento
+    training_routes = [r for r in routes if "entrenamiento" in r["path"]]
+    
+    return {
+        "total_routes": len(routes),
+        "training_routes": training_routes,
+        "all_routes": sorted(routes, key=lambda x: x["path"])
+    }
+
 # DIAGNÓSTICO COMPLETO
 @app.get("/debug/filesystem")
 async def debug_filesystem():
@@ -270,11 +291,16 @@ def mount_all(prefix: str):
         # Cargar entrenamiento router
         print(f"  🔄 Cargando entrenamiento router en {prefix}...")
         from routers import entrenamiento
-        app.include_router(entrenamiento.router, prefix=prefix)
-        print(f"  ✅ Entrenamiento router cargado en {prefix}")
+        # Agregar el prefijo completo aquí
+        app.include_router(
+            entrenamiento.router, 
+            prefix=f"{prefix}/entrenamiento",  # ← Prefijo completo
+            tags=["entrenamiento"]
+        )
+        print(f"  ✅ Entrenamiento router cargado en {prefix}/entrenamiento")
         routers_loaded += 1
     except Exception as e:
-        print(f"  ❌ Error cargando entrenamiento router en {prefix}: {e}")
+        print(f"  ❌ Error cargando entrenamiento router: {e}")
 
 # Montar routers en ambos prefijos
 print(f"📦 Montando routers en {API_PREFIX}...")

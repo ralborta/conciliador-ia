@@ -11,7 +11,7 @@ from services.patron_manager import PatronManager
 from services.extractor_inteligente import ExtractorInteligente
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/entrenamiento", tags=["entrenamiento"])
+router = APIRouter(tags=["entrenamiento"])
 
 # Verificación de servicios al inicio
 def verificar_servicios():

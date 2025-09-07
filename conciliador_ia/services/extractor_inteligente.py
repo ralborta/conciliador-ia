@@ -3,11 +3,14 @@ import pandas as pd
 import json
 import logging
 import re
+import base64
+import io
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import os
 from openai import OpenAI
 from pathlib import Path
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -360,31 +363,194 @@ Ejemplo:
         return movimientos
     
     def _detectar_banco(self, archivo_path: str, banco: Optional[str] = None) -> str:
-        """Detecta el banco del extracto"""
+        """Detecta el banco del extracto usando IA universal"""
         if banco:
             return banco
         
         try:
+            # 1. Intentar detección por texto con IA
+            banco_texto = self._detectar_banco_por_texto(archivo_path)
+            if banco_texto and banco_texto != "Banco no identificado":
+                logger.info(f"Banco detectado por texto: {banco_texto}")
+                return banco_texto
+            
+            # 2. Intentar detección por logo/imagen
+            banco_logo = self._detectar_banco_por_logo(archivo_path)
+            if banco_logo and banco_logo != "Banco no identificado":
+                logger.info(f"Banco detectado por logo: {banco_logo}")
+                return banco_logo
+            
+            # 3. Fallback a detección básica por texto
+            banco_basico = self._detectar_banco_basico(archivo_path)
+            logger.info(f"Banco detectado básico: {banco_basico}")
+            return banco_basico
+            
+        except Exception as e:
+            logger.error(f"Error detectando banco: {e}")
+            return "Banco no identificado"
+    
+    def _detectar_banco_por_texto(self, archivo_path: str) -> str:
+        """Detecta banco usando IA analizando el texto del PDF"""
+        try:
             texto = self._extraer_texto_pdf(archivo_path)
-            # Buscar palabras clave de bancos argentinos
-            bancos = {
-                "provincia": "Banco Provincia",
+            
+            prompt = f"""
+Analiza este extracto bancario y identifica el banco.
+
+TEXTO DEL EXTRACTO:
+{texto[:2000]}
+
+INSTRUCCIONES:
+- Busca el nombre del banco en el texto
+- Puede ser cualquier banco del mundo (Argentina, España, México, etc.)
+- Responde SOLO el nombre del banco
+- Si no encuentras, responde "Banco no identificado"
+
+EJEMPLOS DE RESPUESTA:
+- "Banco Santander"
+- "BBVA"
+- "Banco Galicia" 
+- "Chase Bank"
+- "Wells Fargo"
+- "Banco de la Nación Argentina"
+- "Banco no identificado"
+"""
+            
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": "Eres un experto en identificar bancos en extractos. Responde ÚNICAMENTE el nombre del banco."
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.0,
+                max_tokens=100,
+                timeout=30
+            )
+            
+            banco = response.choices[0].message.content.strip()
+            logger.info(f"IA detectó banco por texto: {banco}")
+            return banco or "Banco no identificado"
+            
+        except Exception as e:
+            logger.error(f"Error detectando banco por texto: {e}")
+            return "Banco no identificado"
+    
+    def _detectar_banco_por_logo(self, archivo_path: str) -> str:
+        """Detecta banco analizando logo/imagen del PDF"""
+        try:
+            logo_image = self._extraer_logo_pdf(archivo_path)
+            if not logo_image:
+                return "Banco no identificado"
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4-vision-preview",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Identifica qué banco es este logo. Responde solo el nombre del banco. Puede ser cualquier banco del mundo."
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/png;base64,{logo_image}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=100,
+                timeout=30
+            )
+            
+            banco = response.choices[0].message.content.strip()
+            logger.info(f"IA detectó banco por logo: {banco}")
+            return banco or "Banco no identificado"
+            
+        except Exception as e:
+            logger.error(f"Error detectando banco por logo: {e}")
+            return "Banco no identificado"
+    
+    def _detectar_banco_basico(self, archivo_path: str) -> str:
+        """Detección básica por palabras clave (fallback)"""
+        try:
+            texto = self._extraer_texto_pdf(archivo_path)
+            texto_lower = texto.lower()
+            
+            # Palabras clave más comunes de bancos
+            bancos_keywords = {
                 "santander": "Santander",
-                "bbva": "BBVA",
-                "macro": "Banco Macro",
+                "bbva": "BBVA", 
                 "galicia": "Banco Galicia",
+                "provincia": "Banco Provincia",
+                "macro": "Banco Macro",
                 "nacion": "Banco Nación",
-                "credicoop": "Banco Credicoop"
+                "credicoop": "Banco Credicoop",
+                "hsbc": "HSBC",
+                "itau": "Itaú",
+                "supervielle": "Banco Supervielle",
+                "chase": "Chase Bank",
+                "wells fargo": "Wells Fargo",
+                "bank of america": "Bank of America",
+                "citibank": "Citibank",
+                "banco": "Banco"  # Genérico
             }
             
-            texto_lower = texto.lower()
-            for palabra, nombre in bancos.items():
+            for palabra, nombre in bancos_keywords.items():
                 if palabra in texto_lower:
                     return nombre
             
             return "Banco no identificado"
-        except:
+            
+        except Exception as e:
+            logger.error(f"Error en detección básica: {e}")
             return "Banco no identificado"
+    
+    def _extraer_logo_pdf(self, pdf_path: str) -> Optional[str]:
+        """Extrae logo/imagen del PDF para análisis con IA"""
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                # Tomar la primera página (donde suele estar el logo)
+                primera_pagina = pdf.pages[0]
+                
+                # Extraer imágenes de la página
+                imagenes = primera_pagina.images
+                if not imagenes:
+                    logger.warning("No se encontraron imágenes en el PDF")
+                    return None
+                
+                # Tomar la primera imagen (usualmente el logo)
+                primera_imagen = imagenes[0]
+                
+                # Extraer coordenadas de la imagen
+                x0, y0, x1, y1 = primera_imagen['x0'], primera_imagen['y0'], primera_imagen['x1'], primera_imagen['y1']
+                
+                # Recortar la imagen
+                imagen_recortada = primera_pagina.crop((x0, y0, x1, y1))
+                
+                # Convertir a PIL Image
+                pil_image = imagen_recortada.to_image()
+                
+                # Redimensionar si es muy grande (máximo 512x512)
+                if pil_image.width > 512 or pil_image.height > 512:
+                    pil_image.thumbnail((512, 512), Image.Resampling.LANCZOS)
+                
+                # Convertir a base64
+                buffer = io.BytesIO()
+                pil_image.save(buffer, format='PNG')
+                imagen_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+                
+                logger.info(f"Logo extraído: {pil_image.width}x{pil_image.height} px")
+                return imagen_base64
+                
+        except Exception as e:
+            logger.error(f"Error extrayendo logo: {e}")
+            return None
     
     def _extraer_texto_pdf(self, pdf_path: str) -> str:
         """Extrae texto de un archivo PDF"""

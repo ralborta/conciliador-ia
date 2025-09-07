@@ -315,16 +315,68 @@ export default function EntrenarExtractosPage() {
 
           {/* Resultado del entrenamiento */}
           {resultadoEntrenamiento && (
-            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-              <h3 className="text-sm font-medium text-green-800 mb-2">
-                Entrenamiento Exitoso
-              </h3>
-              <div className="text-sm text-green-700">
-                <p><strong>Banco:</strong> {resultadoEntrenamiento.banco}</p>
-                <p><strong>Método:</strong> {resultadoEntrenamiento.metodo}</p>
-                <p><strong>Movimientos:</strong> {resultadoEntrenamiento.total_movimientos}</p>
-                <p><strong>Precisión:</strong> {(resultadoEntrenamiento.precision_estimada * 100).toFixed(1)}%</p>
+            <div className="mt-6 space-y-4">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                <h3 className="text-sm font-medium text-green-800 mb-2">
+                  Entrenamiento Exitoso
+                </h3>
+                <div className="text-sm text-green-700">
+                  <p><strong>Banco:</strong> {resultadoEntrenamiento.banco}</p>
+                  <p><strong>Método:</strong> {resultadoEntrenamiento.metodo}</p>
+                  <p><strong>Movimientos:</strong> {resultadoEntrenamiento.total_movimientos}</p>
+                  <p><strong>Precisión:</strong> {(resultadoEntrenamiento.precision_estimada * 100).toFixed(1)}%</p>
+                </div>
               </div>
+
+              {/* Detalle de movimientos */}
+              {resultadoEntrenamiento.movimientos && resultadoEntrenamiento.movimientos.length > 0 && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                  <h3 className="text-sm font-medium text-blue-800 mb-3">
+                    Movimientos Extraídos ({resultadoEntrenamiento.movimientos.length})
+                  </h3>
+                  <div className="max-h-64 overflow-y-auto">
+                    <div className="space-y-2">
+                      {resultadoEntrenamiento.movimientos.slice(0, 10).map((movimiento: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">
+                              {movimiento.descripcion}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {movimiento.fecha} • {movimiento.tipo}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-sm font-medium ${
+                              movimiento.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {movimiento.tipo === 'ingreso' ? '+' : '-'}${movimiento.importe.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {resultadoEntrenamiento.movimientos.length > 10 && (
+                        <p className="text-xs text-gray-500 text-center">
+                          ... y {resultadoEntrenamiento.movimientos.length - 10} movimientos más
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Información de debug */}
+              {resultadoEntrenamiento.debug_info && (
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                  <h3 className="text-sm font-medium text-gray-800 mb-2">
+                    Información de Debug
+                  </h3>
+                  <div className="text-xs text-gray-600">
+                    <p><strong>Respuesta IA:</strong> {resultadoEntrenamiento.debug_info.respuesta_bruta}</p>
+                    <p><strong>Movimientos originales:</strong> {resultadoEntrenamiento.debug_info.movimientos_originales}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -453,7 +453,7 @@ EJEMPLOS DE RESPUESTA:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Identifica qué banco es este logo. Responde solo el nombre del banco. Puede ser cualquier banco del mundo."
+                                "text": "Analiza esta imagen y identifica qué institución financiera es. Puede ser un banco, cooperativa, financiera, o cualquier entidad financiera. Responde solo el nombre de la institución. Si no puedes identificarla, responde 'Institución no identificada'."
                             },
                             {
                                 "type": "image_url",

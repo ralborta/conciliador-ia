@@ -9,8 +9,6 @@ import os
 from openai import OpenAI
 from pathlib import Path
 
-from .patron_manager import PatronManager
-
 logger = logging.getLogger(__name__)
 
 class ExtractorInteligente:
@@ -22,60 +20,374 @@ class ExtractorInteligente:
             raise ValueError("Se requiere OPENAI_API_KEY")
         
         self.client = OpenAI(api_key=self.api_key)
-        self.model = "gpt-4o-mini"  # Modelo económico y eficiente
-        self.patron_manager = PatronManager()
+        # CAMBIO 1: Usar GPT-4 en lugar de GPT-4o-mini para mejor precisión
+        self.model = "gpt-4"  # Mejor modelo para tareas complejas
         
         logger.info("Extractor Inteligente inicializado")
     
-    def extraer_datos(self, pdf_path: str, banco_detectado: Optional[str] = None) -> Dict[str, Any]:
+    def extraer_datos(self, archivo_path: str, banco: Optional[str] = None) -> Dict[str, Any]:
         """
-        Extrae datos de un extracto bancario usando IA o patrones entrenados
-        
-        Args:
-            pdf_path: Ruta al archivo PDF
-            banco_detectado: Nombre del banco si ya fue detectado
-            
-        Returns:
-            Diccionario con datos extraídos y metadatos
+        Extrae datos de un extracto bancario usando IA con fallback a patrones
         """
         try:
-            logger.info(f"Iniciando extracción inteligente: {pdf_path}")
-            
-            # Paso 1: Extraer texto del PDF
-            texto_pdf = self._extraer_texto_pdf(pdf_path)
-            if not texto_pdf:
-                raise ValueError("No se pudo extraer texto del PDF")
-            
-            # Paso 2: Detectar banco si no se proporcionó
-            if not banco_detectado:
-                banco_detectado = self._detectar_banco_ia(texto_pdf)
-            
+            # 1. Detectar banco si no se especifica
+            banco_detectado = self._detectar_banco(archivo_path, banco)
             logger.info(f"Banco detectado: {banco_detectado}")
             
-            # Paso 3: Intentar usar patrón entrenado si existe
-            banco_id = self.patron_manager.buscar_banco_por_nombre(banco_detectado)
-            if banco_id:
-                logger.info(f"Usando patrón entrenado para {banco_id}")
-                resultado = self._extraer_con_patron(banco_id, texto_pdf)
-                if resultado and len(resultado.get("movimientos", [])) > 0:
-                    return resultado
+            # 2. Extraer texto del PDF
+            texto = self._extraer_texto_pdf(archivo_path)
+            logger.info(f"Texto extraído: {len(texto)} caracteres")
             
-            # Paso 4: Si no hay patrón o falla, usar IA
-            logger.info("Usando IA para extracción")
-            resultado = self._extraer_con_ia(texto_pdf, banco_detectado)
+            # DEPURACIÓN: Mostrar muestra del texto
+            logger.info(f"Muestra del texto: {texto[:500]}...")
             
-            # Paso 5: Si la extracción fue exitosa, entrenar patrón
-            if resultado and len(resultado.get("movimientos", [])) > 0:
-                self._entrenar_patron(banco_detectado, texto_pdf, resultado)
+            # 3. Intentar extracción con IA
+            resultado_ia = self._extraer_con_ia(texto, banco_detectado)
+            logger.info(f"Resultado IA: {resultado_ia.get('total_movimientos', 0)} movimientos")
             
-            return resultado
+            # DEPURACIÓN: Validar resultado antes del fallback
+            if resultado_ia and self._validar_resultado(resultado_ia):
+                logger.info("✅ Extracción con IA exitosa")
+                return resultado_ia
+            
+            # 4. Si IA falla, intentar con prompt simplificado
+            logger.warning("❌ IA falló, intentando con prompt simplificado")
+            resultado_simple = self._extraer_con_prompt_simple(texto, banco_detectado)
+            
+            if resultado_simple and self._validar_resultado(resultado_simple):
+                logger.info("✅ Extracción con prompt simple exitosa")
+                return resultado_simple
+            
+            # 5. Último recurso: extracción básica con regex
+            logger.warning("❌ Prompt simple falló, intentando extracción básica")
+            resultado_basico = self._extraer_basico(texto, banco_detectado)
+            
+            return resultado_basico or {
+                "banco": banco_detectado,
+                "banco_id": banco_detectado.lower().replace(" ", "_"),
+                "metodo": "fallo_total",
+                "movimientos": [],
+                "total_movimientos": 0,
+                "precision_estimada": 0.0,
+                "error": "No se pudieron extraer datos",
+                "debug_info": {
+                    "texto_longitud": len(texto),
+                    "texto_muestra": texto[:200]
+                }
+            }
             
         except Exception as e:
-            logger.error(f"Error en extracción inteligente: {e}")
-            raise
+            logger.error(f"Error en extracción: {e}")
+            return {
+                "banco": banco or "Desconocido",
+                "banco_id": "desconocido",
+                "metodo": "error",
+                "movimientos": [],
+                "total_movimientos": 0,
+                "precision_estimada": 0.0,
+                "error": str(e)
+            }
+    
+    def _extraer_con_ia(self, texto: str, banco: str) -> Dict[str, Any]:
+        """Extrae datos usando IA con prompt mejorado"""
+        try:
+            # PROMPT SIMPLIFICADO Y MÁS DIRECTO
+            prompt = f"""
+Extrae las transacciones del siguiente extracto bancario.
+
+TEXTO:
+{texto[:4000]}
+
+Busca líneas que contengan:
+- Una fecha (formato DD/MM/YYYY, DD-MM-YYYY, etc.)
+- Una descripción 
+- Un importe (puede ser positivo o negativo)
+
+RESPONDE EN ESTE FORMATO JSON EXACTO:
+{{
+  "movimientos": [
+    {{
+      "fecha": "2024-01-15",
+      "descripcion": "Descripción de la transacción",
+      "importe": 1234.56,
+      "tipo": "ingreso"
+    }}
+  ]
+}}
+
+IMPORTANTE:
+- Fecha en formato YYYY-MM-DD
+- Importe como número (sin símbolos)
+- Tipo: "ingreso" o "egreso"
+- Si el importe es negativo, es "egreso"
+- Si el importe es positivo, es "ingreso"
+"""
+            
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": "Eres un experto en extraer transacciones de extractos bancarios. Responde ÚNICAMENTE con JSON válido."
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.0,  # Máxima determinismo
+                max_tokens=3000,
+                timeout=60
+            )
+            
+            respuesta_texto = response.choices[0].message.content.strip()
+            logger.info(f"Respuesta IA bruta: {respuesta_texto[:300]}...")
+            
+            # Limpiar y parsear JSON
+            datos = self._parsear_respuesta_json(respuesta_texto)
+            
+            if not datos:
+                logger.error("No se pudo parsear respuesta de IA")
+                return None
+            
+            movimientos = datos.get("movimientos", [])
+            movimientos_limpios = self._validar_movimientos(movimientos)
+            
+            logger.info(f"Movimientos extraídos: {len(movimientos_limpios)}")
+            
+            return {
+                "banco": banco,
+                "banco_id": banco.lower().replace(" ", "_"),
+                "metodo": "ia_mejorada",
+                "movimientos": movimientos_limpios,
+                "total_movimientos": len(movimientos_limpios),
+                "precision_estimada": 0.95 if movimientos_limpios else 0.0,
+                "debug_info": {
+                    "respuesta_bruta": respuesta_texto[:200],
+                    "movimientos_originales": len(movimientos)
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error en extracción con IA: {e}")
+            return None
+    
+    def _extraer_con_prompt_simple(self, texto: str, banco: str) -> Dict[str, Any]:
+        """Extracción con prompt ultra simple"""
+        try:
+            prompt = f"""
+Encuentra todas las transacciones en este texto:
+
+{texto[:2000]}
+
+Lista cada transacción como: FECHA|DESCRIPCION|MONTO
+
+Ejemplo:
+15/01/2024|Transferencia recibida|1500.00
+16/01/2024|Pago de servicios|-250.50
+"""
+            
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.0,
+                max_tokens=2000,
+                timeout=30
+            )
+            
+            respuesta = response.choices[0].message.content.strip()
+            logger.info(f"Respuesta prompt simple: {respuesta[:200]}...")
+            
+            # Parsear respuesta simple
+            movimientos = self._parsear_respuesta_simple(respuesta)
+            
+            return {
+                "banco": banco,
+                "banco_id": banco.lower().replace(" ", "_"),
+                "metodo": "prompt_simple",
+                "movimientos": movimientos,
+                "total_movimientos": len(movimientos),
+                "precision_estimada": 0.8 if movimientos else 0.0
+            }
+            
+        except Exception as e:
+            logger.error(f"Error con prompt simple: {e}")
+            return None
+    
+    def _extraer_basico(self, texto: str, banco: str) -> Dict[str, Any]:
+        """Extracción básica con regex cuando todo falla"""
+        try:
+            movimientos = []
+            lineas = texto.split('\n')
+            
+            # Patrones básicos
+            patron_fecha = r'\b\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}\b'
+            patron_monto = r'\b\d{1,3}(?:[,\.]\d{3})*(?:[,\.]\d{2})?\b'
+            
+            for linea in lineas:
+                linea = linea.strip()
+                if len(linea) < 15:  # Muy corta
+                    continue
+                
+                # Buscar fecha
+                fecha_match = re.search(patron_fecha, linea)
+                if not fecha_match:
+                    continue
+                
+                # Buscar monto
+                montos = re.findall(patron_monto, linea)
+                if not montos:
+                    continue
+                
+                # Tomar el último monto como el importe
+                monto_str = montos[-1]
+                monto = self._parsear_monto(monto_str)
+                
+                if not monto or monto <= 0:
+                    continue
+                
+                # Fecha
+                fecha = self._parsear_fecha(fecha_match.group())
+                if not fecha:
+                    continue
+                
+                # Descripción (texto entre fecha y último monto)
+                fecha_end = fecha_match.end()
+                monto_start = linea.rfind(monto_str)
+                descripcion = linea[fecha_end:monto_start].strip()
+                
+                # Limpiar descripción
+                descripcion = re.sub(r'\s+', ' ', descripcion)
+                if len(descripcion) < 3:
+                    descripcion = "Transacción"
+                
+                movimientos.append({
+                    "fecha": fecha.strftime('%Y-%m-%d'),
+                    "descripcion": descripcion,
+                    "importe": monto,
+                    "tipo": "egreso"  # Por defecto egreso
+                })
+            
+            logger.info(f"Extracción básica encontró {len(movimientos)} movimientos")
+            
+            return {
+                "banco": banco,
+                "banco_id": banco.lower().replace(" ", "_"),
+                "metodo": "regex_basico",
+                "movimientos": movimientos,
+                "total_movimientos": len(movimientos),
+                "precision_estimada": 0.6 if movimientos else 0.0
+            }
+            
+        except Exception as e:
+            logger.error(f"Error en extracción básica: {e}")
+            return None
+    
+    def _parsear_respuesta_json(self, respuesta: str) -> Optional[Dict[str, Any]]:
+        """Parsea respuesta JSON con múltiples intentos de limpieza"""
+        try:
+            # Intento 1: JSON directo
+            return json.loads(respuesta)
+        except:
+            pass
+        
+        try:
+            # Intento 2: Limpiar markdown
+            respuesta_limpia = respuesta.strip()
+            if respuesta_limpia.startswith('```json'):
+                respuesta_limpia = respuesta_limpia[7:]
+            if respuesta_limpia.startswith('```'):
+                respuesta_limpia = respuesta_limpia[3:]
+            if respuesta_limpia.endswith('```'):
+                respuesta_limpia = respuesta_limpia[:-3]
+            
+            return json.loads(respuesta_limpia.strip())
+        except:
+            pass
+        
+        try:
+            # Intento 3: Buscar JSON en el texto
+            json_match = re.search(r'\{.*\}', respuesta, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+        except:
+            pass
+        
+        logger.error(f"No se pudo parsear JSON: {respuesta[:200]}...")
+        return None
+    
+    def _parsear_respuesta_simple(self, respuesta: str) -> List[Dict[str, Any]]:
+        """Parsea respuesta en formato simple FECHA|DESCRIPCION|MONTO"""
+        movimientos = []
+        
+        for linea in respuesta.split('\n'):
+            linea = linea.strip()
+            if '|' not in linea:
+                continue
+            
+            partes = linea.split('|')
+            if len(partes) < 3:
+                continue
+            
+            try:
+                fecha_str = partes[0].strip()
+                descripcion = partes[1].strip()
+                monto_str = partes[2].strip()
+                
+                # Parsear fecha
+                fecha = self._parsear_fecha(fecha_str)
+                if not fecha:
+                    continue
+                
+                # Parsear monto
+                monto = self._parsear_monto(monto_str)
+                if not monto:
+                    continue
+                
+                # Determinar tipo
+                tipo = "egreso" if monto < 0 else "ingreso"
+                
+                movimientos.append({
+                    "fecha": fecha.strftime('%Y-%m-%d'),
+                    "descripcion": descripcion,
+                    "importe": abs(monto),
+                    "tipo": tipo
+                })
+                
+            except Exception as e:
+                logger.warning(f"Error parseando línea: {linea} - {e}")
+                continue
+        
+        return movimientos
+    
+    def _detectar_banco(self, archivo_path: str, banco: Optional[str] = None) -> str:
+        """Detecta el banco del extracto"""
+        if banco:
+            return banco
+        
+        try:
+            texto = self._extraer_texto_pdf(archivo_path)
+            # Buscar palabras clave de bancos argentinos
+            bancos = {
+                "provincia": "Banco Provincia",
+                "santander": "Santander",
+                "bbva": "BBVA",
+                "macro": "Banco Macro",
+                "galicia": "Banco Galicia",
+                "nacion": "Banco Nación",
+                "credicoop": "Banco Credicoop"
+            }
+            
+            texto_lower = texto.lower()
+            for palabra, nombre in bancos.items():
+                if palabra in texto_lower:
+                    return nombre
+            
+            return "Banco no identificado"
+        except:
+            return "Banco no identificado"
     
     def _extraer_texto_pdf(self, pdf_path: str) -> str:
-        """Extrae texto de un PDF usando pdfplumber"""
+        """Extrae texto de un archivo PDF"""
         try:
             with pdfplumber.open(pdf_path) as pdf:
                 texto_completo = ""
@@ -91,225 +403,56 @@ class ExtractorInteligente:
             logger.error(f"Error extrayendo texto del PDF: {e}")
             raise
     
-    def _detectar_banco_ia(self, texto: str) -> str:
-        """Detecta el banco usando IA"""
-        try:
-            prompt = f"""
-Analiza este extracto bancario y determina de qué banco es.
-
-TEXTO DEL EXTRACTO:
-{texto[:2000]}
-
-Responde ÚNICAMENTE con el nombre del banco, por ejemplo: "BBVA", "Santander", "Macro", etc.
-Si no puedes determinar el banco, responde "Banco no identificado".
-"""
-            
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "Eres un experto en identificar bancos argentinos. Responde únicamente con el nombre del banco."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1,
-                max_tokens=50,
-                timeout=15  # Timeout de 15 segundos
-            )
-            
-            banco = response.choices[0].message.content.strip()
-            logger.info(f"Banco detectado por IA: {banco}")
-            return banco
-            
-        except Exception as e:
-            logger.error(f"Error detectando banco con IA: {e}")
-            return "Banco no identificado"
+    def _parsear_fecha(self, fecha_str: str) -> Optional[datetime]:
+        """Parsea una fecha en diferentes formatos"""
+        formatos = [
+            "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y",
+            "%d/%m/%y", "%d-%m-%y", "%d.%m.%y",
+            "%Y-%m-%d", "%Y/%m/%d",
+            "%m/%d/%Y", "%m-%d-%Y"
+        ]
+        
+        for formato in formatos:
+            try:
+                return datetime.strptime(fecha_str.strip(), formato)
+            except ValueError:
+                continue
+        
+        return None
     
-    def _extraer_con_patron(self, banco_id: str, texto: str) -> Optional[Dict[str, Any]]:
-        """Extrae datos usando un patrón entrenado"""
+    def _parsear_monto(self, monto_str: str) -> Optional[float]:
+        """Parsea un monto en diferentes formatos"""
         try:
-            banco = self.patron_manager.obtener_banco(banco_id)
-            if not banco:
+            # Limpiar string y conservar signo
+            es_negativo = '-' in monto_str
+            monto_limpio = re.sub(r'[^\d,.]', '', monto_str.replace('-', ''))
+            
+            if not monto_limpio:
                 return None
             
-            patrones = banco.get("patrones", {})
-            configuracion = banco.get("configuracion", {})
+            # Manejar diferentes separadores
+            if ',' in monto_limpio and '.' in monto_limpio:
+                if monto_limpio.rfind(',') > monto_limpio.rfind('.'):
+                    # Formato: 1.234,56
+                    monto_limpio = monto_limpio.replace('.', '').replace(',', '.')
+                else:
+                    # Formato: 1,234.56
+                    monto_limpio = monto_limpio.replace(',', '')
+            elif ',' in monto_limpio:
+                # Determinar si es separador de miles o decimales
+                if len(monto_limpio.split(',')[-1]) == 2:
+                    # Formato: 1234,56
+                    monto_limpio = monto_limpio.replace(',', '.')
+                else:
+                    # Formato: 1,234
+                    monto_limpio = monto_limpio.replace(',', '')
             
-            # Implementar extracción con patrones regex
-            movimientos = self._aplicar_patrones_regex(texto, patrones, configuracion)
+            monto = float(monto_limpio)
+            return -monto if es_negativo else monto
             
-            if movimientos:
-                return {
-                    "banco": banco.get("nombre", banco_id),
-                    "banco_id": banco_id,
-                    "metodo": "patron_entrenado",
-                    "movimientos": movimientos,
-                    "total_movimientos": len(movimientos),
-                    "precision_estimada": banco.get("estadisticas", {}).get("precision", 0.0)
-                }
-            
+        except Exception as e:
+            logger.warning(f"Error parseando monto '{monto_str}': {e}")
             return None
-            
-        except Exception as e:
-            logger.error(f"Error extrayendo con patrón {banco_id}: {e}")
-            return None
-    
-    def _aplicar_patrones_regex(self, texto: str, patrones: Dict[str, str], configuracion: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Aplica patrones regex para extraer movimientos"""
-        try:
-            movimientos = []
-            lineas = texto.split('\n')
-            
-            patron_fecha = patrones.get("fecha", r'\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}')
-            patron_monto = patrones.get("monto", r'\d{1,3}(?:,\d{3})*(?:\.\d{2})?')
-            
-            for linea in lineas:
-                linea = linea.strip()
-                if not linea or len(linea) < 10:
-                    continue
-                
-                # Buscar fecha en la línea
-                fecha_match = re.search(patron_fecha, linea)
-                if not fecha_match:
-                    continue
-                
-                # Buscar monto en la línea
-                monto_match = re.search(patron_monto, linea)
-                if not monto_match:
-                    continue
-                
-                # Extraer concepto (texto entre fecha y monto)
-                fecha_pos = fecha_match.end()
-                monto_pos = monto_match.start()
-                concepto = linea[fecha_pos:monto_pos].strip()
-                
-                # Limpiar concepto
-                concepto = re.sub(r'\s+', ' ', concepto)
-                
-                # Parsear fecha
-                fecha_str = fecha_match.group()
-                fecha = self._parsear_fecha(fecha_str)
-                
-                # Parsear monto
-                monto_str = monto_match.group()
-                monto = self._parsear_monto(monto_str)
-                
-                if fecha and monto:
-                    movimientos.append({
-                        "fecha": fecha.strftime('%Y-%m-%d'),
-                        "concepto": concepto,
-                        "monto": abs(monto),
-                        "tipo": "crédito" if monto > 0 else "débito"
-                    })
-            
-            return movimientos
-            
-        except Exception as e:
-            logger.error(f"Error aplicando patrones regex: {e}")
-            return []
-    
-    def _extraer_con_ia(self, texto: str, banco: str) -> Dict[str, Any]:
-        """Extrae datos usando IA"""
-        try:
-            prompt = f"""
-Eres un experto en extraer datos de extractos bancarios de CUALQUIER banco del mundo.
-
-INSTRUCCIONES CRÍTICAS:
-1. Analiza el texto completo del extracto bancario
-2. Identifica TODOS los movimientos/transacciones
-3. Extrae fecha, descripción, importe y tipo de cada movimiento
-4. Los importes pueden estar en diferentes formatos (con/sin decimales, con/sin separadores)
-5. Las fechas pueden estar en diferentes formatos (DD/MM/YYYY, MM/DD/YYYY, etc.)
-6. Los créditos pueden ser positivos o negativos según el banco
-7. Busca patrones como: fecha + descripción + importe + saldo
-
-TEXTO DEL EXTRACTO:
-{texto[:3000]}
-
-FORMATO DE RESPUESTA (JSON VÁLIDO):
-{{
-  "titular": "Nombre del titular si está visible",
-  "cuenta": "Número de cuenta si está visible", 
-  "periodo": "Período del extracto si está visible",
-  "saldo_inicial": 0.0,
-  "saldo_final": 0.0,
-  "movimientos": [
-    {{
-      "fecha": "YYYY-MM-DD",
-      "descripcion": "Descripción completa de la transacción",
-      "importe": 123.45,
-      "tipo": "ingreso|egreso",
-      "saldo": 1234.56
-    }}
-  ],
-  "resumen": {{
-    "total_ingresos": 0.0,
-    "total_egresos": 0.0,
-    "cantidad_transacciones": 0
-  }}
-}}
-
-IMPORTANTE: Responde ÚNICAMENTE con JSON válido, sin texto adicional.
-"""
-            
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "Eres un experto en extraer datos de extractos bancarios de CUALQUIER banco del mundo. Puedes identificar patrones de fechas, importes y transacciones en cualquier formato. Responde únicamente con JSON válido."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1,
-                max_tokens=2000,  # Reducido para velocidad
-                timeout=30  # Timeout de 30 segundos
-            )
-            
-            respuesta_texto = response.choices[0].message.content.strip()
-            logger.info(f"Respuesta de IA: {respuesta_texto[:200]}...")
-            
-            # Parsear JSON - intentar limpiar respuesta primero
-            try:
-                # Limpiar respuesta de posibles caracteres extra
-                respuesta_limpia = respuesta_texto.strip()
-                if respuesta_limpia.startswith('```json'):
-                    respuesta_limpia = respuesta_limpia[7:]
-                if respuesta_limpia.endswith('```'):
-                    respuesta_limpia = respuesta_limpia[:-3]
-                respuesta_limpia = respuesta_limpia.strip()
-                
-                datos = json.loads(respuesta_limpia)
-                movimientos = datos.get("movimientos", [])
-                
-                # Validar y limpiar movimientos
-                movimientos_limpios = self._validar_movimientos(movimientos)
-                
-                return {
-                    "banco": banco,
-                    "banco_id": banco.lower().replace(" ", "_"),
-                    "metodo": "ia",
-                    "movimientos": movimientos_limpios,
-                    "total_movimientos": len(movimientos_limpios),
-                    "precision_estimada": 0.9,  # IA tiene alta precisión
-                    "titular": datos.get("titular", ""),
-                    "cuenta": datos.get("cuenta", ""),
-                    "periodo": datos.get("periodo", ""),
-                    "saldo_inicial": datos.get("saldo_inicial", 0.0),
-                    "saldo_final": datos.get("saldo_final", 0.0),
-                    "resumen": datos.get("resumen", {})
-                }
-                
-            except json.JSONDecodeError as e:
-                logger.error(f"Error parseando JSON de IA: {e}")
-                return {
-                    "banco": banco,
-                    "banco_id": banco.lower().replace(" ", "_"),
-                    "metodo": "ia",
-                    "movimientos": [],
-                    "total_movimientos": 0,
-                    "precision_estimada": 0.0,
-                    "error": "Error parseando respuesta de IA"
-                }
-            
-        except Exception as e:
-            logger.error(f"Error en extracción con IA: {e}")
-            raise
     
     def _validar_movimientos(self, movimientos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Valida y limpia los movimientos extraídos"""
@@ -318,148 +461,49 @@ IMPORTANTE: Responde ÚNICAMENTE con JSON válido, sin texto adicional.
         for mov in movimientos:
             try:
                 # Validar campos requeridos
-                if not all(key in mov for key in ["fecha", "concepto", "monto", "tipo"]):
+                if not all(key in mov for key in ["fecha", "descripcion", "importe"]):
                     continue
                 
                 # Validar fecha
-                fecha = self._parsear_fecha(mov["fecha"])
+                fecha = self._parsear_fecha(mov["fecha"]) if isinstance(mov["fecha"], str) else mov["fecha"]
                 if not fecha:
                     continue
                 
                 # Validar monto
-                monto = float(mov["monto"])
-                if monto <= 0:
+                try:
+                    monto = float(mov["importe"])
+                    if monto <= 0:
+                        continue
+                except:
                     continue
                 
-                # Validar tipo
-                if mov["tipo"] not in ["crédito", "débito"]:
-                    continue
+                # Validar descripción
+                descripcion = str(mov["descripcion"]).strip()
+                if not descripcion or len(descripcion) < 2:
+                    descripcion = "Transacción"
                 
-                # Limpiar concepto
-                concepto = str(mov["concepto"]).strip()
-                if len(concepto) < 3:
-                    continue
+                # Determinar tipo
+                tipo = mov.get("tipo", "egreso").lower()
+                if tipo not in ["ingreso", "egreso", "crédito", "débito"]:
+                    tipo = "egreso"
                 
                 movimientos_validos.append({
-                    "fecha": fecha.strftime('%Y-%m-%d'),
-                    "concepto": concepto,
-                    "monto": monto,
-                    "tipo": mov["tipo"],
-                    "saldo": mov.get("saldo")
+                    "fecha": fecha.strftime('%Y-%m-%d') if isinstance(fecha, datetime) else mov["fecha"],
+                    "descripcion": descripcion,
+                    "importe": abs(monto),
+                    "tipo": tipo
                 })
                 
-            except (ValueError, TypeError) as e:
+            except Exception as e:
                 logger.warning(f"Movimiento inválido omitido: {e}")
                 continue
         
         return movimientos_validos
     
-    def _parsear_fecha(self, fecha_str: str) -> Optional[datetime]:
-        """Parsea una fecha en diferentes formatos"""
-        formatos = [
-            '%d/%m/%Y', '%d/%m/%y', '%d-%m-%Y', '%d-%m-%y',
-            '%d.%m.%Y', '%d.%m.%y', '%Y-%m-%d', '%Y/%m/%d'
-        ]
+    def _validar_resultado(self, resultado: Dict[str, Any]) -> bool:
+        """Valida si el resultado de extracción es válido"""
+        if not resultado:
+            return False
         
-        for formato in formatos:
-            try:
-                return datetime.strptime(fecha_str, formato)
-            except ValueError:
-                continue
-        
-        return None
-    
-    def _parsear_monto(self, monto_str: str) -> Optional[float]:
-        """Parsea un monto monetario"""
-        try:
-            # Limpiar el monto
-            monto_limpio = re.sub(r'[^\d.,-]', '', str(monto_str))
-            
-            # Manejar diferentes formatos de separadores
-            if ',' in monto_limpio and '.' in monto_limpio:
-                # Formato: 1,234.56
-                monto_limpio = monto_limpio.replace(',', '')
-            elif ',' in monto_limpio:
-                # Formato: 1234,56
-                monto_limpio = monto_limpio.replace(',', '.')
-            
-            return float(monto_limpio)
-        except (ValueError, TypeError):
-            return None
-    
-    def _entrenar_patron(self, banco: str, texto: str, resultado: Dict[str, Any]):
-        """Entrena un patrón basado en la extracción exitosa con IA"""
-        try:
-            banco_id = banco.lower().replace(" ", "_")
-            
-            # Analizar patrones del texto
-            patrones = self._analizar_patrones_texto(texto, resultado["movimientos"])
-            
-            # Crear configuración del banco
-            configuracion = {
-                "separador_columnas": "\\s+",
-                "formato_fecha": "DD/MM/YYYY",
-                "formato_monto": "1,234.56",
-                "columnas_requeridas": ["fecha", "concepto", "monto", "tipo"]
-            }
-            
-            # Datos del banco
-            banco_data = {
-                "nombre": banco,
-                "patrones": patrones,
-                "configuracion": configuracion,
-                "precision": resultado.get("precision_estimada", 0.9),
-                "total_entrenamientos": 1,
-                "casos_exitosos": 1,
-                "casos_fallidos": 0,
-                "ejemplos_entrenamiento": [Path(texto).name if isinstance(texto, str) else "texto_extraido.txt"]
-            }
-            
-            # Guardar patrón
-            self.patron_manager.guardar_banco(banco_id, banco_data)
-            logger.info(f"Patrón entrenado para {banco} guardado exitosamente")
-            
-        except Exception as e:
-            logger.error(f"Error entrenando patrón para {banco}: {e}")
-    
-    def _analizar_patrones_texto(self, texto: str, movimientos: List[Dict[str, Any]]) -> Dict[str, str]:
-        """Analiza el texto para extraer patrones regex"""
-        try:
-            # Patrón de fecha (buscar en los movimientos)
-            fechas_encontradas = [mov["fecha"] for mov in movimientos if mov.get("fecha")]
-            if fechas_encontradas:
-                # Analizar formato de fecha más común
-                patron_fecha = self._generar_patron_fecha(fechas_encontradas[0])
-            else:
-                patron_fecha = r'\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}'
-            
-            # Patrón de monto (buscar en el texto)
-            montos_encontrados = re.findall(r'\d{1,3}(?:,\d{3})*(?:\.\d{2})?', texto)
-            if montos_encontrados:
-                patron_monto = r'\d{1,3}(?:,\d{3})*(?:\.\d{2})?'
-            else:
-                patron_monto = r'\d{1,3}(?:\.\d{3})*(?:,\d{2})?'
-            
-            return {
-                "fecha": patron_fecha,
-                "monto": patron_monto,
-                "estructura": "FECHA CONCEPTO MONTO TIPO"
-            }
-            
-        except Exception as e:
-            logger.error(f"Error analizando patrones: {e}")
-            return {
-                "fecha": r'\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}',
-                "monto": r'\d{1,3}(?:,\d{3})*(?:\.\d{2})?',
-                "estructura": "FECHA CONCEPTO MONTO TIPO"
-            }
-    
-    def _generar_patron_fecha(self, fecha_str: str) -> str:
-        """Genera un patrón regex para una fecha específica"""
-        # Reemplazar dígitos con \d
-        patron = re.sub(r'\d', r'\\d', fecha_str)
-        # Escapar caracteres especiales
-        patron = patron.replace('/', '[/\\-]')
-        patron = patron.replace('-', '[/\\-]')
-        patron = patron.replace('.', '[/\\-]')
-        return patron
+        movimientos = resultado.get("movimientos", [])
+        return len(movimientos) > 0

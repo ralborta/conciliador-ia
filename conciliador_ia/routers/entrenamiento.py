@@ -160,9 +160,24 @@ async def entrenar_extracto(
             total_movimientos = len(resultado["movimientos"])
             precision_estimada = resultado.get("precision_estimada", 0.9)
             
-            # Actualizar estadísticas del banco
+            # Crear o actualizar banco
             banco_id = resultado.get("banco_id", "banco_test")
-            patron_manager.actualizar_precision(banco_id, precision_estimada, True)
+            banco_nombre = resultado.get("banco", "Banco no identificado")
+            
+            # Verificar si el banco existe
+            banco_existente = patron_manager.obtener_banco(banco_id)
+            if not banco_existente:
+                # Crear banco nuevo
+                patron_manager.guardar_banco(banco_id, {
+                    "nombre": banco_nombre,
+                    "precision": precision_estimada,
+                    "total_entrenamientos": 1,
+                    "casos_exitosos": 1,
+                    "casos_fallidos": 0
+                })
+            else:
+                # Actualizar banco existente
+                patron_manager.actualizar_precision(banco_id, precision_estimada, True)
             
             return {
                 "success": True,

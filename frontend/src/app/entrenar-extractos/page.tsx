@@ -73,7 +73,7 @@ export default function StatementDetailViewer() {
       const formData = new FormData();
       formData.append('archivo', selectedFile);
 
-      const response = await fetch('/api/v1/entrenamiento/entrenar', {
+      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/entrenamiento/entrenar', {
         method: 'POST',
         body: formData,
       });

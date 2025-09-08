@@ -305,18 +305,36 @@ IMPORTANTE: NO incluir líneas que digan "SALDO", "TOTAL", "RESUMEN" o "BALANCE"
                 if len(descripcion) < 3:
                     descripcion = "Transacción"
                 
-                # MEJORAR DETECCIÓN DE TIPO BASADO EN DESCRIPCIÓN
+                # DETECCIÓN DE TIPO BASADA EN DESCRIPCIÓN Y CONTEXTO
                 descripcion_lower = descripcion.lower()
-                if any(palabra in descripcion_lower for palabra in [
-                    'transferencia', 'acreditamiento', 'deposito', 'ingreso', 'credito'
-                ]):
+                linea_lower = linea.lower()
+                
+                # Palabras que indican INGRESO (crédito)
+                palabras_ingreso = [
+                    'transferencia', 'acreditamiento', 'deposito', 'ingreso', 'credito',
+                    'cobro', 'cobranza', 'venta', 'factura', 'recibo', 'pago recibido',
+                    'devolucion', 'reintegro', 'bonificacion', 'premio', 'interes'
+                ]
+                
+                # Palabras que indican EGRESO (débito)
+                palabras_egreso = [
+                    'debito', 'extraccion', 'retiro', 'pago', 'egreso', 'compra',
+                    'servicio', 'impuesto', 'comision', 'cargo', 'gasto', 'descuento',
+                    'transferencia enviada', 'pago a proveedores', 'suscripcion'
+                ]
+                
+                # Verificar en descripción y línea completa
+                es_ingreso = any(palabra in descripcion_lower for palabra in palabras_ingreso) or \
+                           any(palabra in linea_lower for palabra in palabras_ingreso)
+                es_egreso = any(palabra in descripcion_lower for palabra in palabras_egreso) or \
+                          any(palabra in linea_lower for palabra in palabras_egreso)
+                
+                if es_ingreso and not es_egreso:
                     tipo = "ingreso"
-                elif any(palabra in descripcion_lower for palabra in [
-                    'debito', 'extraccion', 'retiro', 'pago', 'egreso'
-                ]):
+                elif es_egreso and not es_ingreso:
                     tipo = "egreso"
                 else:
-                    # Usar lógica de monto
+                    # Usar lógica de monto como fallback
                     tipo = "ingreso" if monto > 0 else "egreso"
                 
                 movimientos.append({
@@ -754,15 +772,38 @@ EJEMPLOS DE RESPUESTA:
                 if not descripcion or len(descripcion) < 2:
                     descripcion = "Transacción"
                 
-                # Determinar tipo basado en el monto
-                # NEGATIVO = DÉBITO (egreso), POSITIVO = CRÉDITO (ingreso)
-                if monto < 0:
-                    tipo = "egreso"
-                    monto = abs(monto)  # Convertir a positivo para mostrar
-                else:
+                # Determinar tipo basado en descripción y monto
+                descripcion_lower = descripcion.lower()
+                
+                # Palabras que indican INGRESO (crédito)
+                palabras_ingreso = [
+                    'transferencia', 'acreditamiento', 'deposito', 'ingreso', 'credito',
+                    'cobro', 'cobranza', 'venta', 'factura', 'recibo', 'pago recibido',
+                    'devolucion', 'reintegro', 'bonificacion', 'premio', 'interes'
+                ]
+                
+                # Palabras que indican EGRESO (débito)
+                palabras_egreso = [
+                    'debito', 'extraccion', 'retiro', 'pago', 'egreso', 'compra',
+                    'servicio', 'impuesto', 'comision', 'cargo', 'gasto', 'descuento',
+                    'transferencia enviada', 'pago a proveedores', 'suscripcion'
+                ]
+                
+                # Verificar en descripción
+                es_ingreso = any(palabra in descripcion_lower for palabra in palabras_ingreso)
+                es_egreso = any(palabra in descripcion_lower for palabra in palabras_egreso)
+                
+                if es_ingreso and not es_egreso:
                     tipo = "ingreso"
-                if tipo not in ["ingreso", "egreso", "crédito", "débito"]:
+                elif es_egreso and not es_ingreso:
                     tipo = "egreso"
+                else:
+                    # Usar lógica de monto como fallback
+                    if monto < 0:
+                        tipo = "egreso"
+                        monto = abs(monto)  # Convertir a positivo para mostrar
+                    else:
+                        tipo = "ingreso"
                 
                 movimientos_validos.append({
                     "fecha": fecha.strftime('%Y-%m-%d') if isinstance(fecha, datetime) else mov["fecha"],

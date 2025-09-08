@@ -480,7 +480,7 @@ EJEMPLOS DE RESPUESTA:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Identifica el banco o institución financiera. Responde SOLO el nombre."
+                                "text": "Identifica el banco o institución financiera en esta imagen. Busca logos, nombres, o cualquier texto que indique el nombre del banco. Responde SOLO el nombre del banco, sin palabras adicionales."
                             },
                             {
                                 "type": "image_url",
@@ -525,6 +525,10 @@ EJEMPLOS DE RESPUESTA:
                 "wells fargo": "Wells Fargo",
                 "bank of america": "Bank of America",
                 "citibank": "Citibank",
+                "mercadopago": "MercadoPago",
+                "uala": "Ualá",
+                "brubank": "Brubank",
+                "reba": "Reba",
                 "banco": "Banco"  # Genérico
             }
             
@@ -649,7 +653,7 @@ EJEMPLOS DE RESPUESTA:
         return None
     
     def _parsear_monto(self, monto_str: str) -> Optional[float]:
-        """Parsea un monto en diferentes formatos"""
+        """Parsea un monto en formato argentino (punto=miles, coma=decimal)"""
         try:
             # Limpiar string y conservar signo
             es_negativo = '-' in monto_str
@@ -658,22 +662,32 @@ EJEMPLOS DE RESPUESTA:
             if not monto_limpio:
                 return None
             
-            # Manejar diferentes separadores
-            if ',' in monto_limpio and '.' in monto_limpio:
-                if monto_limpio.rfind(',') > monto_limpio.rfind('.'):
+            # FORMATO ARGENTINO: punto = miles, coma = decimal
+            # Ejemplos: 1.234,56 o 1.234.567,89
+            
+            if ',' in monto_limpio:
+                # Hay coma decimal
+                partes = monto_limpio.split(',')
+                if len(partes) == 2:
                     # Formato: 1.234,56
-                    monto_limpio = monto_limpio.replace('.', '').replace(',', '.')
+                    parte_entera = partes[0].replace('.', '')  # Quitar puntos de miles
+                    parte_decimal = partes[1]
+                    monto_limpio = f"{parte_entera}.{parte_decimal}"
                 else:
-                    # Formato: 1,234.56
-                    monto_limpio = monto_limpio.replace(',', '')
-            elif ',' in monto_limpio:
-                # Determinar si es separador de miles o decimales
-                if len(monto_limpio.split(',')[-1]) == 2:
-                    # Formato: 1234,56
-                    monto_limpio = monto_limpio.replace(',', '.')
-                else:
-                    # Formato: 1,234
-                    monto_limpio = monto_limpio.replace(',', '')
+                    # Múltiples comas, usar la última como decimal
+                    parte_entera = ','.join(partes[:-1]).replace('.', '')
+                    parte_decimal = partes[-1]
+                    monto_limpio = f"{parte_entera}.{parte_decimal}"
+            else:
+                # Solo punto, podría ser decimal o miles
+                if '.' in monto_limpio:
+                    partes = monto_limpio.split('.')
+                    if len(partes) == 2 and len(partes[1]) <= 2:
+                        # Formato decimal: 1234.56
+                        pass  # Ya está bien
+                    else:
+                        # Formato miles: 1.234
+                        monto_limpio = monto_limpio.replace('.', '')
             
             monto = float(monto_limpio)
             return -monto if es_negativo else monto
@@ -700,7 +714,7 @@ EJEMPLOS DE RESPUESTA:
                 # Validar monto
                 try:
                     monto = float(mov["importe"])
-                    if monto <= 0:
+                    if monto == 0:
                         continue
                 except:
                     continue
@@ -710,8 +724,13 @@ EJEMPLOS DE RESPUESTA:
                 if not descripcion or len(descripcion) < 2:
                     descripcion = "Transacción"
                 
-                # Determinar tipo
-                tipo = mov.get("tipo", "egreso").lower()
+                # Determinar tipo basado en el monto
+                # NEGATIVO = DÉBITO (egreso), POSITIVO = CRÉDITO (ingreso)
+                if monto < 0:
+                    tipo = "egreso"
+                    monto = abs(monto)  # Convertir a positivo para mostrar
+                else:
+                    tipo = "ingreso"
                 if tipo not in ["ingreso", "egreso", "crédito", "débito"]:
                     tipo = "egreso"
                 

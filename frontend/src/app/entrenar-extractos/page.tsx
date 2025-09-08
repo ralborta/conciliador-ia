@@ -81,7 +81,14 @@ export default function StatementDetailViewer() {
       const result = await response.json();
       
       if (result.success) {
-        setData(result.resultado);
+        // El backend devuelve movimientos_muestra, necesitamos usar todos los movimientos
+        const resultado = result.resultado;
+        const movimientos = result.movimientos_muestra || [];
+        
+        setData({
+          ...resultado,
+          movimientos: movimientos
+        });
       } else {
         setError(result.detail || 'Error procesando el extracto');
       }

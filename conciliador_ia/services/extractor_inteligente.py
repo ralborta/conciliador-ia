@@ -53,7 +53,7 @@ class ExtractorInteligente:
             
             # 3. Intentar extracción con IA
             resultado_ia = self._extraer_con_ia(texto, banco_detectado)
-            logger.info(f"Resultado IA: {resultado_ia.get('total_movimientos', 0)} movimientos")
+            logger.info(f"Resultado IA: {resultado_ia.get('total_movimientos', 0) if resultado_ia else 'None'} movimientos")
             
             # DEPURACIÓN: Validar resultado antes del fallback
             if resultado_ia and self._validar_resultado_con_totales(resultado_ia):
@@ -158,7 +158,15 @@ IMPORTANTE:
             
             if not datos:
                 logger.error("No se pudo parsear respuesta de IA")
-                return None
+                return {
+                    "banco": banco,
+                    "banco_id": banco.lower().replace(" ", "_"),
+                    "metodo": "ia_error",
+                    "movimientos": [],
+                    "total_movimientos": 0,
+                    "precision_estimada": 0.0,
+                    "error": "No se pudo parsear respuesta de IA"
+                }
             
             movimientos = datos.get("movimientos", [])
             movimientos_limpios = self._validar_movimientos(movimientos)
@@ -224,7 +232,15 @@ Ejemplo:
             
         except Exception as e:
             logger.error(f"Error con prompt simple: {e}")
-            return None
+            return {
+                "banco": banco,
+                "banco_id": banco.lower().replace(" ", "_"),
+                "metodo": "prompt_simple_error",
+                "movimientos": [],
+                "total_movimientos": 0,
+                "precision_estimada": 0.0,
+                "error": str(e)
+            }
     
     def _extraer_basico(self, texto: str, banco: str) -> Dict[str, Any]:
         """Extracción básica con regex cuando todo falla"""

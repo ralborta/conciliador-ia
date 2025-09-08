@@ -12,6 +12,13 @@ from openai import OpenAI
 from pathlib import Path
 from PIL import Image
 
+# PyMuPDF para mejor extracción de imágenes
+try:
+    import fitz  # PyMuPDF
+    PYMUPDF_AVAILABLE = True
+except ImportError:
+    PYMUPDF_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 class ExtractorInteligente:
@@ -49,7 +56,7 @@ class ExtractorInteligente:
             logger.info(f"Resultado IA: {resultado_ia.get('total_movimientos', 0)} movimientos")
             
             # DEPURACIÓN: Validar resultado antes del fallback
-            if resultado_ia and self._validar_resultado(resultado_ia):
+            if resultado_ia and self._validar_resultado_con_totales(resultado_ia):
                 logger.info("✅ Extracción con IA exitosa")
                 return resultado_ia
             
@@ -94,27 +101,30 @@ class ExtractorInteligente:
     def _extraer_con_ia(self, texto: str, banco: str) -> Dict[str, Any]:
         """Extrae datos usando IA con prompt mejorado"""
         try:
-            # PROMPT SIMPLIFICADO Y MÁS DIRECTO
+            # PROMPT MEJORADO CON VALIDACIÓN DE TOTALES
             prompt = f"""
-Extrae las transacciones del siguiente extracto bancario.
+Analiza este extracto de {banco} y extrae TODAS las transacciones.
 
-TEXTO:
-{texto[:4000]}
+EXTRACTO COMPLETO:
+{texto[:12000]}
 
-Busca líneas que contengan:
-- Una fecha (formato DD/MM/YYYY, DD-MM-YYYY, etc.)
-- Una descripción 
-- Un importe (puede ser positivo o negativo)
+PROCESO CRÍTICO:
+1. BUSCA EL RESUMEN/TOTALES PRIMERO:
+   - Busca: "Movimientos (45)" o cualquier indicador de cantidad
+   - Busca: Total Ingresos, Total Egresos, Saldo
+   
+2. USA ESOS TOTALES COMO VALIDACIÓN:
+   - Si dice 45 movimientos, debes extraer ~45
+   
+3. EXTRAE TODAS LAS TRANSACCIONES
 
-RESPONDE EN ESTE FORMATO JSON EXACTO:
+JSON REQUERIDO:
 {{
+  "resumen_detectado": {{
+    "cantidad_movimientos_indicada": número del extracto
+  }},
   "movimientos": [
-    {{
-      "fecha": "2024-01-15",
-      "descripcion": "Descripción de la transacción",
-      "importe": 1234.56,
-      "tipo": "ingreso"
-    }}
+    {{"fecha": "YYYY-MM-DD", "descripcion": "texto", "importe": número, "tipo": "ingreso/egreso"}}
   ]
 }}
 
@@ -136,7 +146,7 @@ IMPORTANTE:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.0,  # Máxima determinismo
-                max_tokens=3000,
+                max_tokens=4000,
                 timeout=60
             )
             
@@ -441,7 +451,8 @@ EJEMPLOS DE RESPUESTA:
     def _detectar_banco_por_logo(self, archivo_path: str) -> str:
         """Detecta banco analizando logo/imagen del PDF"""
         try:
-            logo_image = self._extraer_logo_pdf(archivo_path)
+            # Usar PyMuPDF para mejor calidad de imagen
+            logo_image = self._pdf_pagina_a_imagen(archivo_path, pagina=0)
             if not logo_image:
                 return "Banco no identificado"
             
@@ -453,7 +464,7 @@ EJEMPLOS DE RESPUESTA:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Analiza esta imagen y identifica qué institución financiera es. Puede ser un banco, cooperativa, financiera, o cualquier entidad financiera. Responde solo el nombre de la institución. Si no puedes identificarla, responde 'Institución no identificada'."
+                                "text": "Identifica el banco o institución financiera. Responde SOLO el nombre."
                             },
                             {
                                 "type": "image_url",
@@ -464,7 +475,7 @@ EJEMPLOS DE RESPUESTA:
                         ]
                     }
                 ],
-                max_tokens=100,
+                max_tokens=50,
                 timeout=30
             )
             
@@ -510,6 +521,41 @@ EJEMPLOS DE RESPUESTA:
         except Exception as e:
             logger.error(f"Error en detección básica: {e}")
             return "Banco no identificado"
+    
+    def _pdf_pagina_a_imagen(self, pdf_path: str, pagina: int = 0) -> Optional[str]:
+        """Convierte una página del PDF a imagen usando PyMuPDF"""
+        try:
+            if not PYMUPDF_AVAILABLE:
+                logger.warning("PyMuPDF no disponible, usando pdfplumber")
+                return self._extraer_logo_pdf(pdf_path)
+            
+            doc = fitz.open(pdf_path)
+            page = doc[pagina]
+            
+            # Renderizar página como imagen
+            mat = fitz.Matrix(2.0, 2.0)  # Escala 2x para mejor calidad
+            pix = page.get_pixmap(matrix=mat)
+            
+            # Convertir a PIL Image
+            img_data = pix.tobytes("png")
+            pil_image = Image.open(io.BytesIO(img_data))
+            
+            # Redimensionar si es muy grande
+            if pil_image.width > 1024 or pil_image.height > 1024:
+                pil_image.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
+            
+            # Convertir a base64
+            buffer = io.BytesIO()
+            pil_image.save(buffer, format='PNG')
+            imagen_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            
+            doc.close()
+            logger.info(f"Página convertida a imagen: {pil_image.width}x{pil_image.height} px")
+            return imagen_base64
+            
+        except Exception as e:
+            logger.error(f"Error convirtiendo PDF a imagen: {e}")
+            return None
     
     def _extraer_logo_pdf(self, pdf_path: str) -> Optional[str]:
         """Extrae logo/imagen del PDF para análisis con IA"""
@@ -672,4 +718,20 @@ EJEMPLOS DE RESPUESTA:
             return False
         
         movimientos = resultado.get("movimientos", [])
+        return len(movimientos) > 0
+    
+    def _validar_resultado_con_totales(self, resultado: Dict[str, Any]) -> bool:
+        """Valida que los totales coincidan"""
+        if not resultado:
+            return False
+        
+        movimientos = resultado.get("movimientos", [])
+        resumen = resultado.get("resumen_detectado", {})
+        
+        # Verificar cantidad
+        cantidad_indicada = resumen.get("cantidad_movimientos_indicada")
+        if cantidad_indicada and len(movimientos) < cantidad_indicada * 0.8:
+            logger.warning(f"Solo {len(movimientos)} de {cantidad_indicada} esperados")
+            return False
+        
         return len(movimientos) > 0

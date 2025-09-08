@@ -13,3 +13,4 @@ xlrd==1.2.0
 odfpy==1.4.1
 httpx==0.25.0
 pillow==10.0.0
+pymupdf==1.23.0

@@ -94,7 +94,7 @@ export default function StatementDetailViewer() {
   };
 
   const calcularTotales = () => {
-    if (!data) return { ingresos: 0, egresos: 0, neto: 0 };
+    if (!data || !data.movimientos) return { ingresos: 0, egresos: 0, neto: 0 };
     
     const ingresos = data.movimientos
       .filter(m => m.tipo === 'ingreso')
@@ -212,7 +212,7 @@ export default function StatementDetailViewer() {
 
                 {/* Tabla de movimientos */}
                 <div>
-                  <h3 className="font-medium mb-3">Movimientos ({data.total_movimientos})</h3>
+                  <h3 className="font-medium mb-3">Movimientos ({data.total_movimientos || 0})</h3>
                   <div className="max-h-64 overflow-y-auto border rounded-lg">
                     <table className="min-w-full text-sm">
                       <thead className="bg-gray-50 sticky top-0">
@@ -224,7 +224,7 @@ export default function StatementDetailViewer() {
                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {data.movimientos.map((mov, idx) => (
+                        {(data.movimientos || []).map((mov, idx) => (
                           <tr key={idx} className="hover:bg-gray-50">
                             <td className="px-3 py-2">{fmtDate(mov.fecha)}</td>
                             <td className="px-3 py-2">{mov.descripcion}</td>

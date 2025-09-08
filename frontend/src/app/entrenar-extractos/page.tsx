@@ -79,17 +79,22 @@ export default function StatementDetailViewer() {
       });
 
       const result = await response.json();
+      console.log('Respuesta del backend:', result);
       
       if (result.success) {
         // El backend devuelve movimientos_muestra, necesitamos usar todos los movimientos
         const resultado = result.resultado;
         const movimientos = result.movimientos_muestra || [];
         
+        console.log('Resultado procesado:', resultado);
+        console.log('Movimientos:', movimientos);
+        
         setData({
           ...resultado,
           movimientos: movimientos
         });
       } else {
+        console.error('Error del backend:', result);
         setError(result.detail || 'Error procesando el extracto');
       }
     } catch (err) {

@@ -118,8 +118,9 @@ PROCESO CRÍTICO:
    
 3. EXTRAE SOLO TRANSACCIONES INDIVIDUALES:
    - NO incluir saldos, totales, resúmenes o balances
-   - NO incluir líneas que digan "SALDO", "TOTAL", "RESUMEN"
-   - Solo movimientos reales de dinero
+   - NO incluir líneas que digan "SALDO", "TOTAL", "RESUMEN", "LIQUIDACION", "RENDIMIENTOS"
+   - NO incluir montos muy grandes (más de 1 millón) que son saldos acumulados
+   - Solo movimientos reales de dinero (transferencias, pagos, cobros, etc.)
 
 JSON REQUERIDO:
 {{
@@ -208,7 +209,10 @@ Ejemplo:
 15/01/2024|Transferencia recibida|1500.00
 16/01/2024|Pago de servicios|-250.50
 
-IMPORTANTE: NO incluir líneas que digan "SALDO", "TOTAL", "RESUMEN" o "BALANCE"
+IMPORTANTE: 
+- NO incluir líneas que digan "SALDO", "TOTAL", "RESUMEN", "BALANCE", "LIQUIDACION", "RENDIMIENTOS"
+- NO incluir montos muy grandes (más de 1 millón) que son saldos acumulados
+- Solo transacciones reales de dinero
 """
             
             response = self.client.chat.completions.create(
@@ -267,9 +271,17 @@ IMPORTANTE: NO incluir líneas que digan "SALDO", "TOTAL", "RESUMEN" o "BALANCE"
                 linea_lower = linea.lower()
                 if any(palabra in linea_lower for palabra in [
                     'saldo', 'total', 'resumen', 'suma', 'subtotal', 
-                    'balance', 'disponible', 'acumulado', 'consolidado'
+                    'balance', 'disponible', 'acumulado', 'consolidado',
+                    'liquidacion', 'rendimientos', 'consolidado'
                 ]):
                     continue
+                
+                # EXCLUIR MONTOS MUY GRANDES (probablemente saldos)
+                montos = re.findall(patron_monto, linea)
+                if montos:
+                    monto_test = self._parsear_monto(montos[-1])
+                    if monto_test and monto_test > 1000000:  # Más de 1 millón
+                        continue
                 
                 # Buscar fecha
                 fecha_match = re.search(patron_fecha, linea)
@@ -297,6 +309,16 @@ IMPORTANTE: NO incluir líneas que digan "SALDO", "TOTAL", "RESUMEN" o "BALANCE"
                 fecha_end = fecha_match.end()
                 monto_start = linea.rfind(monto_str)
                 descripcion = linea[fecha_end:monto_start].strip()
+                
+                # Si la descripción es muy corta, tomar más contexto
+                if len(descripcion) < 10:
+                    # Tomar toda la línea excepto fecha y monto
+                    descripcion = linea
+                    # Remover fecha
+                    descripcion = re.sub(patron_fecha, '', descripcion)
+                    # Remover montos
+                    descripcion = re.sub(patron_monto, '', descripcion)
+                    descripcion = descripcion.strip()
                 
                 # Limpiar descripción
                 descripcion = re.sub(r'\s+', ' ', descripcion)
@@ -764,6 +786,11 @@ EJEMPLOS DE RESPUESTA:
                     monto = float(mov["importe"])
                     if monto == 0:
                         continue
+                    
+                    # EXCLUIR MONTOS MUY GRANDES (probablemente saldos)
+                    if monto > 1000000:  # Más de 1 millón
+                        continue
+                        
                 except:
                     continue
                 

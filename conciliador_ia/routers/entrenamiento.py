@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 
 from services.patron_manager import PatronManager
-from services.extractor_inteligente import ExtractorInteligente
+from services.extractor_simple import ExtractorSimple
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["entrenamiento"])
@@ -33,16 +33,16 @@ def verificar_servicios():
     
     try:
         if estado["openai_configured"]:
-            global extractor_inteligente
-            extractor_inteligente = ExtractorInteligente()
+            global extractor_simple
+            extractor_simple = ExtractorSimple()
             estado["extractor_ia"] = True
-            logger.info("Extractor Inteligente inicializado correctamente")
+            logger.info("Extractor Simple inicializado correctamente")
         else:
             logger.warning("OPENAI_API_KEY no configurada - funcionalidad de IA deshabilitada")
-            extractor_inteligente = None
+            extractor_simple = None
     except Exception as e:
-        logger.error(f"ExtractorInteligente no disponible: {e}")
-        extractor_inteligente = None
+        logger.error(f"ExtractorSimple no disponible: {e}")
+        extractor_simple = None
     
     return estado
 
@@ -140,29 +140,29 @@ async def entrenar_extracto(
         
         try:
             # Verificar si hay extractor disponible
-            if not extractor_inteligente:
+            if not extractor_simple:
                 raise HTTPException(
                     status_code=503, 
                     detail="Servicio de IA no disponible. Verifique la configuración de OPENAI_API_KEY."
                 )
             
-            # Extraer datos usando el extractor inteligente
-            logger.info("Iniciando extracción con IA")
-            resultado = extractor_inteligente.extraer_datos(archivo_path, banco)
+            # Extraer datos usando el extractor simple
+            logger.info("Iniciando extracción con IA simple")
+            resultado = extractor_simple.extraer_datos(archivo_path)
             
-            if not resultado:
+            if "error" in resultado:
                 raise HTTPException(
                     status_code=422, 
-                    detail="No se pudieron extraer datos del archivo PDF"
+                    detail=resultado["error"]
                 )
             
             # Calcular precisión estimada
             total_movimientos = len(resultado["movimientos"])
-            precision_estimada = resultado.get("precision_estimada", 0.9)
+            precision_estimada = 0.9  # Fijo para extractor simple
             
             # Crear o actualizar banco
-            banco_id = resultado.get("banco_id", "banco_test")
-            banco_nombre = resultado.get("banco", "Banco no identificado")
+            banco_id = "banco_detectado"
+            banco_nombre = resultado.get("banco", "Banco detectado")
             
             # Verificar si el banco existe
             banco_existente = patron_manager.obtener_banco(banco_id)
@@ -181,9 +181,9 @@ async def entrenar_extracto(
             
             return {
                 "success": True,
-                "message": "Extracto entrenado exitosamente",
+                "message": "Extracto procesado exitosamente",
                 "resultado": {
-                    "banco": resultado.get("banco"),
+                    "banco": banco_nombre,
                     "banco_id": banco_id,
                     "metodo": resultado.get("metodo"),
                     "total_movimientos": total_movimientos,

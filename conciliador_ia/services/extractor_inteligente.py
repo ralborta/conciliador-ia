@@ -103,7 +103,7 @@ class ExtractorInteligente:
         try:
             # PROMPT MEJORADO CON VALIDACIÓN DE TOTALES
             prompt = f"""
-Analiza este extracto de {banco} y extrae TODAS las transacciones.
+Analiza este extracto de {banco} y extrae SOLO las transacciones individuales.
 
 EXTRACTO COMPLETO:
 {texto[:12000]}
@@ -116,7 +116,10 @@ PROCESO CRÍTICO:
 2. USA ESOS TOTALES COMO VALIDACIÓN:
    - Si dice 45 movimientos, debes extraer ~45
    
-3. EXTRAE TODAS LAS TRANSACCIONES
+3. EXTRAE SOLO TRANSACCIONES INDIVIDUALES:
+   - NO incluir saldos, totales, resúmenes o balances
+   - NO incluir líneas que digan "SALDO", "TOTAL", "RESUMEN"
+   - Solo movimientos reales de dinero
 
 JSON REQUERIDO:
 {{
@@ -134,6 +137,7 @@ IMPORTANTE:
 - Tipo: "ingreso" o "egreso"
 - Si el importe es negativo, es "egreso"
 - Si el importe es positivo, es "ingreso"
+- EXCLUIR saldos y totales
 """
             
             response = self.client.chat.completions.create(
@@ -194,7 +198,7 @@ IMPORTANTE:
         """Extracción con prompt ultra simple"""
         try:
             prompt = f"""
-Encuentra todas las transacciones en este texto:
+Encuentra SOLO las transacciones individuales en este texto (NO incluir saldos o totales):
 
 {texto[:2000]}
 
@@ -203,6 +207,8 @@ Lista cada transacción como: FECHA|DESCRIPCION|MONTO
 Ejemplo:
 15/01/2024|Transferencia recibida|1500.00
 16/01/2024|Pago de servicios|-250.50
+
+IMPORTANTE: NO incluir líneas que digan "SALDO", "TOTAL", "RESUMEN" o "BALANCE"
 """
             
             response = self.client.chat.completions.create(
@@ -257,6 +263,14 @@ Ejemplo:
                 if len(linea) < 15:  # Muy corta
                     continue
                 
+                # EXCLUIR LÍNEAS DE SALDO Y RESUMEN
+                linea_lower = linea.lower()
+                if any(palabra in linea_lower for palabra in [
+                    'saldo', 'total', 'resumen', 'suma', 'subtotal', 
+                    'balance', 'disponible', 'acumulado', 'consolidado'
+                ]):
+                    continue
+                
                 # Buscar fecha
                 fecha_match = re.search(patron_fecha, linea)
                 if not fecha_match:
@@ -271,7 +285,7 @@ Ejemplo:
                 monto_str = montos[-1]
                 monto = self._parsear_monto(monto_str)
                 
-                if not monto or monto <= 0:
+                if not monto or monto == 0:
                     continue
                 
                 # Fecha
@@ -286,8 +300,24 @@ Ejemplo:
                 
                 # Limpiar descripción
                 descripcion = re.sub(r'\s+', ' ', descripcion)
+                descripcion = re.sub(r'[^\w\s\-/]', '', descripcion)  # Solo letras, números, espacios, guiones y barras
+                
                 if len(descripcion) < 3:
                     descripcion = "Transacción"
+                
+                # MEJORAR DETECCIÓN DE TIPO BASADO EN DESCRIPCIÓN
+                descripcion_lower = descripcion.lower()
+                if any(palabra in descripcion_lower for palabra in [
+                    'transferencia', 'acreditamiento', 'deposito', 'ingreso', 'credito'
+                ]):
+                    tipo = "ingreso"
+                elif any(palabra in descripcion_lower for palabra in [
+                    'debito', 'extraccion', 'retiro', 'pago', 'egreso'
+                ]):
+                    tipo = "egreso"
+                else:
+                    # Usar lógica de monto
+                    tipo = "ingreso" if monto > 0 else "egreso"
                 
                 movimientos.append({
                     "fecha": fecha.strftime('%Y-%m-%d'),

@@ -241,3 +241,6 @@ class PatronManager:
             logger.error(f"Error importando patrones: {e}")
             return False
 
+
+
+

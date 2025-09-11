@@ -129,3 +129,6 @@ IMPORTANTE:
         except Exception as e:
             logger.error(f"Error calculando totales: {e}")
             return {"ingresos": 0, "egresos": 0, "neto": 0}
+
+
+

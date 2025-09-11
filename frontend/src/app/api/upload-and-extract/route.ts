@@ -5,12 +5,16 @@ const EXTRACTOR_URL = process.env.EXTRACTOR_URL;
 const SERVICE_AUTH_SECRET = process.env.SERVICE_AUTH_SECRET;
 const BLOB_READ_WRITE_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 
-if (!EXTRACTOR_URL || !SERVICE_AUTH_SECRET || !BLOB_READ_WRITE_TOKEN) {
-  throw new Error('Missing required environment variables');
-}
-
 export async function POST(request: NextRequest) {
   try {
+    // Validar variables de entorno
+    if (!EXTRACTOR_URL || !SERVICE_AUTH_SECRET || !BLOB_READ_WRITE_TOKEN) {
+      return NextResponse.json(
+        { error: 'Missing required environment variables' },
+        { status: 500 }
+      );
+    }
+
     console.log("UPLOAD start");
     
     const formData = await request.formData();
@@ -58,7 +62,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 
-        "X-Service-Auth": SERVICE_AUTH_SECRET
+        "X-Service-Auth": SERVICE_AUTH_SECRET!
       },
       body: JSON.stringify(body),
     });

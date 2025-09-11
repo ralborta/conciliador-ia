@@ -62,64 +62,58 @@ export default function StatementDetailViewer() {
 
   const procesarExtracto = async () => {
     if (!selectedFile) {
-      alert('Selecciona un archivo PDF');
+      setError("Seleccioná un PDF");
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
+      setData(null);
       
       const formData = new FormData();
-      formData.append('archivo', selectedFile);
+      formData.append('file', selectedFile);
+      // opcional: formData.append('bank_hint', 'BBVA');
 
-      const response = await fetch('https://conciliador-ia-production.up.railway.app/api/v1/entrenamiento/entrenar', {
-        method: 'POST',
-        body: formData,
-      });
+      const res = await fetch("/api/upload-and-extract", { method: "POST", body: formData });
+      if (!res.ok) throw new Error(await res.text());
 
-      const result = await response.json();
-      console.log('Respuesta del backend:', result);
-      
-      if (result.success) {
-        // El backend devuelve movimientos_muestra, necesitamos usar todos los movimientos
-        const resultado = result.resultado;
-        const movimientos = result.movimientos_muestra || [];
-        
-        console.log('Resultado procesado:', resultado);
-        console.log('Movimientos:', movimientos);
-        
-        setData({
-          ...resultado,
-          movimientos: movimientos
-        });
-      } else {
-        console.error('Error del backend:', result);
-        setError(result.detail || 'Error procesando el extracto');
-      }
-    } catch (err) {
-      setError('Error de conexión');
+      const data = await res.json();              // { ok, extractor }
+      const ex = data.extractor || data;          // por si ya venís trayendo el objeto directo
+
+      console.log('Respuesta del backend:', data);
+      console.log('Extractor data:', ex);
+
+      // Transformar a formato esperado por el componente
+      const transformedData = {
+        banco: ex.header?.bank_name || ex.banco || "Banco no identificado",
+        banco_id: ex.banco_id || "desconocido",
+        metodo: ex.metrics?.method || ex.metodo || "unknown",
+        movimientos: (ex.transactions || ex.movimientos || []).map((t: any) => ({
+          fecha: t.fecha_operacion || t.fecha,
+          descripcion: t.descripcion,
+          importe: t.credit_amount || t.debit_amount || t.importe || 0,
+          tipo: t.credit_amount ? "ingreso" : "egreso"
+        })),
+        total_movimientos: ex.metrics?.rows || ex.total_movimientos || 0,
+        precision_estimada: ex.metrics?.precision || ex.precision_estimada || 0,
+        debug_info: ex.debug
+      };
+
+      setData(transformedData);
+    } catch (err: any) {
+      setError(err.message ?? "Error procesando el extracto");
       console.error('Error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const calcularTotales = () => {
-    if (!data || !data.movimientos) return { ingresos: 0, egresos: 0, neto: 0 };
-    
-    const ingresos = data.movimientos
-      .filter(m => m.tipo === 'ingreso')
-      .reduce((sum, m) => sum + m.importe, 0);
-    
-    const egresos = data.movimientos
-      .filter(m => m.tipo === 'egreso')
-      .reduce((sum, m) => sum + m.importe, 0);
-    
-    return { ingresos, egresos, neto: ingresos - egresos };
-  };
-
-  const totals = calcularTotales();
+  // Calcular totales con data real
+  const ingresos = (data?.movimientos ?? []).reduce((a, t) => a + (t.tipo === 'ingreso' ? t.importe : 0), 0);
+  const egresos = (data?.movimientos ?? []).reduce((a, t) => a + (t.tipo === 'egreso' ? t.importe : 0), 0);
+  const neto = ingresos - egresos;
+  const precision = Math.round(((data?.precision_estimada ?? 0) * 1000)) / 10; // 97.3
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -202,7 +196,7 @@ export default function StatementDetailViewer() {
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
                     <p className="text-sm text-green-600">Precisión</p>
-                    <p className="font-semibold">{(data.precision_estimada * 100).toFixed(1)}%</p>
+                    <p className="font-semibold">{precision}%</p>
                   </div>
                 </div>
 
@@ -210,15 +204,15 @@ export default function StatementDetailViewer() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-green-50 p-4 rounded-lg text-center">
                     <p className="text-sm text-green-600">Ingresos</p>
-                    <p className="text-lg font-bold text-green-700">{fmtMoney(totals.ingresos)}</p>
+                    <p className="text-lg font-bold text-green-700">{fmtMoney(ingresos)}</p>
                   </div>
                   <div className="bg-red-50 p-4 rounded-lg text-center">
                     <p className="text-sm text-red-600">Egresos</p>
-                    <p className="text-lg font-bold text-red-700">{fmtMoney(totals.egresos)}</p>
+                    <p className="text-lg font-bold text-red-700">{fmtMoney(egresos)}</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg text-center">
                     <p className="text-sm text-gray-600">Neto</p>
-                    <p className="text-lg font-bold">{fmtMoney(totals.neto)}</p>
+                    <p className="text-lg font-bold">{fmtMoney(neto)}</p>
                   </div>
                 </div>
 
